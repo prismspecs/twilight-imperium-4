@@ -374,8 +374,9 @@ button{font-family:inherit}
 .dialog .in{padding:14px 16px 16px}
 .rowline{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
 .overlay{position:fixed;inset:0;background:rgba(3,5,12,.94);z-index:40;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
-.logpanel{position:absolute;left:0;top:8px;bottom:8px;width:min(520px,60%);overflow:auto;z-index:30}
-.logpanel .in{padding:12px 14px}
+.logpanel{position:absolute;left:0;top:8px;bottom:8px;width:min(520px,60%);z-index:30}
+.logpanel .in{padding:12px 14px;display:flex;flex-direction:column;overflow:hidden}
+.loglist{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:8px}
 .logline{font:500 12px/1.5 var(--body);color:#d8d2c2;border-bottom:1px solid rgba(201,162,77,.14);padding:2px 0}
 .logline.roll{color:var(--gold-hi)}
 
