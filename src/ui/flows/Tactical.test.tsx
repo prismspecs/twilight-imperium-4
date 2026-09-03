@@ -143,4 +143,25 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('btn-bombard-bereg')).toBeTruthy()
     expect(screen.queryByTestId('btn-land-bereg')).toBeNull()                   // no infantry in space
   })
+
+  it('R4.1 step 4: a seat with hits to absorb gets an assignment control, not a dead board', () => {
+    // seat 0 (North) is defending bereg with a cruiser and took one hit; it must destroy or sustain it.
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = withUnits(s, 'bereg', 1, ['cruiser'])
+    s = withTactical(s, {
+      systemId: 'bereg', step: 'spaceCombat',
+      combat: { round: 1, attacker: 1, defender: 0, retreating: null, retreatTo: null, lastRolls: [], pending: [{ owner: 0, groups: [{ count: 1, mode: 'any' }], context: 'combat round 1' }] },
+    })
+    renderWithSession(s, <BoardScreen />)
+    // the dialog is present, the fight button is disabled (hits must be assigned first), and a control offers
+    // the cruiser for destruction
+    expect(screen.getByTestId('hits-to-assign').textContent).toContain('must absorb 1 hit')
+    expect(screen.getByTestId('btn-combat-round').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText('Destroy')).toBeTruthy()
+    // accepting the suggested assignment resolves the queue and the combat may continue
+    fireEvent.click(screen.getByTestId('btn-auto-assign'))
+    expect(screen.queryByTestId('hits-assignment')).toBeNull()
+    // the held dialog is gone because the queue cleared and the tactical advanced past the combat step
+    expect(screen.queryByTestId('combat-dialog')).toBeNull()
+  })
 })
