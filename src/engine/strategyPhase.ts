@@ -14,11 +14,6 @@ export function snakeOrder(state: GameState): Seat[] {
   return [...seats, ...seats.slice().reverse()]
 }
 
-/** N-player: how many draft picks each seat gets from the current strategy pool. */
-export function draftLength(state: GameState): number {
-  return Math.min(state.strategyPool.length, state.players.length * 2)
-}
-
 export function initiativeOrder(state: GameState): Seat[] {
   const lowest = (seat: Seat) => {
     const cards = state.players[seat].strategyCards
