@@ -58,3 +58,17 @@ extracted a `thirdSeat()` helper shared by the two N=3 plumbing tests.
 Remaining: Trade primary "choose any number of other players" is still 2-player; the 17-faction data import,
 full tech/upgrade tree, objectives/action-cards/agendas/promissory, Politics+Construction + agenda phase, map,
 and N-player bots/UI are all still ahead.
+
+## Session checkpoint — N-player engine foundation complete (all pushed to twilight/main)
+
+Delivered this session (all green: 457 tests, tsc clean, lint clean; each commit pushed):
+- a1f5051/4a3ffc7: N-player core — seats/players arrays, snake draft, initiative, status phase, victory check, setup.
+- c5654eb: secondary window — every other seat answers a strategy secondary in turn order, then the holder resumes.
+- 36757ec: Diplomacy primary places a token for every other seat.
+- e1012fb: plan progress tracker.
+
+This is step 1 of the architecture sequence (engine N-player generalization). The remaining steps
+(full faction data + all 17 ability implementations, complete tech/upgrade tree, all objective/action-card/
+agenda/promissory decks, Politics + Construction + the agenda phase itself, the full map with anomalies and
+wormholes, N-player bots, and the 6-player UI) are a very large body of work that will span further sessions.
+Trade primary ("choose any number of other players") is the one remaining engine generalization.
