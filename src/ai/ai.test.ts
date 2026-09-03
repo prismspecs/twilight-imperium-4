@@ -66,4 +66,28 @@ describe('AI opponent', () => {
     expect(moves).toBeGreaterThan(0)
     expect(state.phase).toBe('ended')
   })
+
+  it('aiChoose is deterministic: the same state, options and seat pick the same move', () => {
+    let state = createGame(DUEL_CONFIG, 89)
+    let guard = 0
+    while (state.phase !== 'ended' && guard < 2000) {
+      const options = legalMoves(state)
+      const first = aiChoose(state, options, state.active)
+      const second = aiChoose(state, options, state.active)
+      expect(second).toEqual(first)
+      const r = applyMove(state, first, guard + 1)
+      if (!r.ok) { expect(r.ok, `rejected ${first.type}: ${r.error}`).toBe(true); break }
+      state = r.value
+      guard++
+    }
+    expect(state.phase).toBe('ended')
+  })
+
+  it('aiChoose returns the only option directly when there is a single legal move', () => {
+    const state = createGame(DUEL_CONFIG, 5)
+    const options = legalMoves(state)
+    expect(options.length).toBeGreaterThan(0)
+    const single = aiChoose(state, [options[0]], state.active)
+    expect(single).toEqual(options[0])
+  })
 })

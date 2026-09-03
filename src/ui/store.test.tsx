@@ -17,6 +17,22 @@ const CONFIG: GameConfig = {
   speaker: 0,
 }
 
+const AI_V_AI: GameConfig = {
+  players: [
+    { faction: 'l1z1x', color: 'blue', name: 'North', playerType: 'ai' },
+    { faction: 'letnev', color: 'red', name: 'South', playerType: 'ai' },
+  ],
+  speaker: 0,
+}
+
+const HUMAN_V_AI: GameConfig = {
+  players: [
+    { faction: 'l1z1x', color: 'blue', name: 'North', playerType: 'human' },
+    { faction: 'letnev', color: 'red', name: 'South', playerType: 'ai' },
+  ],
+  speaker: 0,
+}
+
 function wrapper(ticking: boolean) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <GameProvider ticking={ticking}>{children}</GameProvider>
@@ -181,5 +197,28 @@ describe('the hot-seat store', () => {
     enumerate.mockRestore()
     write.mockRestore()
     vi.useRealTimers()
+  })
+
+  it('AI vs AI: one opening move plays the whole duel, with no handoff ever offered', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.start(AI_V_AI, 7, 15) })
+    expect(result.current.session?.state.phase).toBe('strategy')
+    act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
+    // the AI drives every subsequent seat; once started the game runs until someone wins or round 6 ends
+    const end = result.current.session?.state
+    expect(end?.winner !== null || end?.phase === 'ended').toBe(true)
+    expect(result.current.session?.handoff).toBeNull()
+  })
+
+  it('human vs AI: the game hands off to the human seat and never to the AI seat', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.start(HUMAN_V_AI, 7, 15) })
+    // North is the human seat 0 and opens the draft, so the first legal move is the human's
+    act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
+    // the AI seat 1 took its turn inside `apply`; the state should never be parked on the AI with a handoff
+    expect(result.current.session?.handoff).toBeNull()
+    expect(result.current.session?.state.active).not.toBe(1)
+    // the human seat 0 is always the one left holding the device
+    expect(result.current.session?.handoff ?? result.current.session?.state.active).toBe(0)
   })
 })
