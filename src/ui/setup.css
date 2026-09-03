@@ -189,6 +189,13 @@
   transform:rotate(-45deg);box-shadow:0 0 0 1px rgba(255,255,255,.25)}
 .lobbyui .chosen{font:600 12px var(--hud);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-left:4px}
 
+.lobbyui .segtoggle{display:flex;border:1px solid rgba(201,162,77,.45);border-radius:0}
+.lobbyui .segtoggle button{font:600 11px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;
+  background:rgba(0,0,0,.35);color:var(--ink-mute);border:0;cursor:pointer}
+.lobbyui .segtoggle button+button{border-left:1px solid rgba(201,162,77,.45)}
+.lobbyui .segtoggle button.on{background:var(--gold);color:#1a1408}
+.lobbyui .segtoggle button:not(.on):hover{color:var(--text)}
+
 .lobbyui .units{display:flex;align-items:flex-end;gap:8px}
 .lobbyui .unit{position:relative;min-width:40px;height:56px;padding:0 4px;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at 50% 55%,var(--glow),transparent 70%)}

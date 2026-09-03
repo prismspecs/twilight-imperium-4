@@ -13,7 +13,7 @@ import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
-import type { Color, FactionId, Seat, UnitType } from '../../engine/types'
+import type { Color, FactionId, PlayerType, Seat, UnitType } from '../../engine/types'
 import { SpaceBackdrop } from '../SpaceBackdrop'
 import { MusicButton } from '../music'
 
@@ -113,6 +113,7 @@ export function SetupScreen() {
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2'])
   const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
   const [colours, setColours] = useState<[Color, Color]>(['blue', 'red'])
+  const [playerTypes, setPlayerTypes] = useState<[PlayerType, PlayerType]>(['human', 'human'])
   const [minutes, setMinutes] = useState(15)
   const seatConfigRef = useRef<HTMLDivElement | null>(null)
 
@@ -122,12 +123,15 @@ export function SetupScreen() {
   function setColour(seat: Seat, value: Color) {
     setColours(seat === 0 ? [value, colours[1]] : [colours[0], value])
   }
+  function setPlayerType(seat: Seat, value: PlayerType) {
+    setPlayerTypes(seat === 0 ? [value, playerTypes[1]] : [playerTypes[0], value])
+  }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
     start({
       players: [
-        { faction: factions[0], color: colours[0], name: names[0].trim() || 'Player 1' },
-        { faction: factions[1], color: colours[1], name: names[1].trim() || 'Player 2' },
+        { faction: factions[0], color: colours[0], name: names[0].trim() || 'Player 1', playerType: playerTypes[0] },
+        { faction: factions[1], color: colours[1], name: names[1].trim() || 'Player 2', playerType: playerTypes[1] },
       ],
       speaker: 0,
     }, seed, minutes)
@@ -247,13 +251,17 @@ export function SetupScreen() {
           <div className="lobby-head">
             <div className="mode">
               <span className="lbl">Mode</span>
-              <div className="linkbox"><span>This device, <b>pass it between turns</b></span></div>
+              <div className="linkbox"><span>This device{playerTypes.some(pt => pt === 'ai') ? ', AI turns play themselves' : ', pass it between turns'}</span></div>
               <button type="button" className="btn ghost sm" data-testid="btn-swap-factions" onClick={() => setFactions([factions[1], factions[0]])}>
                 Swap factions
               </button>
             </div>
             <div className="status" data-testid="lobby-status">
-              <i className="pulse" />Both seats on this device<span className="sep" />2 of 2 seats taken
+              {playerTypes.every(pt => pt === 'ai')
+                ? <>AI versus AI<span className="sep" />watch or jump in later</>
+                : playerTypes.some(pt => pt === 'ai')
+                  ? <>Human versus AI<span className="sep" />2 of 2 seats taken</>
+                  : <><i className="pulse" />Both seats on this device<span className="sep" />2 of 2 seats taken</>}
             </div>
           </div>
 
@@ -280,6 +288,32 @@ export function SetupScreen() {
                       <span className="lbl">Seat {seat + 1}</span>
                       <span className="chip pos" data-testid={`seat-position-${seat}`}>{POSITION[seat]}</span>
                       <span className="chip ok">Faction chosen</span>
+                    </div>
+                    <div className="row controller">
+                      <span className="lbl">Controller</span>
+                      <div className="segtoggle" data-testid={`controller-${seat}`}>
+                        <button
+                          type="button"
+                          className={playerTypes[seat] === 'human' ? 'on' : ''}
+                          data-testid={`controller-${seat}-human`}
+                          aria-pressed={playerTypes[seat] === 'human'}
+                          onClick={() => setPlayerType(seat, 'human')}
+                        >
+                          Human
+                        </button>
+                        <button
+                          type="button"
+                          className={playerTypes[seat] === 'ai' ? 'on' : ''}
+                          data-testid={`controller-${seat}-ai`}
+                          aria-pressed={playerTypes[seat] === 'ai'}
+                          onClick={() => setPlayerType(seat, 'ai')}
+                        >
+                          AI
+                        </button>
+                      </div>
+                      <span className="chosen" data-testid={`controller-${seat}-label`}>
+                        {playerTypes[seat] === 'ai' ? 'Computer' : 'Local player'}
+                      </span>
                     </div>
                     <input
                       className="namefield" data-testid={`seat-name-${seat}`} value={names[seat]}
@@ -404,10 +438,12 @@ export function SetupScreen() {
                 <div className="sub">Six strategy cards, no agenda phase, open objectives</div>
               </div>
             </div>
-            <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>Play hot-seat</button>
+            <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>
+              {playerTypes.every(pt => pt === 'ai') ? 'Watch AI duel' : playerTypes.some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
+            </button>
           </div>
         </div>
-        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; Hot-seat</div>
+        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; {playerTypes.every(pt => pt === 'ai') ? 'AI vs AI' : playerTypes.some(pt => pt === 'ai') ? 'vs AI' : 'Hot-seat'}</div>
       </section>
 
       <p className="legal" data-testid="setup-legal">
