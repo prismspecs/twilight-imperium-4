@@ -1,7 +1,8 @@
 import { NON_FIGHTER_SHIPS, unitStats, type StatsOwner } from '../data/units'
+import { checkFleet } from '../engine/board'
 import { cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
-import { movableShips } from '../engine/movement'
-import type { GameState, Seat, UnitType } from '../engine/types'
+import { movableShips, pathLength } from '../engine/movement'
+import type { GameState, Seat, Unit, UnitType } from '../engine/types'
 
 export type MoveShipSpec = { unitId: number; from: string; carrying: number[] }
 export type ProducePlan = { units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number }
@@ -22,13 +23,26 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
   let nonFighters = 0
   let movedIds = new Set<number>()
   const candidates = movableShips(state, seat)
-  // only a ship that moves on its own can be a top-level mover: a Fighter I has move 0 and rides as cargo, only
-  // Fighter II (move 2) sails under its own power. Keeping Fighter Is out of the mover set lets a carrier load them.
+  const destId = tac.systemId
+  // Which candidates are genuine top-level movers, mirroring the engine's own reachability check
+  // (movement.ts): a Fighter I cannot move on its own, and Gravity Drive helps only ONE ship per activation,
+  // so a batch must not assume every gravity-teched ship gets the bonus — the second such ship is rejected.
+  const player = state.players[seat]
+  const hasGravityDrive = player.techs.includes('gravity_drive')
+  let gravityUsed = false
   const selfMoving = new Set<number>()
   for (const { unitId, from } of candidates) {
     const src = state.systems[from]
     const ship = src?.space.find(u => u.id === unitId)
-    if (ship && unitStats(ship.type, stats).move >= 1) selfMoving.add(unitId)
+    if (!ship) continue
+    const base = unitStats(ship.type, stats).move
+    if (base < 1) continue // Fighter I: cargo only, never a mover
+    const reaches = pathLength(state, seat, from, destId, base) !== null
+    if (reaches) { selfMoving.add(unitId); continue }
+    if (hasGravityDrive && !gravityUsed && pathLength(state, seat, from, destId, base + 1) !== null) {
+      selfMoving.add(unitId)
+      gravityUsed = true
+    }
   }
   for (const { unitId, from } of candidates) {
     const src = state.systems[from]
@@ -61,7 +75,52 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
     for (const c of carrying) movedIds.add(c)
     if (isNonFighter) nonFighters++
   }
-  return moves
+  return trimToFleet(state, seat, destId, moves)
+}
+
+/**
+ * The fleet-pool accounting in the filler is a good heuristic, but the authority is the engine's `checkFleet`,
+ * which also folds in capacity overage (excess fighters/infantry that arrive and cannot be carried once the
+ * destination's combined capacity is tallied) and free fighter slots. Rather than reinvent that math, validate
+ * the reconstructed destination and trim until it passes: first drop carried cargo, then non-fighter movers.
+ */
+function trimToFleet(state: GameState, seat: Seat, destId: string, moves: MoveShipSpec[]): MoveShipSpec[] {
+  const passes = (specs: MoveShipSpec[]): boolean => {
+    let id = 100000
+    const space: Unit[] = []
+    for (const m of specs) {
+      const src = state.systems[m.from]
+      const ship = src?.space.find(u => u.id === m.unitId)
+      if (!ship) continue
+      space.push({ id: id++, type: ship.type, owner: seat, damaged: false })
+      for (const cid of m.carrying) {
+        let type: UnitType | undefined
+        const passengers = src ? [src.space, ...src.planets.map(p => p.ground)] : []
+        for (const list of passengers) {
+          const u = list.find(u => u.id === cid)
+          if (u) { type = u.type as UnitType; break }
+        }
+        if (type) space.push({ id: id++, type, owner: seat, damaged: false })
+      }
+    }
+    const dest = state.systems[destId]
+    const probe: GameState = { ...state, systems: { ...state.systems, [destId]: { ...dest, space: [...dest.space, ...space] } } }
+    return checkFleet(probe, seat, destId).ok
+  }
+  let out = moves
+  let prev = ''
+  let guard = 0
+  while (guard++ < 200 && JSON.stringify(out) !== prev) {
+    prev = JSON.stringify(out)
+    if (passes(out)) break
+    const withCargo = out.find(m => m.carrying.length > 0)
+    if (withCargo) {
+      out = out.map(m => (m === withCargo ? { ...m, carrying: m.carrying.slice(0, m.carrying.length - 1) } : m))
+      continue
+    }
+    out = out.slice(0, out.length - 1)
+  }
+  return out
 }
 
 /**
