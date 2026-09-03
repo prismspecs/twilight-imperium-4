@@ -101,8 +101,8 @@ function leadership(state: GameState, seat: Seat, params: StrategicParams, base:
 /**
  * R6 Diplomacy, errata text: the opponent places a command token, then up to 2 of your planets ready.
  * R3.2: a card must always be playable, so with no eligible system only the readying half resolves.
- * Simplification: the duel tracks no reinforcement pool of command tokens, so the opponent's token is simply
- * added to `activatedBy` and never runs out; in TI4 it would come off their supply.
+ * Simplification: the duel tracks no reinforcement pool of command tokens, so a token is simply added to
+ * `activatedBy` and never runs out; in TI4 it would come off the owner's supply.
  */
 function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   const systemId = params.systemId
@@ -114,10 +114,11 @@ function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams)
   if (!sys) return { ok: false, error: `unknown system ${systemId}` }
   if (systemId === MECATOL_ID) return { ok: false, error: 'R6: not the Mecatol Rex system' }
   if (!sys.planets.some(p => p.owner === seat)) return { ok: false, error: `R6: you control no planet in ${systemId}` }
-  const other = otherSeat(seat)
-  const systems = sys.activatedBy.includes(other)
-    ? state.systems
-    : { ...state.systems, [systemId]: { ...sys, activatedBy: [...sys.activatedBy, other] } }
+  // R6 errata: every other player places a command token in the chosen system. A seat that already has one
+  // there is unchanged; the token comes off reinforcements (approximated here as just joining activatedBy).
+  const activatedBy = [...sys.activatedBy]
+  for (const other of otherSeatsInOrder(state, seat)) if (!activatedBy.includes(other)) activatedBy.push(other)
+  const systems = { ...state.systems, [systemId]: { ...sys, activatedBy } }
   return readyPlanets({ ...state, systems }, seat, params.planets ?? [], 2)
 }
 

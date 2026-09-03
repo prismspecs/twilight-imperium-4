@@ -37,3 +37,14 @@ Known remaining 2-player-only plumbing (kept working at N=2, will be generalized
 - `objectives.ts` are duel-specific ("your opponent"); the full game's public/secret objectives have no
   opponent reference, so these will be replaced wholesale with the real deck.
 - `ai/`, `ui/` still assume two seats in a few tuple spots; content lands after the engine is generalized.
+
+## Iteration 2 complete — N-player strategy-card secondary window (commit c5654eb, pushed)
+
+`pendingSecondary` is now a `SecondaryWindow` ({ card, owner, queue }) and the secondary response is queued
+over every other seat in turn order; the holder's turn resumes with their action spent only once all others
+have answered. N=2 behaviour unchanged; added a 3-player secondary test. Also made the AI fog view forward
+`players: PublicPlayer[]` and read `window.card` in SecondaryPanel.
+
+Remaining 2-player-only plumbing noted in iteration 1 still stands (Diplomacy/Trade primary still use
+`otherSeat`, objectives are duel-specific, ai/ui still touch seat 0/1 in spots). Next: import the full base
+faction/tech data, then content phases.
