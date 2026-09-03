@@ -48,3 +48,13 @@ have answered. N=2 behaviour unchanged; added a 3-player secondary test. Also ma
 Remaining 2-player-only plumbing noted in iteration 1 still stands (Diplomacy/Trade primary still use
 `otherSeat`, objectives are duel-specific, ai/ui still touch seat 0/1 in spots). Next: import the full base
 faction/tech data, then content phases.
+
+## Iteration 3 complete — Diplomacy primary generalized to N players (commit 36757ec, pushed)
+
+Diplomacy primary now places a command token for every other seat in the chosen system (dedupes those already
+present); identical at N=2. Added an N-player diplomacy assertion. Imported the `Player` type into the test and
+extracted a `thirdSeat()` helper shared by the two N=3 plumbing tests.
+
+Remaining: Trade primary "choose any number of other players" is still 2-player; the 17-faction data import,
+full tech/upgrade tree, objectives/action-cards/agendas/promissory, Politics+Construction + agenda phase, map,
+and N-player bots/UI are all still ahead.
