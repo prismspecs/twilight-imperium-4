@@ -245,10 +245,16 @@ function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, par
   }
 }
 
+/** R3.2: every other seat, in turn order after `from`, that still has to answer an open secondary. */
+export function otherSeatsInOrder(state: GameState, from: Seat): Seat[] {
+  const n = state.players.length
+  return Array.from({ length: n - 1 }, (_, i) => (from + 1 + i) % n)
+}
+
 export function strategic(state: GameState, card: StrategyCardId, params: StrategicParams | undefined): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
-  if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is already open' }
   if (state.turnDone) return { ok: false, error: ACTION_SPENT }
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has passed' }
@@ -259,15 +265,20 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   if (!played.ok) return played
   const players = [...played.value.players] as GameState['players']
   players[seat] = { ...players[seat], strategyCards: players[seat].strategyCards.map(c => c.id === card ? { ...c, used: true } : c) }
-  return { ok: true, value: { ...played.value, players, pendingSecondary: card, active: otherSeat(seat) } }
+  const queue = otherSeatsInOrder(state, seat)
+  const window = { card, owner: seat, queue }
+  const active = queue[0] ?? seat
+  // R3.2: the holder's strategic action is spent; their turn ends once everyone has answered the secondary
+  return { ok: true, value: { ...played.value, players, pendingSecondary: window, active, turnDone: queue.length === 0 } }
 }
 
 export function secondary(state: GameState, card: StrategyCardId, accept: boolean, params: StrategicParams | undefined): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
-  if (state.pendingSecondary !== card) return { ok: false, error: `R3.2: no secondary window for ${card}` }
+  const pending = state.pendingSecondary
+  if (pending === null || pending.card !== card) return { ok: false, error: `R3.2: no secondary window for ${card}` }
   const seat = state.active
-  const owner = cardOwner(state, card)
-  if (owner === null || owner === seat) return { ok: false, error: 'R3.2: the card holder does not answer their own card' }
+  if (pending.owner === seat) return { ok: false, error: 'R3.2: the card holder does not answer their own card' }
+  if (pending.queue[0] !== seat) return { ok: false, error: 'R3.2: it is not your turn to answer this secondary' }
   let next = state
   if (accept) {
     const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card))
@@ -276,7 +287,18 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
     if (!used.ok) return used
     next = used.value
   }
-  // R3.2: the window closes back onto the card holder, whose strategic action is now finished. The action is
-  // spent, the turn is not: they keep it (free moves included) until they end it, which is what hands it on.
-  return { ok: true, value: { ...next, pendingSecondary: null, active: owner, turnDone: true } }
+  const queue = pending.queue.slice(1)
+  const closed = queue.length === 0
+  // R3.2: the window stays open until every other seat has answered; then it closes back onto the holder,
+  // whose strategic action is now finished. The action is spent, the turn is not: they keep it (free moves
+  // included) until they end it, which is what hands it on.
+  return {
+    ok: true,
+    value: {
+      ...next,
+      pendingSecondary: closed ? null : { card: pending.card, owner: pending.owner, queue },
+      active: closed ? pending.owner : queue[0],
+      turnDone: next.turnDone || closed,
+    },
+  }
 }

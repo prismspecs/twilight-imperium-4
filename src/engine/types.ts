@@ -81,8 +81,10 @@ export interface GameState {
   // R3.2: the active player has spent their action and may still take the free moves of R8 before ending
   // the turn; only handing the turn over clears it, so a fresh turn always starts false
   turnDone: boolean
-  pendingSecondary: StrategyCardId | null                // opponent may respond
-  statusSubmitted: Seat[]                                // seats whose status move is in; the phase closes at two
+  // R3.2: the strategy-card secondary window. The card holder played a primary; every other seat answers,
+  // one at a time in turn order (even seats that have passed), before the holder finishes their turn.
+  pendingSecondary: SecondaryWindow | null
+  statusSubmitted: Seat[]      // seats whose status move is in; the phase closes once all are in
   // R8: the two posts in play this round, rolled at setup and again in every status phase from the four that
   // were not in play, and whether their special ability is spent — once per round for the whole table
   posts: { west: PostId; east: PostId }
@@ -128,6 +130,13 @@ export interface StrategicParams {
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+
+/** R3.2: who has to answer the open strategy-card secondary, in what order, and who played it. */
+export interface SecondaryWindow {
+  card: StrategyCardId
+  owner: Seat
+  queue: Seat[]   // seats still to answer; empty means the window is closed
+}
 
 /**
  * R8: the parameters of a `postAbility` move. Which of them matter is decided by the ability of the post

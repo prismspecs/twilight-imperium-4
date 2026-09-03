@@ -10,7 +10,7 @@ import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
-import { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
+import { diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
 
@@ -175,10 +175,11 @@ export function legalMoves(state: GameState): Move[] {
   // R3.2: the answer to a strategy card is not a turn, so it comes before the passed check
   const pending = state.pendingSecondary
   if (pending !== null) {
-    // the holder never answers their own card (`secondary()` rejects that), but the enumerator must not hand
-    // back an empty list in a live phase, so the decline that closes the window stays on offer
-    if (cardOwner(state, pending) === seat) return [{ type: 'secondary', card: pending, accept: false }]
-    return [{ type: 'secondary', card: pending, accept: false }, ...secondaryMoves(state, seat, pending)]
+    // the seat the window is waiting on (the head of the queue) answers; the holder and anyone else in the
+    // queue who is not the head must not act, and the enumerator stays on the decline so a live phase never
+    // hands back an empty list
+    if (pending.queue[0] !== seat) return [{ type: 'secondary', card: pending.card, accept: false }]
+    return [{ type: 'secondary', card: pending.card, accept: false }, ...secondaryMoves(state, seat, pending.card)]
   }
   if (state.players[seat].passed) return []
   if (state.tactical) return tacticalMoves(state)

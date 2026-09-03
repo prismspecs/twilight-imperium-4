@@ -1,11 +1,11 @@
 import type { PostId } from '../data/posts'
-import { otherSeat } from '../engine/actionPhase'
 import { shipsThatCanReach } from '../engine/movement'
 import type {
   GameState,
   Phase,
   Player,
   Seat,
+  SecondaryWindow,
   StrategyCardId,
   System,
   TacticalContext,
@@ -60,11 +60,11 @@ export interface GameStateView {
   mecatolCombatWinner: Seat | null
   /** systemIds into which this seat can move at least one ship before a tactical starts here */
   projection: Set<string>
-  players: [PublicPlayer, PublicPlayer]
+  players: PublicPlayer[]
   systems: Record<string, System>
   tactical: TacticalContext | null
   turnDone: boolean
-  pendingSecondary: StrategyCardId | null
+  pendingSecondary: SecondaryWindow | null
   statusSubmitted: Seat[]
   posts: { west: PostId; east: PostId }
   postAbilityUsed: { west: boolean; east: boolean }
@@ -81,8 +81,6 @@ function forwardPlayer(player: Player): PublicPlayer {
  * forwarded whole — the masking hook is where card-era hiding will be switched on.
  */
 export function playerView(state: GameState, seat: Seat): GameStateView {
-  const own = state.players[seat]
-  const foe = state.players[otherSeat(seat)]
   const projection = new Set<string>()
   for (const id of Object.keys(state.systems)) {
     if (shipsThatCanReach(state, seat, id).length > 0) projection.add(id)
@@ -97,7 +95,7 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     publicObjectives: state.publicObjectives,
     mecatolCombatWinner: state.mecatolCombatWinner,
     projection,
-    players: [forwardPlayer(own), forwardPlayer(foe)],
+    players: state.players.map((p) => forwardPlayer(p)),
     systems: state.systems,
     tactical: state.tactical,
     turnDone: state.turnDone,

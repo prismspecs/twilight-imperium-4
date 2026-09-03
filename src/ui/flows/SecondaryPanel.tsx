@@ -22,8 +22,9 @@ export function SecondaryPanel() {
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   if (!session) return null
   const state = session.state
-  const card = state.pendingSecondary
-  if (card === null) return null
+  const window = state.pendingSecondary
+  if (window === null) return null
+  const card = window.card
   const seat = state.active
   const player = state.players[seat]
   const owner = cardOwner(state, card)

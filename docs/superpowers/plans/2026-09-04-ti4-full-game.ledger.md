@@ -20,3 +20,20 @@ Noted trade-off: some duel-only plumbing (trade posts, pendingSecondary-as-singl
 reworked again when the real content lands. The N-player core (Seat, players array, turn/draft/status
 ordering, "all other players respond to a secondary") is exactly what the real game needs, so it is not
 throwaway.
+
+## Iteration 1 complete — N-player engine core (commits a1f5051, 4a3ffc7, pushed to twilight/main)
+
+Generalized `Seat = number`, `players: Player[]`, and the player plumbing (turn alternation via
+`nextActiveSeat`, N-player snake draft + initiative, N-player status submission + winner ranking + speaker
+rotation, N-player setup) while keeping all 455 tests green at N=2. Note: pushes go to the `twilight` remote
+(`prismspecs/twilight-imperial-4`) because the SSH key authenticates as prismspecs, not DespotB; `main`'s
+tracking HEAD matches that remote, so code is deployed.
+
+Known remaining 2-player-only plumbing (kept working at N=2, will be generalized when real content lands):
+- `strategicActions.ts`: Diplomacy/Trade primary address "the other seat" via `otherSeat`; the real game
+  addresses *all other players* (Diplomacy) / *any number chosen* (Trade).
+- `pendingSecondary` models exactly one responder; the real game lets *each other player* answer a secondary
+  one at a time. Generalizing this is the next engine step (iteration 2).
+- `objectives.ts` are duel-specific ("your opponent"); the full game's public/secret objectives have no
+  opponent reference, so these will be replaced wholesale with the real deck.
+- `ai/`, `ui/` still assume two seats in a few tuple spots; content lands after the engine is generalized.

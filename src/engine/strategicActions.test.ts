@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { warfareTokenSystems } from './strategicActions'
 import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withUnits } from './testUtils'
-import type { GameState, Result, StrategicParams, StrategyCardId } from './types'
+import type { GameState, Player, Result, StrategicParams, StrategyCardId } from './types'
 
 const play = (state: GameState, card: StrategyCardId, params?: StrategicParams) =>
   applyMove(deepFreeze(state), { type: 'strategic', card, params }, 0)
@@ -23,7 +23,7 @@ describe('R3.2 strategic actions', () => {
     const s = holder('trade')
     const played = value(play(s, 'trade'))
     expect(played.players[0].strategyCards).toEqual([{ id: 'trade', used: true }])
-    expect(played.pendingSecondary).toBe('trade')
+    expect(played.pendingSecondary?.card).toBe('trade')
     expect(played.active).toBe(1)
     expect(s.players[0].strategyCards[0].used).toBe(false)        // input not mutated
   })
@@ -112,7 +112,7 @@ describe('R3.2 strategic actions', () => {
     s = withPlanetOwner(s, 'home-n', '000', null)                 // seat 0 controls nothing but Mecatol Rex
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
     const played = value(play(s, 'diplomacy', {}))
-    expect(played.pendingSecondary).toBe('diplomacy')
+    expect(played.pendingSecondary?.card).toBe('diplomacy')
     expect(played.systems.mecatol.activatedBy).toEqual([])        // Mecatol Rex is never chosen
     expect(play(s, 'diplomacy', { systemId: 'mecatol' }).ok).toBe(false)
   })
@@ -218,5 +218,29 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     const answered = value(answer(played, 'imperial', true))
     expect(answered.players[1]).toMatchObject({ tradeGoods: 2, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
     expect(value(answer(played, 'imperial', false)).players[1].tradeGoods).toBe(0)
+  })
+  it('R3.2: with three players every other seat answers the secondary in order before the holder resumes', () => {
+    // a minimal third seat bolted onto the two-player map so the strategic plumbing can be exercised at N=3
+    const third: Player = {
+      seat: 2, faction: 'l1z1x', color: 'green', name: 'C', vp: 0,
+      tokens: { tactic: 3, fleet: 3, strategy: 2 }, tradeGoods: 0, commodities: 2, techs: [],
+      strategyCards: [], passed: false, scoredObjectives: [], scoredMandates: [],
+      resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
+      inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0,
+      reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 },
+    }
+    const base = withCards(toActionPhase(), 1, [])
+    const s = deepFreeze({ ...base, players: [...base.players, third], active: 0, pendingSecondary: null })
+    const played = value(play(withCards(s, 0, ['trade']), 'trade'))
+    expect(played.pendingSecondary?.card).toBe('trade')
+    expect(played.pendingSecondary?.queue).toEqual([1, 2])
+    expect(played.active).toBe(1)
+    const after1 = value(answer(played, 'trade', true))
+    expect(after1.pendingSecondary?.queue).toEqual([2])
+    expect(after1.active).toBe(2)
+    const after2 = value(answer(after1, 'trade', false))
+    expect(after2.pendingSecondary).toBeNull()
+    expect(after2.active).toBe(0)
+    expect(after2.turnDone).toBe(true)
   })
 })
