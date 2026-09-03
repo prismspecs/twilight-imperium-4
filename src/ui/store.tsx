@@ -31,9 +31,19 @@ function closeTurn(state: GameState, seed: number): GameState {
   return it
 }
 
+/** How many seats are played by a human in `config`. Someone is always holding the device, so switching to
+ * another seat only needs a physical hand-off when both seats are human; with a single human the AI's turns
+ * play themselves and the human is always already holding the tablet, so no "pass to X" screen is needed. */
+function humanSeats(config: GameConfig | undefined): number {
+  if (!config) return 2 // a legacy saved game with no config was always hot-seat, keep its handoffs
+  return config.players.filter(p => p.playerType !== 'ai').length
+}
+
 /** The handoff (or its absence) for `next` shown after the active seat changed: a handoff only makes sense
- * when a human must hold the tablet next, so a turn that lands on an AI seat shows no handoff. */
+ * when a human must hold the tablet next. A turn that lands on an AI seat shows no handoff, and with a single
+ * human seat there is never anything to hand off. */
 function handoffFor(config: GameConfig | undefined, prevState: GameState, next: GameState): Seat | null {
+  if (humanSeats(config) < 2) return null
   return next.active !== prevState.active && next.winner === null && !isAi(config, next.active) ? next.active : null
 }
 

@@ -102,6 +102,19 @@ describe('the hot-seat store', () => {
     expect(result.current.session?.handoff).toBeNull()
   })
 
+  it('never shows a handoff when only one seat is a human: there is nothing to pass', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.start(HUMAN_V_AI, 7, 15) })
+    // the human seat 0 acts; the AI seat 1 answers on its own beat. No "pass to / I am" screen either way.
+    act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
+    expect(result.current.session?.handoff).toBeNull()
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.handoff).toBeNull()
+    expect(result.current.session?.state.active).not.toBe(1)
+    vi.useRealTimers()
+  })
+
   it('R6: the clock runs for the active seat and passes automatically at zero', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
