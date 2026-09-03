@@ -199,26 +199,36 @@ describe('the hot-seat store', () => {
     vi.useRealTimers()
   })
 
-  it('AI vs AI: one opening move plays the whole duel, with no handoff ever offered', () => {
+  it('AI vs AI: the paced loop runs every seat with no handoff until someone wins', () => {
+    vi.useFakeTimers()
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
     act(() => { result.current.start(AI_V_AI, 7, 15) })
     expect(result.current.session?.state.phase).toBe('strategy')
-    act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
-    // the AI drives every subsequent seat; once started the game runs until someone wins or round 6 ends
+    // both seats are AI, so `start` already kicks off the paced loop; let it play until the duel ends
+    let guard = 0
+    while ((result.current.session?.state.winner ?? null) === null
+      && (result.current.session?.state.phase !== 'ended') && guard < 3000) {
+      act(() => { vi.advanceTimersByTime(500) })
+      guard++
+    }
     const end = result.current.session?.state
     expect(end?.winner !== null || end?.phase === 'ended').toBe(true)
     expect(result.current.session?.handoff).toBeNull()
+    vi.useRealTimers()
   })
 
   it('human vs AI: the game hands off to the human seat and never to the AI seat', () => {
+    vi.useFakeTimers()
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
     act(() => { result.current.start(HUMAN_V_AI, 7, 15) })
     // North is the human seat 0 and opens the draft, so the first legal move is the human's
     act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
-    // the AI seat 1 took its turn inside `apply`; the state should never be parked on the AI with a handoff
+    // the AI seat 1 plays paced, a beat after the human's move; it is not handed the device
     expect(result.current.session?.handoff).toBeNull()
+    // let the AI's response land, then the device is back on the human seat 0
+    act(() => { vi.advanceTimersByTime(1000) })
     expect(result.current.session?.state.active).not.toBe(1)
-    // the human seat 0 is always the one left holding the device
     expect(result.current.session?.handoff ?? result.current.session?.state.active).toBe(0)
+    vi.useRealTimers()
   })
 })

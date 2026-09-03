@@ -16,9 +16,32 @@ function onlyEndTurn(state: GameState): boolean {
   return moves.length === 1 && moves[0].type === 'endTurn'
 }
 
+/** R3.2: an action ends the action, not the turn, so the player can still take a free move such as a trade
+ * post sale. When nothing free is open, ending the turn is the only thing left and asking for a click (in
+ * hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here. A free move is the
+ * player's own detour, so it never ends the turn behind their back: after a trade they press End turn
+ * themselves. Shared by the human path and the paced AI steps so both reproduce the same closes. */
+function closeTurn(state: GameState, seed: number): GameState {
+  let it = state
+  while (it.winner === null && onlyEndTurn(it)) {
+    const ended = applyMove(it, { type: 'endTurn' }, deriveSeed(seed, moveCount(it)))
+    if (!ended.ok) break
+    it = ended.value
+  }
+  return it
+}
+
+/** The handoff (or its absence) for `next` shown after the active seat changed: a handoff only makes sense
+ * when a human must hold the tablet next, so a turn that lands on an AI seat shows no handoff. */
+function handoffFor(config: GameConfig | undefined, prevState: GameState, next: GameState): Seat | null {
+  return next.active !== prevState.active && next.winner === null && !isAi(config, next.active) ? next.active : null
+}
+
 const TICK_MS = 100
 // R6: a player whose clock ran out gets three more minutes at the start of every later round
 const ROUND_BONUS_MS = 180000
+// An AI seat waits this long between its own moves so a human can watch the game unfold instead of a blur.
+const AI_MOVE_DELAY_MS = 450
 
 export interface Session {
   /** The six-character code this game is stored and addressed under; it never changes. */
@@ -60,85 +83,105 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState<string | null>(null)
   const roundRef = useRef<number | null>(null)
+  // the latest session, mirrored for the paced AI loop so a timeout always reads the current state, and a
+  // handle on that loop's pending timeout so undo/abandon/start can cancel it
+  const sessionRef = useRef<Session | null>(null)
+  const aiTimerRef = useRef<number | null>(null)
 
   // keyed on the game state alone: the clock ticks ten times a second and must not re-enumerate the moves
   const state = session?.state ?? null
   const legal = useMemo(() => state ? legalMoves(state) : [], [state])
+
+  // Pacing: instead of an AI seat playing its whole turn in one burst, each move lands on its own beat so a
+  // human can watch. `pumpAi` schedules a step; `stepAi` applies exactly one move and — if the active seat is
+  // still an AI, or the AI hands to another AI — schedules the one after. Both read `sessionRef` so a timeout
+  // always acts on the current session, never a stale closure. `stepAiRef` breaks the circular dependency
+  // between the two callbacks so `stepAi` (which re-pumps) does not need `pumpAi` declared up-front.
+  const stepAiRef = useRef<(seed: number) => void>(() => undefined)
+  const stepAi = useCallback((seed: number) => {
+    const cur = sessionRef.current
+    if (!cur || cur.state.winner !== null || cur.state.phase === 'ended') return
+    if (!isAi(cur.config, cur.state.active)) return
+    const moves = legalMoves(cur.state)
+    if (moves.length === 0) return
+    const chosen = aiChoose(cur.state, moves, cur.state.active, DEFAULT_WEIGHTS)
+    const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
+    if (!r.ok) { setError(r.error); return }
+    const next = closeTurn(r.value, seed)
+    const keep = undoable(cur.state, next)
+    setError(null)
+    const handoff = handoffFor(cur.config, cur.state, next)
+    const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff }
+    sessionRef.current = updated
+    setSession(updated)
+    if (next.winner === null && isAi(cur.config, next.active)) pumpAi(seed)
+  }, [])
+  stepAiRef.current = stepAi
+
+  const pumpAi = useCallback((seed: number) => {
+    if (aiTimerRef.current !== null) clearTimeout(aiTimerRef.current)
+    aiTimerRef.current = window.setTimeout(() => {
+      aiTimerRef.current = null
+      stepAiRef.current(seed)
+    }, AI_MOVE_DELAY_MS)
+  }, [])
 
   const start = useCallback((config: GameConfig, seed: number, minutes: number) => {
     const ms = minutes * 60000
     const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
-    setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null, config })
+    if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
+    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null, config }
+    sessionRef.current = fresh
+    setSession(fresh)
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
-  }, [])
+    // both-seats-AI (or a lone AI sitting on seat 0) has to get the game going with no human to nudge it
+    if (fresh.state.winner === null && isAi(config, fresh.state.active)) pumpAi(seed)
+  }, [pumpAi])
 
   const resume = useCallback((next: Session) => {
     roundRef.current = next.state.round
     setError(null)
+    sessionRef.current = next
     setSession(next)
-  }, [])
+    // a restored game may come back in the middle of an AI seat's turn: pick the loop back up
+    if (next.state.winner === null && isAi(next.config, next.state.active)) pumpAi(next.seed)
+  }, [pumpAi])
 
   const apply = useCallback((move: Move): boolean => {
     if (!session) return false
-    // R3.2: an action ends the action, not the turn, so the player can still take a free move such as a
-    // trade post sale. When nothing free is open, ending the turn is the only thing left and asking for a
-    // click (in hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here.
-    // A free move is the player's own detour, so it never ends the turn behind their back: after a trade
-    // they press End turn themselves.
-    const closeTurn = (from: GameState): GameState => {
-      let it = from
-      while (it.winner === null && onlyEndTurn(it)) {
-        const ended = applyMove(it, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(it)))
-        if (!ended.ok) break
-        it = ended.value
-      }
-      return it
-    }
-    // An AI seat plays its whole turn in one burst, the same pure `aiChoose` the engine tests use, applied
-    // with the same seeded seeds as a human move so the game log and dice stay reproducible.
-    const aiTurn = (from: GameState): GameState => {
-      let it = from
-      while (it.winner === null && it.phase !== 'ended' && isAi(session.config, it.active)) {
-        const moves = legalMoves(it)
-        if (moves.length === 0) break
-        const chosen = aiChoose(it, moves, it.active, DEFAULT_WEIGHTS)
-        const r = applyMove(it, chosen, deriveSeed(session.seed, moveCount(it)))
-        if (!r.ok) break
-        it = closeTurn(r.value)
-      }
-      return it
-    }
-
-    const result = applyMove(session.state, move, deriveSeed(session.seed, moveCount(session.state)))
+    const seed = session.seed
+    const config = session.config
+    const result = applyMove(session.state, move, deriveSeed(seed, moveCount(session.state)))
     if (!result.ok) {
       setError(result.error)
       return false
     }
-    let next = closeTurn(result.value)
-    if (session.config) next = aiTurn(next)
+    const next = closeTurn(result.value, seed)
     const keep = undoable(session.state, next)
     setError(null)
-    // a handoff only makes sense when a human must hold the tablet next; the AI takes its turn here, so
-    // a turn that lands on an AI seat shows no handoff
-    const handoff = next.active !== session.state.active && next.winner === null && !isAi(session.config, next.active)
-      ? next.active : null
+    const handoff = handoffFor(config, session.state, next)
     setSession({
       ...session,
       state: next,
       history: keep ? [...session.history, session.state] : [],
       handoff,
     })
+    // the AI is not burst: it plays each of its moves one at a time, a beat apart, so the game is watchable
+    if (next.winner === null && isAi(config, next.active)) pumpAi(seed)
     return true
-  }, [session])
+  }, [session, pumpAi])
 
   const undo = useCallback(() => {
     if (!session || session.history.length === 0) return
-    const previous = session.history[session.history.length - 1]
+    const previous = session.history[session.history.length - 1] as GameState
+    if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
     setError(null)
-    setSession({ ...session, state: previous, history: session.history.slice(0, -1), handoff: null })
+    const reverted: Session = { ...session, state: previous, history: session.history.slice(0, -1), handoff: null }
+    sessionRef.current = reverted
+    setSession(reverted)
   }, [session])
 
   const dismissHandoff = useCallback(() => {
@@ -147,8 +190,10 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
 
   // R7: abandoning drops this one game, never the other games the browser holds
   const abandon = useCallback(() => {
+    if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
     if (session) deleteGame(session.code)
     roundRef.current = null
+    sessionRef.current = null
     setError(null)
     setSession(null)
   }, [session])
@@ -158,6 +203,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // one from the render whose state or history changed, so the clock it writes is current.
   const history = session?.history ?? null
   useEffect(() => {
+    sessionRef.current = session
     if (session) saveGame(session)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, history])
