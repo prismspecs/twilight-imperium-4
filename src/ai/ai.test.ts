@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { applyMove, createGame, legalMoves } from '../engine'
 import { DUEL_CONFIG } from '../engine/testUtils'
 import type { GameState, Seat } from '../engine/types'
-import { aiChoose } from './index'
+import { aiChoose, playMatch } from './index'
+import { PERSONALITIES, type ScoreWeights } from './score'
 
 const MAX_MOVES = 4000
 const SEEDS = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 59, 71, 89]
@@ -89,5 +90,32 @@ describe('AI opponent', () => {
     expect(options.length).toBeGreaterThan(0)
     const single = aiChoose(state, [options[0]], state.active)
     expect(single).toEqual(options[0])
+  })
+
+  it('playMatch is the co-evolution harness: it terminates with a clean result for every seed', () => {
+    for (const seed of [1, 7, 13, 55]) {
+      const r = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.balanced, PERSONALITIES.balanced])
+      expect(r.failed).toBeNull()
+      expect(r.rounds).toBeGreaterThan(0)
+      expect(r.rounds).toBeLessThanOrEqual(6)
+      expect(r.vp[0]).toBeGreaterThanOrEqual(0)
+      expect(r.vp[1]).toBeGreaterThanOrEqual(0)
+      expect(r.winner).not.toBeNull()
+    }
+  })
+
+  it('personality weights actually change how a seat plays', () => {
+    for (const seed of [7, 21]) {
+      const patient = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.economist, PERSONALITIES.economist])
+      const pushy = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.aggressive, PERSONALITIES.aggressive])
+      // the same seed diverges into visibly different games, so weights are doing real work
+      expect(`${patient.moves}${patient.rounds}${patient.vp}`).not.toEqual(`${pushy.moves}${pushy.rounds}${pushy.vp}`)
+    }
+  })
+
+  it('a trainer can hand a seat a custom weight object (offspring)', () => {
+    const offspring: ScoreWeights = { ...PERSONALITIES.balanced, military: 22, economy: 3 }
+    const r = playMatch(DUEL_CONFIG, 5, [offspring, PERSONALITIES.balanced])
+    expect(r.failed).toBeNull()
   })
 })

@@ -12,13 +12,29 @@ export interface ScoreWeights {
   priority: number      // immediate scoring or card value in the current phase
 }
 
-const DEFAULT_WEIGHTS: Readonly<ScoreWeights> = {
+export const DEFAULT_WEIGHTS: Readonly<ScoreWeights> = {
   objective: 100,
   military: 12,
   economy: 8,
   tempo: 6,
   denial: 10,
   priority: 40,
+}
+
+/**
+ * Named weight presets, one per AI "personality". These are the dials a co-evolution loop points at: each
+ * seat of a match can carry a different personality, and a trainer recombines the numbers that win. All are
+ * `Readonly` so a shrink-fit clone (and a future evolution pass) can produce offspring safely.
+ */
+export const PERSONALITIES: Readonly<Record<string, Readonly<ScoreWeights>>> = {
+  // balanced: values a VP above all, everything else in proportion
+  balanced: DEFAULT_WEIGHTS,
+  // impatient: spends tokens and rushes the board, cares about initiative and tempo
+  aggressive: { objective: 100, military: 18, economy: 4, tempo: 16, denial: 14, priority: 40 },
+  // patient: hoards tokens, builds the economy, waits for the endgame
+  economist: { objective: 100, military: 6, economy: 20, tempo: 2, denial: 6, priority: 40 },
+  // spoiler: denies the opponent first, scores second
+  disruptive: { objective: 100, military: 10, economy: 6, tempo: 4, denial: 26, priority: 40 },
 }
 
 /** The win condition is 7 VP; a VP is the single most valuable thing on the table. */
@@ -30,17 +46,12 @@ function other(_view: GameStateView, seat: Seat): Seat {
   return seat === 0 ? 1 : 0
 }
 
-/** Weights are fixed for now; the hook can fold a difficulty dial in by passing a custom instance. */
-function viewWeights(_view: GameStateView): ScoreWeights {
-  return DEFAULT_WEIGHTS
-}
-
 /**
  * How good a move is for `seat` in `view`. Scoring reads only what the fog-of-war view exposes; the engine
- * still runs on the raw state. A higher number is better. Called with the concrete (filled) move.
+ * still runs on the raw state. A higher number is better. Called with the concrete (filled) move and the
+ * seat's personality weights, so a trainer can swap personalities per seat per game.
  */
-export function scoreMove(view: GameStateView, move: Move, seat: Seat): number {
-  const w = viewWeights(view)
+export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readonly<ScoreWeights> = DEFAULT_WEIGHTS): number {
   switch (move.type) {
     case 'pickStrategyCard': return scorePickCard(view, move.card, seat, w)
     case 'startTactical': return scoreStartTactical(view, move.systemId, seat, w)
@@ -53,7 +64,7 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat): number {
     case 'land': return scoreLand(view, seat, w)
     case 'groundCombatRound': return w.military
     case 'endInvasion': return w.military
-    case 'produce': return scoreProduce(view, seat, w)
+    case 'produce': return scoreProduce(view, move, seat, w)
     case 'endTactical': return w.military
     case 'endTurn': return w.priority
     case 'strategic': return scoreStrategic(view, move, seat, w)
@@ -239,11 +250,14 @@ function scoreLand(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
   return w.military + w.objective
 }
 
-function scoreProduce(view: GameStateView, seat: Seat, w: ScoreWeights): number {
+function scoreProduce(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {
+  // A filled produce with nothing in it cannot legally be played (the engine rejects "nothing to produce"),
+  // so scoring it below an end of turn makes the AI end the tactical instead of offering an empty build.
+  if (move.type !== 'produce' || Object.keys(move.units).length === 0) return -w.priority
   // Producing is almost always good: it spends idle resources. Value it by how many units we can field.
   const me = view.players[seat]
   const foe = view.players[other(view, seat)]
-  return w.military + (me.vp < foe.vp ? w.objective * 0.5 : 0)
+  return w.military + (me.vp < foe.vp ? w.objective * 0.5 : 0) + Object.keys(move.units).length
 }
 
 function scoreStrategic(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {

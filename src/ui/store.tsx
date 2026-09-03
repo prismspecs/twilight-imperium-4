@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, isAi, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { aiChoose } from '../ai'
+import { DEFAULT_WEIGHTS } from '../ai/score'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
@@ -103,7 +104,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       while (it.winner === null && it.phase !== 'ended' && isAi(session.config, it.active)) {
         const moves = legalMoves(it)
         if (moves.length === 0) break
-        const chosen = aiChoose(it, moves, it.active)
+        const chosen = aiChoose(it, moves, it.active, DEFAULT_WEIGHTS)
         const r = applyMove(it, chosen, deriveSeed(session.seed, moveCount(it)))
         if (!r.ok) break
         it = closeTurn(r.value)
