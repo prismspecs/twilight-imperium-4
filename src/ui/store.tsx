@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
+import { applyMove, createGame, deriveSeed, isAi, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
+import { aiChoose } from '../ai'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
@@ -27,6 +28,8 @@ export interface Session {
   history: GameState[]
   clockMs: [number, number]
   handoff: Seat | null
+  /** Which seat is an AI. Absent (an old saved game) means both seats are human. */
+  config?: GameConfig
 }
 
 export interface GameStore {
@@ -66,7 +69,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
-    setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
+    setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null, config })
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
   }, [])
@@ -79,29 +82,53 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
 
   const apply = useCallback((move: Move): boolean => {
     if (!session) return false
-    const result = applyMove(session.state, move, deriveSeed(session.seed, moveCount(session.state)))
-    if (!result.ok) {
-      setError(result.error)
-      return false
-    }
-    let next = result.value
     // R3.2: an action ends the action, not the turn, so the player can still take a free move such as a
     // trade post sale. When nothing free is open, ending the turn is the only thing left and asking for a
     // click (in hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here.
     // A free move is the player's own detour, so it never ends the turn behind their back: after a trade
     // they press End turn themselves.
-    while (move.type !== 'tradePost' && next.winner === null && onlyEndTurn(next)) {
-      const ended = applyMove(next, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(next)))
-      if (!ended.ok) break
-      next = ended.value
+    const closeTurn = (from: GameState): GameState => {
+      let it = from
+      while (it.winner === null && onlyEndTurn(it)) {
+        const ended = applyMove(it, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(it)))
+        if (!ended.ok) break
+        it = ended.value
+      }
+      return it
     }
+    // An AI seat plays its whole turn in one burst, the same pure `aiChoose` the engine tests use, applied
+    // with the same seeded seeds as a human move so the game log and dice stay reproducible.
+    const aiTurn = (from: GameState): GameState => {
+      let it = from
+      while (it.winner === null && it.phase !== 'ended' && isAi(session.config, it.active)) {
+        const moves = legalMoves(it)
+        if (moves.length === 0) break
+        const chosen = aiChoose(it, moves, it.active)
+        const r = applyMove(it, chosen, deriveSeed(session.seed, moveCount(it)))
+        if (!r.ok) break
+        it = closeTurn(r.value)
+      }
+      return it
+    }
+
+    const result = applyMove(session.state, move, deriveSeed(session.seed, moveCount(session.state)))
+    if (!result.ok) {
+      setError(result.error)
+      return false
+    }
+    let next = closeTurn(result.value)
+    if (session.config) next = aiTurn(next)
     const keep = undoable(session.state, next)
     setError(null)
+    // a handoff only makes sense when a human must hold the tablet next; the AI takes its turn here, so
+    // a turn that lands on an AI seat shows no handoff
+    const handoff = next.active !== session.state.active && next.winner === null && !isAi(session.config, next.active)
+      ? next.active : null
     setSession({
       ...session,
       state: next,
       history: keep ? [...session.history, session.state] : [],
-      handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
+      handoff,
     })
     return true
   }, [session])
@@ -137,7 +164,9 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // R6: the clock runs for whichever seat has something to decide, in every phase. Picking a strategy card
   // or distributing status tokens is a turn like any other, so a player cannot hold the other one hostage
   // by sitting on a draft pick. `legal` is memoised on the state, so this costs no enumeration per tick.
-  const running = session !== null && session.state.winner === null && session.handoff === null && legal.length > 0
+  // An AI seat takes its turn inside `apply`, never against the clock, so a seat that is AI does not tick.
+  const activeSeatIsAi = session !== null && isAi(session.config, session.state.active)
+  const running = session !== null && !activeSeatIsAi && session.state.winner === null && session.handoff === null && legal.length > 0
   const seat = session ? session.state.active : 0
   useEffect(() => {
     if (!ticking || !running) return

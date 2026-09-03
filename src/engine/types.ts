@@ -159,6 +159,6 @@ export interface GameConfig {
   ]
   speaker: Seat
 }
-export function isAi(config: GameConfig, seat: Seat): boolean {
-  return config.players[seat].playerType === 'ai'
+export function isAi(config: GameConfig | undefined, seat: Seat): boolean {
+  return config?.players[seat].playerType === 'ai'
 }

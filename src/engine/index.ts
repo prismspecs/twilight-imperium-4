@@ -55,6 +55,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
 
 export { createGame } from './setup'
 export { legalMoves, validateMove } from './legalMoves'
+export { isAi } from './types'
 export type * from './types'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.

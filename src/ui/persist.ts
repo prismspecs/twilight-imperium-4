@@ -1,4 +1,4 @@
-import type { GameState } from '../engine/types'
+import type { GameConfig, GameState } from '../engine/types'
 import type { Session } from './store'
 
 /**
@@ -33,6 +33,8 @@ interface Legacy {
   clockMs: [number, number]
   state: GameState
   history: GameState[]
+  /** Which seat is an AI; absent in a game saved before the AI existed, which loaded as hot-seat. */
+  config?: GameConfig
 }
 
 type Payload = Legacy & GameSummary
@@ -153,7 +155,7 @@ function store(session: Session): void {
   }
   const payload: Payload = {
     ...summary, version: 1, seed: session.seed, minutes: session.minutes,
-    clockMs: session.clockMs, state: session.state, history: session.history,
+    clockMs: session.clockMs, state: session.state, history: session.history, config: session.config,
   }
   write(gameKey(session.code), payload)
   const entries = [summary, ...readIndex().filter(e => e.code !== session.code)]
@@ -206,6 +208,7 @@ export function loadGame(code: string): Session | null {
   return {
     code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
     state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
+    config: parsed.config,
   }
 }
 
