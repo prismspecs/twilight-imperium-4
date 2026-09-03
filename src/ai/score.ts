@@ -1,6 +1,5 @@
 import { FACTIONS } from '../data/factions'
 import type { Move, Seat, StrategyCardId } from '../engine/types'
-import { shipStrength } from './strength'
 import type { GameStateView } from './fog'
 
 /** Tuneable weights per concern; a difficulty dial can scale these later. */
@@ -96,26 +95,81 @@ function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w:
   return s
 }
 
+/**
+ * Score starting a tactical action at `systemId`. A tactical spends a scarce command token and the whole
+ * turn, so it is only worth starting where real gain is actually on the table: conquering an enemy system,
+ * colonising a neutral one, racing Mecatol, or producing units at your own dock. Starting one at a system
+ * you already fully control with no enemy, no neutral to take and nothing to build is a pure token burn, and
+ * that is scored below the alternatives (a strategy card, an end of turn) so the AI stops wasting actions.
+ */
 function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w: ScoreWeights): number {
   const sys = view.systems[systemId]
   if (!sys) return -w.priority
   const isMecatol = systemId === 'mecatol'
-  const foePlanets = sys.planets.filter(p => p.owner === other(view, seat)).length
-  const ownPlanets = sys.planets.filter(p => p.owner === seat).length
-  const enemyShips = sys.space.filter(u => u.owner === other(view, seat) && u.type !== 'infantry').length
+  const foe = other(view, seat)
+  const foePlanets = sys.planets.filter(p => p.owner === foe).length
+  const neutralPlanets = sys.planets.filter(p => p.owner === null).length
+  const enemyShips = sys.space.filter(u => u.owner === foe && u.type !== 'fighter' && u.type !== 'infantry')
+  // R3.2: a command token already on the system this round cannot be spent there again
+  if (sys.activatedBy.includes(seat)) return -w.priority
+
+  // The force this seat can bring to bear here: ships already parked in the system, or ships able to move in
+  // before the tactical resolves. Colonising, conquering and fighting all need units on site, so without
+  // either of these (and with no dock here to build at) there is nothing a tactical can actually achieve.
+  const shipsHere = sys.space.filter(u => u.owner === seat && u.type !== 'fighter' && u.type !== 'infantry').length
+  const shipsArrive = view.projection.has(systemId)
+  const build = dockValue(view, systemId, seat)
+  const takeSystem = shipsHere > 0 || shipsArrive
+
+  // no foothold to advance, no planet to take, nowhere to build: the token and turn are pure waste
+  if (!takeSystem && build === 0) return -w.priority
+
   let s = 0
-  // Mecatol is the top prize: control, VP each status, First Strike race, Imperial.
-  if (isMecatol) s += w.objective * 2
-  // advancing the control-4 and foothold objectives
-  if (foePlanets > 0) s += w.objective
-  if (systemId === homeOf(view, other(view, seat))) s += w.objective * 2 // foothold
-  // neutral expansion is worth building the economy
-  if (foePlanets === 0 && ownPlanets === 0) s += w.economy * 0.5
-  // a contested fleet is a risk: only worth it at favourable odds
-  const myStrength = fleetStrength(view, seat, view.systems[systemId] ? systemId : systemId)
-  if (enemyShips > 0) s -= w.military * Math.min(2, enemyShips)
-  s += myStrength * w.military * 0.05
+  // Mecatol is the top prize, but only when something is actually gained: First Strike's unowned race, or a
+  // foe present to push off it. Re-arming a Mecatol you already hold and no one is contesting earns nothing.
+  if (isMecatol && (neutralPlanets > 0 || enemyShips.length > 0)) s += w.objective * 2
+  // taking planets the foe holds pushes control-4, foothold and Mecatol's neighbours
+  if (foePlanets > 0 && takeSystem) s += w.objective * (1 + foePlanets)
+  if (systemId === homeOf(view, foe) && takeSystem) s += w.objective * 2 // foothold
+  // colonising a neutral system grows the economy and the controlled-planet count
+  if (neutralPlanets > 0 && takeSystem) s += w.economy * (1 + neutralPlanets)
+  // building at your own dock spends otherwise-idle resources; only worth a token if we can actually field it
+  if (build > 0) s += build
+  // a contested fleet is a risk: only worth it at favourable odds; a lonely escort is a token wasted
+  if (enemyShips.length > 0) s -= w.military * Math.min(2, enemyShips.length)
+
+  // command tokens are finite; count the spend, so a nothing-action loses to a strategy card or an end of turn
+  s -= w.tempo * (1 + tokensSpentRatio(view, seat))
   return s
+}
+
+/**
+ * How much a tactical that lands at this system could realistically build, or 0 if it cannot. A dock battle
+ * or an undefended home build is worth something; a system with no dock of ours, nothing to field, or no
+ * resources to pay is worth nothing — a token there would buy nothing.
+ */
+function dockValue(view: GameStateView, systemId: string, seat: Seat): number {
+  const sys = view.systems[systemId]
+  if (!sys) return 0
+  const dockHere = sys.planets.some(p => p.owner === seat && p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  if (!dockHere) return 0
+  const me = view.players[seat]
+  // without a destroyer to field into fleet room or two infantry to hold a line, there is nothing to build
+  const canField = me.reinforcements.destroyer > 0 || me.reinforcements.infantry >= 2
+  if (!canField) return 0
+  // the cheapest build costs 2 (a destroyer or two infantry); with no ready resources or trade goods to pay,
+  // the dock cannot field anything this action
+  const ready = Object.values(view.systems).reduce((sum, s) => sum + s.planets
+    .filter(p => p.owner === seat && !p.exhausted).reduce((a, p) => a + p.resources, 0), 0)
+  if (ready + me.tradeGoods < 2) return 0
+  return 1
+}
+
+/** How scarce the seat's command tokens are: near 1 = few left, near 0 = plenty. Drives the burn penalty. */
+function tokensSpentRatio(view: GameStateView, seat: Seat): number {
+  const t = view.players[seat].tokens
+  const total = t.tactic + t.fleet + t.strategy
+  return total > 0 ? Math.min(1, (3 - total) / 3) : 1
 }
 
 function homeOf(_view: GameStateView, seat: Seat): string {
@@ -158,10 +212,6 @@ function shipCount(view: GameStateView, seat: Seat): number {
   let n = 0
   for (const sys of Object.values(view.systems)) for (const u of sys.space) if (u.owner === seat) n += 1
   return n
-}
-
-function fleetStrength(view: GameStateView, seat: Seat, systemId: string): number {
-  return shipStrength(view.systems[systemId]?.space ?? [], seat)
 }
 
 function controlsMecatol(view: GameStateView, seat: Seat): boolean {

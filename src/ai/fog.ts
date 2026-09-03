@@ -1,5 +1,6 @@
 import type { PostId } from '../data/posts'
 import { otherSeat } from '../engine/actionPhase'
+import { shipsThatCanReach } from '../engine/movement'
 import type {
   GameState,
   Phase,
@@ -57,6 +58,8 @@ export interface GameStateView {
   draft: Seat[]
   publicObjectives: string[]
   mecatolCombatWinner: Seat | null
+  /** systemIds into which this seat can move at least one ship before a tactical starts here */
+  projection: Set<string>
   players: [PublicPlayer, PublicPlayer]
   systems: Record<string, System>
   tactical: TacticalContext | null
@@ -80,6 +83,10 @@ function forwardPlayer(player: Player): PublicPlayer {
 export function playerView(state: GameState, seat: Seat): GameStateView {
   const own = state.players[seat]
   const foe = state.players[otherSeat(seat)]
+  const projection = new Set<string>()
+  for (const id of Object.keys(state.systems)) {
+    if (shipsThatCanReach(state, seat, id).length > 0) projection.add(id)
+  }
   return {
     round: state.round,
     phase: state.phase,
@@ -89,6 +96,7 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     draft: state.draft,
     publicObjectives: state.publicObjectives,
     mecatolCombatWinner: state.mecatolCombatWinner,
+    projection,
     players: [forwardPlayer(own), forwardPlayer(foe)],
     systems: state.systems,
     tactical: state.tactical,
