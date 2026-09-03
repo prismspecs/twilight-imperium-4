@@ -3,13 +3,29 @@ import type { GameState, Result, Seat, StrategyCardId } from './types'
 
 export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 }
 
-export function initiativeOrder(state: GameState): [Seat, Seat] {
+/**
+ * N-player snake: speaker picks one, every other seat picks one clockwise, then the order reverses and they
+ * each pick another back anti-clockwise to the speaker. For 2 players this is `[speaker, other, other, speaker]`,
+ * which is exactly the duel's historic draft order.
+ */
+export function snakeOrder(state: GameState): Seat[] {
+  const n = state.players.length
+  const seats = Array.from({ length: n }, (_, i) => (state.speaker + i) % n)
+  return [...seats, ...seats.slice().reverse()]
+}
+
+/** N-player: how many draft picks each seat gets from the current strategy pool. */
+export function draftLength(state: GameState): number {
+  return Math.min(state.strategyPool.length, state.players.length * 2)
+}
+
+export function initiativeOrder(state: GameState): Seat[] {
   const lowest = (seat: Seat) => {
     const cards = state.players[seat].strategyCards
     if (cards.length === 0) return Infinity   // no card played: goes last
     return Math.min(...cards.map(c => INITIATIVE[c.id]))
   }
-  return lowest(0) <= lowest(1) ? [0, 1] : [1, 0]
+  return [...state.players.keys()].sort((a, b) => lowest(a) - lowest(b))
 }
 
 export function pickStrategyCard(state: GameState, card: StrategyCardId): Result<GameState> {
@@ -27,7 +43,13 @@ export function pickStrategyCard(state: GameState, card: StrategyCardId): Result
   if (draft.length === 0) {
     strategyPool = strategyPool.map(c => ({ ...c, bonus: c.bonus + 1 }))
     const order = initiativeOrder(next)
-    next = reviveInfantry({ ...next, strategyPool, phase: 'action', active: order[0], players: [{ ...next.players[0], passed: false }, { ...next.players[1], passed: false }] }, order[0])
+    next = reviveInfantry({
+      ...next,
+      strategyPool,
+      phase: 'action',
+      active: order[0],
+      players: next.players.map(p => ({ ...p, passed: false })),
+    }, order[0])
   }
   return { ok: true, value: next }
 }

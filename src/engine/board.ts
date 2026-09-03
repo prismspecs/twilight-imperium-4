@@ -65,7 +65,7 @@ export function destroyUnits(state: GameState, systemId: string, units: Unit[]):
  */
 export function rollRevival(state: GameState, destroyed: Unit[], seed: number): GameState {
   let next = state
-  for (const seat of [0, 1] as Seat[]) {
+  for (const seat of state.players.map((_, i) => i)) {
     const lost = destroyed.filter(u => u.owner === seat && u.type === 'infantry')
     if (!lost.length || !state.players[seat].techs.includes('infantry_ii')) continue
     const { rolls, hits } = rollHits(mulberry32(deriveSeed(seed, seat)), lost.length, 6, false)

@@ -5,6 +5,16 @@ export function otherSeat(seat: Seat): Seat {
   return seat === 0 ? 1 : 0
 }
 
+/** N-player: the seat that takes the turn after `seat` in initiative order that has not yet passed. */
+export function nextActiveSeat(state: GameState, from: Seat): Seat | null {
+  const n = state.players.length
+  for (let i = 1; i <= n; i++) {
+    const s = (from + i) % n
+    if (!state.players[s].passed) return s
+  }
+  return null
+}
+
 /** R3.2: the one rejection every "you already acted this turn" guard hands back, so the UI reads one text. */
 export const ACTION_SPENT = 'R3.2: your action is already spent, end your turn'
 
@@ -49,9 +59,9 @@ export function reviveInfantry(state: GameState, seat: Seat): GameState {
  * Handing the turn over is the only thing that clears `turnDone`, so the seat that receives it starts fresh.
  */
 export function passTurn(state: GameState): GameState {
-  const other = otherSeat(state.active)
-  const next: Seat = state.players[other].passed ? state.active : other
-  return reviveInfantry({ ...state, active: next, turnDone: false }, next)
+  const next = nextActiveSeat(state, state.active)
+  const active = next ?? state.active
+  return reviveInfantry({ ...state, active, turnDone: false }, active)
 }
 
 export function activatableSystems(state: GameState, seat: Seat): string[] {
@@ -95,9 +105,9 @@ export function pass(state: GameState): Result<GameState> {
   if (!canPass(state, seat)) return { ok: false, error: 'R3.2: cannot pass while holding an unused strategy card' }
   const players = [...state.players] as GameState['players']
   players[seat] = { ...players[seat], passed: true }
-  const other = otherSeat(seat)
-  if (players[other].passed) return { ok: true, value: { ...state, players, phase: 'status', active: state.speaker, statusSubmitted: [] } }
-  return { ok: true, value: reviveInfantry({ ...state, players, active: other }, other) }
+  const next = nextActiveSeat({ ...state, players }, seat)
+  if (next === null) return { ok: true, value: { ...state, players, phase: 'status', active: state.speaker, statusSubmitted: [] } }
+  return { ok: true, value: reviveInfantry({ ...state, players, active: next }, next) }
 }
 
 /** R3.2: an action ends the action, not the turn; the seat keeps it, spent, until `endTurn`. */

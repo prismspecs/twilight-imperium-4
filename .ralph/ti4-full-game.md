@@ -1,0 +1,54 @@
+# Expand Mecatol Duel into the Full Twilight Imperium 4 Base Game (with Codices), playable by up to 6 players
+
+## Context
+
+The repo `/home/grayson/workbench/mecatol-duel` currently implements a **2-player distillation** of TI4 (only L1Z1X vs Letnev, 6 strategy cards, no action cards/agendas/promissory notes/secret objectives, a custom trade-post system, map hardcoded to 2 players). All 455 tests pass. Baseline is clean.
+
+The goal is to expand it to the **entire TI4 4th edition base game with Codices updates**, playable by **up to 6 players** (e.g. 1 human + 5 bots).
+
+Authoritative rules data was cloned to `/tmp/ti4-rules` from `prismspecs/ti4`:
+- `data/factions.json` — all factions (17 base + PoK + TE + Keleres), with abilities, starting units/techs, faction techs, promissory notes, flagship
+- `data/strategy_cards.json` — all 8 strategy cards (base + PoK/TE variants)
+- `data/objectives.json` — 80 objectives (Stage I, Stage II, secrets)
+- `data/action_cards.json` — 107 action cards
+- `data/agendas.json` — 63 agendas
+- `data/promissory_notes.json` — generic promissory notes
+- `data/technology.json` / `unit_upgrades.json` — full tech tree + unit upgrades
+- `data/planets.json` — 143 planets
+- `rules/complete.md` — full living rules reference, `rules/INDEX.md` — index
+- `data/content_sets.json` — authoritative map of what belongs to base vs codex vs pok vs te
+
+Existing verified reference data in repo: `data/reference/factions.json`, `data/reference/techs.json`, `data/reference/tiles.json`. Existing binding spec: `docs/spec/game-rules.md` (currently duel-specific) and `docs/spec/engine-design.md`. Existing data modules in `src/data/*.ts`, engine in `src/engine/*.ts`.
+
+## Scope decisions (record rulings in the plan ledger as you go)
+
+- **Base game + Codices I-IV layered on base.** Per `content_sets.json`, the base factions are: Arborec, Barony of Letnev, Clan of Saar, Embers of Muaat, Emirates of Hacan, Federation of Sol, Ghosts of Creuss, L1Z1X Mindnet, Mentak Coalition, Naalu Collective, Nekro Virus, Sardakk N'orr, Universities of Jol-Nar, Winnu, Xxcha Kingdom, Yin Brotherhood, Yssaril Tribes (17 factions).
+- **Codex content**: Codices I-IV update/errata base components (e.g. various faction ability rebalances, Diplomacy errata, omega cards). The "Alliance" promissory notes (Codex II) require commanders (PoK mechanic) so they are OUT. Council Keleres (Codex III) requires PoK so it is OUT. Filter the `data/*.json` decks to base-only per `content_sets.json`. Always prefer the Codex-erratated text where it exists and note it.
+- **6-player game**: full TI4 setup with 6-player map (or configurable 3-6 players), speaker token, snake draft of factions, 8 strategy cards, initiative order, agenda phase, action cards, secret objectives, public objectives (Stage I + Stage II), promissory notes.
+- **Bots**: at least 1 human + up to 5 AI. The existing AI (`src/ai/*`) must be generalized from 2 seats to N seats.
+
+## Rules for every change (from CLAUDE.md)
+
+- Commit after every logical step, in small commits: the failing test, the implementation, each fix, each doc change gets its own commit. Never bundle several tasks into one commit.
+- Push every commit to `main` as soon as it is green (wired to Vercel). Do not sit on a stack of local commits.
+- Conventional commit messages (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`), English only.
+- Before a commit that touches `src/`: `npm test`, `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` must be clean.
+- Engine and data modules: strict TypeScript, no `any`, no non-null assertions, no React/DOM/Node imports, never mutate an input `GameState`, all randomness from the seed passed in, every dice roll logged.
+- `docs/spec/game-rules.md` is the binding authority; update it as the game expands. Record rulings in the plan's `.ledger.md`.
+
+## Suggested architecture sequence (revise as needed, record in ledger)
+
+1. **Generalize the engine to N players** (foundational — everything depends on it):
+   - `src/engine/types.ts`: `Seat = 0|1` → `number` (or a bounded type); `Owner = Seat | 'guardian'`; `players: Player[]`; `speaker`, `active`, `draft` as seats; player initiative order. Add new fields for the full game state (action cards hand, secret objectives, promissory notes, agenda deck, strategy cards with new cards, command sheet per player).
+   - Update all engine modules, data modules, AI, UI to N-player. Decide whether to rewrite incrementally keeping 2-player tests green, or bite the bullet with a big refactor. Record the decision.
+2. **Full data import**: 17 factions, full tech tree + unit upgrades + faction techs, all objectives (Stage I/II + secrets), action cards, agendas, promissory notes, 8 strategy cards, map tiles + planets, anomalies (asteroid fields, nebulae, gravity rifts, supernovas), wormholes.
+3. **Full setup + draft**: faction/colour selection, 6-player map generation, speaker, starting units/techs, objective decks, action card deal, secret objective deal, and the table setup.
+4. **Full round structure**: strategy phase (8 cards, initiative), action phase (tactical/strategic/component/pass), agenda phase (new), status phase (scoring, objectives, tokens, readying). Add Politics + Construction strategy cards.
+5. **Agendas, action cards, promissory notes mechanics.**
+6. **Faction abilities** across 17 factions.
+7. **Bots for 6 players.**
+8. **UI**: setup screen for up to 6 players, board rendering of a 6-player map, all the new panels.
+
+## Iteration strategy
+
+Tackle ONE coherent, verifiable chunk per iteration. Keep tests green (or define the failing test for that chunk). Update the ledger with rulings. Commit and push each chunk. The goal is steady, verifiable progress toward the full game rather than a half-finished giant refactor left broken.

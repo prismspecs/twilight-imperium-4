@@ -4,7 +4,7 @@ import type { PostId } from '../data/posts'
 // never a legal-move question. Callers may treat it as fatal.
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
 
-export type Seat = 0 | 1
+export type Seat = number  // 0..(playerCount-1); the full base game supports up to 6 players
 export type Owner = Seat | 'guardian'
 export type FactionId = 'l1z1x' | 'letnev'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
@@ -75,7 +75,7 @@ export interface GameState {
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
   objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
-  players: [Player, Player]
+  players: Player[]
   systems: Record<string, System>
   tactical: TacticalContext | null
   // R3.2: the active player has spent their action and may still take the free moves of R8 before ending
@@ -152,11 +152,11 @@ export interface UnitStats {
   planetaryShield: boolean
   production: number | null
 }
+export interface PlayerConfig {
+  faction: FactionId; color: Color; name: string; playerType?: PlayerType
+}
 export interface GameConfig {
-  players: [
-    { faction: FactionId; color: Color; name: string; playerType?: PlayerType },
-    { faction: FactionId; color: Color; name: string; playerType?: PlayerType }
-  ]
+  players: PlayerConfig[]
   speaker: Seat
 }
 export function isAi(config: GameConfig | undefined, seat: Seat): boolean {

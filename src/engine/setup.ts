@@ -84,7 +84,8 @@ export function createGame(config: GameConfig, seed: number): GameState {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, owner: def.home, exhausted: false, ground: [], structures: [] }))
     systems[def.id] = { id: def.id, name: def.name, planets, wormhole: def.wormhole, space: [], activatedBy: [] }
   }
-  for (const seat of [0, 1] as Seat[]) {
+  const seats: Seat[] = config.players.map((_, i) => i)
+  for (const seat of seats) {
     const home = SYSTEMS.find(s => s.home === seat)
     if (!home) throw new Error('missing home system')
     const sys = systems[home.id]
@@ -98,16 +99,18 @@ export function createGame(config: GameConfig, seed: number): GameState {
       }
     }
   }
-  const other: Seat = config.speaker === 0 ? 1 : 0
+  // N-player snake draft over the strategy pool (see strategyPhase.snakeOrder).
+  const orderSeats = seats.map((_, i) => (config.speaker + i) % config.players.length)
+  const draft = [...orderSeats, ...orderSeats.slice().reverse()]
   const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
   const state: GameState = {
     version: 3, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
-    draft: [config.speaker, other, other, config.speaker],
+    draft,
     publicObjectives: [order[0]],
     objectiveOrder: order,
     mecatolCombatWinner: null,
-    players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
+    players: config.players.map((cfg, seat) => makePlayer(seat, cfg)),
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     posts, postAbilityUsed: { west: false, east: false },
     nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null,
