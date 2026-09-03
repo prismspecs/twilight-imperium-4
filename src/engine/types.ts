@@ -12,6 +12,7 @@ export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carri
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
 export type StrategyCardId = 'leadership' | 'diplomacy' | 'trade' | 'warfare' | 'technology' | 'imperial'
 export type Phase = 'strategy' | 'action' | 'status' | 'ended'
+export type PlayerType = 'human' | 'ai'
 
 export interface Unit { id: number; type: UnitType; owner: Owner; damaged: boolean }
 export interface Planet {
@@ -152,6 +153,12 @@ export interface UnitStats {
   production: number | null
 }
 export interface GameConfig {
-  players: [{ faction: FactionId; color: Color; name: string }, { faction: FactionId; color: Color; name: string }]
+  players: [
+    { faction: FactionId; color: Color; name: string; playerType?: PlayerType },
+    { faction: FactionId; color: Color; name: string; playerType?: PlayerType }
+  ]
   speaker: Seat
+}
+export function isAi(config: GameConfig, seat: Seat): boolean {
+  return config.players[seat].playerType === 'ai'
 }
