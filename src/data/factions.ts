@@ -46,7 +46,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['antimass_deflectors'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'lisis-ii' }, { type: 'infantry', count: 2, planetId: 'ragh' }, { type: 'spacedock', count: 1, planetId: 'ragh' },
+      { type: 'infantry', count: 2, planetId: 'lisisii' }, { type: 'infantry', count: 2, planetId: 'ragh' }, { type: 'spacedock', count: 1, planetId: 'ragh' },
     ],
     abilities: ['scavenge', 'nomadic'],
   },
@@ -92,7 +92,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['sarween_tools', 'plasma_scoring'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 2 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 4, planetId: 'moll-primus' }, { type: 'spacedock', count: 1, planetId: 'moll-primus' }, { type: 'pds', count: 1, planetId: 'moll-primus' },
+      { type: 'infantry', count: 4, planetId: 'mollprimus' }, { type: 'spacedock', count: 1, planetId: 'mollprimus' }, { type: 'pds', count: 1, planetId: 'mollprimus' },
     ],
     abilities: ['ambush', 'pillage'],
   },
@@ -110,7 +110,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['dacxive_animators', 'valefar_assimilator_x', 'valefar_assimilator_y'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'mordai-ii' }, { type: 'spacedock', count: 1, planetId: 'mordai-ii' },
+      { type: 'infantry', count: 2, planetId: 'mordaiii' }, { type: 'spacedock', count: 1, planetId: 'mordaiii' },
     ],
     abilities: ['galactic_threat', 'propagation', 'technological_singularity'],
   },
@@ -149,8 +149,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['graviton_laser_system'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 2 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 3, planetId: 'archon-ren' }, { type: 'infantry', count: 1, planetId: 'archon-tau' },
-      { type: 'spacedock', count: 1, planetId: 'archon-ren' }, { type: 'pds', count: 1, planetId: 'archon-ren' },
+      { type: 'infantry', count: 3, planetId: 'archonren' }, { type: 'infantry', count: 1, planetId: 'archontau' },
+      { type: 'spacedock', count: 1, planetId: 'archonren' }, { type: 'pds', count: 1, planetId: 'archonren' },
     ],
     abilities: ['peace_accords', 'quash'],
   },
