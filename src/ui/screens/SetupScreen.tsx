@@ -100,6 +100,30 @@ function factionTitle(name: string): (string | ReactElement)[] {
   return name.split(/(\d)/).map((part, i) => (/\d/.test(part) ? <i className="dg" key={`${String(i)}${part}`}>{part}</i> : part))
 }
 
+/**
+ * The commander portrait art only exists for a couple of factions so far (see
+ * public/assets/factions/). Every other faction would otherwise show the browser's broken-image
+ * glyph plus its spilling alt text — worse than having no portrait at all — so this falls back to
+ * a monogram plate in the seat's colour, which reads as a deliberate placeholder rather than a
+ * missing asset. `key={factionId}` on the caller resets the broken flag when the seat's faction
+ * changes.
+ */
+function FactionPortrait({ factionId, name }: { factionId: FactionId; name: string }) {
+  const [broken, setBroken] = useState(false)
+  if (broken) {
+    return (
+      <div className="crop fallback" aria-hidden="true">
+        <span>{name.trim().charAt(0).toUpperCase()}</span>
+      </div>
+    )
+  }
+  return (
+    <div className={`crop ${factionId}`}>
+      <img src={`/assets/factions/leader_${factionId}_commander.png`} alt={`${name} portrait`} onError={() => setBroken(true)} />
+    </div>
+  )
+}
+
 export function SetupScreen() {
   const { start } = useGame()
   const { style: modelStyle } = useModelStyle()
@@ -367,18 +391,18 @@ export function SetupScreen() {
                   <div className="pcol">
                     <div className="portrait">
                       <i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
-                      <div className={`crop ${factionId}`}>
-                        <img src={`/assets/factions/leader_${factionId}_commander.png`} alt={`${faction.name} portrait`} />
-                      </div>
+                      <FactionPortrait key={factionId} factionId={factionId} name={faction.name} />
                     </div>
-                    <img className="fsym" src={`/assets/factions/${factionId}.png`} alt="" data-testid={`seat-symbol-${seat}`} />
+                    <img
+                      className="fsym" src={`/assets/factions/${factionId}.png`} alt="" data-testid={`seat-symbol-${seat}`}
+                      onError={e => { e.currentTarget.style.display = 'none' }}
+                    />
                   </div>
 
                   <div className="seat-body">
                     <div className="seat-top">
                       <span className="lbl">Seat {seat + 1}</span>
                       <span className="chip pos" data-testid={`seat-position-${seat}`}>{POSITIONS[playerCount]?.[seat] ?? `Seat ${seat + 1}`}</span>
-                      <span className="chip ok">Faction chosen</span>
                     </div>
                     <div className="row controller">
                       <span className="lbl">Controller</span>
@@ -487,7 +511,10 @@ export function SetupScreen() {
                     </div>
                   </div>
 
-                  <img className="sigil" src={`/assets/factions/${factionId}.png`} alt="" />
+                  <img
+                    className="sigil" src={`/assets/factions/${factionId}.png`} alt=""
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
                 </div>
               )
             })}
