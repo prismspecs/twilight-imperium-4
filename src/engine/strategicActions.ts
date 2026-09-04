@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
-import { ACTION_SPENT, otherSeat } from './actionPhase'
+import { ACTION_SPENT } from './actionPhase'
 import { checkFleet } from './board'
 import { distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
@@ -211,11 +211,12 @@ function primary(state: GameState, seat: Seat, card: StrategyCardId, params: Str
       return diplomacyPrimary(state, seat, params)
     case 'trade': {
       let next = replenish(addTradeGoods(state, seat, 3), seat)
-      // R7: sharing the replenish is a trade with the opponent, and it counts for both of them
-      if (params.shareWithOpponent) {
-        next = replenish(next, otherSeat(seat))
+      // R7: each chosen other player replenishes without paying, and it counts as a trade for both of them
+      for (const s2 of params.shareWith ?? []) {
+        if (s2 === seat || s2 < 0 || s2 >= state.players.length) continue
+        next = replenish(next, s2)
         const players = [...next.players] as GameState['players']
-        for (const s2 of [seat, otherSeat(seat)]) players[s2] = { ...players[s2], trades: players[s2].trades + 1 }
+        for (const t of [seat, s2]) players[t] = { ...players[t], trades: players[t].trades + 1 }
         next = { ...next, players }
       }
       return { ok: true, value: next }

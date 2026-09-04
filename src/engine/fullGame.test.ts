@@ -169,7 +169,7 @@ describe('legal moves in every phase', () => {
   })
   it('R3.2: the responder to Trade is not offered accept when shareWithOpponent already replenished them', () => {
     const base = withCards(withCards(toActionPhase(), 0, ['trade']), 1, [])
-    const played = applyMove(base, { type: 'strategic', card: 'trade', params: { shareWithOpponent: true } }, 0)
+    const played = applyMove(base, { type: 'strategic', card: 'trade', params: { shareWith: [1] } }, 0)
     if (!played.ok) throw new Error(played.error)
     expect(played.value.players[1].commodities).toBe(FACTIONS[played.value.players[1].faction].commodityValue)
     const moves = legalMoves(played.value)

@@ -10,7 +10,7 @@ import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
-import { diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
+import { diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
 
@@ -86,8 +86,8 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
       return [{ type: 'strategic', card, params: {} }, ...open.map((objectiveId): Move => ({ type: 'strategic', card, params: { objectiveId } }))]
     }
     case 'trade':
-      // R6: shareWithOpponent is optional, so both variants must be reachable, not just the bare primary
-      return [{ type: 'strategic', card, params: {} }, { type: 'strategic', card, params: { shareWithOpponent: true } }]
+      // R6: sharing is optional and can target any other player, so each one is offered alongside the bare primary
+      return [{ type: 'strategic', card, params: {} }, ...otherSeatsInOrder(state, seat).map(s2 => ({ type: 'strategic' as const, card, params: { shareWith: [s2] } }))]
     default:
       return [{ type: 'strategic', card, params: {} }]
   }

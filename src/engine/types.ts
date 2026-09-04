@@ -127,7 +127,7 @@ export interface StrategicParams {
   units?: Partial<Record<UnitType, number>>
   tokens?: { tactic: number; fleet: number; strategy: number }   // the resulting command sheet after Leadership or Warfare
   objectiveId?: string              // Imperial primary: the public objective to score
-  shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
+  shareWith?: Seat[]                // Trade primary: the other players who replenish without paying
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
 

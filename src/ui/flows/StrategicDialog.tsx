@@ -11,7 +11,7 @@ import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
-import type { Player, StrategicParams, StrategyCardId } from '../../engine/types'
+import type { Player, Seat, StrategicParams, StrategyCardId } from '../../engine/types'
 
 export interface StrategicDialogProps {
   card: StrategyCardId
@@ -25,14 +25,15 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [systemId, setSystemId] = useState<string | null>(null)
   const [techId, setTechId] = useState<string | null>(null)
   const [objectiveId, setObjectiveId] = useState<string | null>(null)
-  const [share, setShare] = useState(false)
+  const [shared, setShared] = useState<Seat[]>([])
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   useEscape(onClose)
   if (!session) return null
   const state = session.state
   const seat = state.active
   const player = state.players[seat]
-  const opponent = state.players[seat === 0 ? 1 : 0]
+  const others = state.players.filter((_, i) => i !== seat)
+  const opponent = others[0] || player   // 2-player fallback for diplomacy UI
   const variants = strategicVariants(legal, card)
   const systems = [...new Set(variants.flatMap(v => v.systemId ? [v.systemId] : []))]
   const techOptions = variants.flatMap(v => v.techId ? [v.techId] : [])
@@ -49,7 +50,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
     switch (card) {
       case 'leadership': return { planets, tradeGoods, tokens: sheet }
       case 'diplomacy': return systemId ? { systemId, planets } : { planets }
-      case 'trade': return share ? { shareWithOpponent: true } : {}
+      case 'trade': return { shareWith: shared }
       case 'warfare': return systemId ? { systemId, tokens: sheet } : { tokens: sheet }
       case 'technology': return techId ? { techId } : {}
       case 'imperial': return objectiveId ? { objectiveId } : {}
@@ -129,10 +130,16 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
               { icon: MISC.commodity, alt: 'Commodity', count: Math.max(0, FACTIONS[player.faction].commodityValue - player.commodities), label: 'Commodities' },
             ]} />
             <div className="rowline">
-              <label className="pay">
-                <input type="checkbox" data-testid="share-toggle" checked={share} onChange={e => setShare(e.target.checked)} />
-                Let {opponent.name} replenish too
-              </label>
+              {others.map((p) => {
+                const i = state.players.indexOf(p) // actual seat index
+                return (
+                  <label key={i} className="pay">
+                    <input type="checkbox" data-testid={`share-${i}`} checked={shared.includes(i)}
+                      onChange={e => setShared(e.target.checked ? [...shared, i] : shared.filter(s => s !== i))} />
+                    Let {p.name} replenish too
+                  </label>
+                )
+              })}
             </div>
           </>
         ) : null}

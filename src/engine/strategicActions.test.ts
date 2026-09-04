@@ -148,8 +148,10 @@ describe('R3.2 strategic actions', () => {
     const alone = value(play(s, 'trade'))
     expect(alone.players[0]).toMatchObject({ tradeGoods: 3, commodities: 2 })
     expect(alone.players[1].commodities).toBe(0)
-    const shared = value(play(s, 'trade', { shareWithOpponent: true }))
+    const shared = value(play(s, 'trade', { shareWith: [1] }))
     expect(shared.players[1].commodities).toBe(2)
+    expect(shared.players[0].trades).toBe(1)   // sharing counts as a trade for both
+    expect(shared.players[1].trades).toBe(1)
   })
   it('R6 Trade secondary: a strategy token replenishes commodities', () => {
     const s = withPlayer(holder('trade'), 1, { commodities: 0 })
