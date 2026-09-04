@@ -101,6 +101,7 @@ export function shipyard(state: GameState, planetId: string, planets: string[], 
   players[seat] = {
     ...me, shipyardUsed: true,
     tokens: { ...me.tokens, strategy: me.tokens.strategy - 1 },
+    tokensSpentThisRound: me.tokensSpentThisRound + 1,
     reinforcements: { ...me.reinforcements, spacedock: me.reinforcements.spacedock - 1 },
   }
   const sys = paid.value.systems[sysId]

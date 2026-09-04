@@ -28,7 +28,11 @@ function spendStrategyTokens(state: GameState, seat: Seat, cost: number): Result
   const player = state.players[seat]
   if (player.tokens.strategy < cost) return { ok: false, error: 'R3.2: no token in the strategy pool' }
   const players = [...state.players] as GameState['players']
-  players[seat] = { ...player, tokens: { ...player.tokens, strategy: player.tokens.strategy - cost } }
+  players[seat] = {
+    ...player,
+    tokens: { ...player.tokens, strategy: player.tokens.strategy - cost },
+    tokensSpentThisRound: player.tokensSpentThisRound + cost,
+  }
   return { ok: true, value: { ...state, players } }
 }
 
@@ -93,7 +97,12 @@ function leadership(state: GameState, seat: Seat, params: StrategicParams, base:
   const player = state.players[seat]
   if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'R6: not enough trade goods' }
   const players = [...spent.value.state.players] as GameState['players']
-  players[seat] = { ...players[seat], tradeGoods: players[seat].tradeGoods - tradeGoods }
+  players[seat] = {
+    ...players[seat],
+    tradeGoods: players[seat].tradeGoods - tradeGoods,
+    tradeGoodsSpentThisRound: players[seat].tradeGoodsSpentThisRound + tradeGoods,
+    influenceSpentThisRound: players[seat].influenceSpentThisRound + spent.value.influence,
+  }
   const influence = spent.value.influence + tradeGoods
   return distributeTokens({ ...spent.value.state, players }, seat, params.tokens, base + Math.floor(influence / 3))
 }

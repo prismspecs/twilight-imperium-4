@@ -107,7 +107,11 @@ function returnToken(state: GameState, seat: Seat, params: PostAbilityParams): R
   const player = state.players[seat]
   if (player.tokens[pool] < 1) return { ok: false, error: `R8: no command token in the ${pool} pool` }
   const players = [...state.players] as GameState['players']
-  players[seat] = { ...player, tokens: { ...player.tokens, [pool]: player.tokens[pool] - 1 } }
+  players[seat] = {
+    ...player,
+    tokens: { ...player.tokens, [pool]: player.tokens[pool] - 1 },
+    tokensSpentThisRound: player.tokensSpentThisRound + (pool === 'fleet' ? 0 : 1),
+  }
   const next: GameState = { ...state, players }
   // R4.4: only the fleet pool carries ships, and the engine never destroys ships to make a sheet fit. The
   // same guard the Warfare redistribution uses, narrowed to the one pool whose shrinking can break a fleet:

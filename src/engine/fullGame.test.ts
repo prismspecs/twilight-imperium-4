@@ -205,9 +205,9 @@ describe('legal moves in every phase', () => {
 // The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
 // deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
-// 59 came in with the trade post abilities: the new free move reshuffles every playthrough, and `bombard`
-// fell out of the old tail. Of the seeds 1 to 80 only 59 and 67 still reach it.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 59, 71, 89]
+// 203 came in with the 20 base public objectives: shuffling 10 base objectives reshuffled
+// the deterministic paths, and seed 203 exercises both `bombard` and `groundCombatRound`.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

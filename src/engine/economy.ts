@@ -46,9 +46,11 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
   // R7: the "spend 6 resources in a single round" objective counts what the payment actually cost, so an
   // overpaid planet does not inflate it
   const me = spent.value.state.players[seat]
+  const resourcesPaid = Math.max(0, cost - tradeGoods)
   players[seat] = {
     ...me, tradeGoods: me.tradeGoods - tradeGoods,
-    resourcesSpentThisRound: me.resourcesSpentThisRound + cost,
+    resourcesSpentThisRound: me.resourcesSpentThisRound + resourcesPaid,
+    tradeGoodsSpentThisRound: me.tradeGoodsSpentThisRound + tradeGoods,
   }
   return { ok: true, value: { ...spent.value.state, players } }
 }

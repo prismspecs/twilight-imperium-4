@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner } from '../../engine/testUtils'
+import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer } from '../../engine/testUtils'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -79,13 +79,13 @@ describe('strategic actions', () => {
     view.unmount()
 
     const imperial = {
-      ...withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []),
-      publicObjectives: ['more_ships'],
+      ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { resourcesSpentThisRound: 8 }),
+      publicObjectives: ['erect_a_monument'],
     }
     const view2 = renderWithSession(imperial, <BoardScreen />)
     playCard('imperial')
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
-    fireEvent.click(screen.getByTestId('objective-pick-more_ships'))
+    fireEvent.click(screen.getByTestId('objective-pick-erect_a_monument'))
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
     view2.unmount()
 
@@ -101,15 +101,15 @@ describe('strategic actions', () => {
 
   it('R7: the Imperial primary scores a fulfilled public objective', () => {
     const s = {
-      ...withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []),
-      publicObjectives: ['more_ships'],
+      ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { resourcesSpentThisRound: 8 }),
+      publicObjectives: ['erect_a_monument'],
     }
     renderWithSession(s, <BoardScreen />)
     playCard('imperial')
-    fireEvent.click(screen.getByTestId('objective-pick-more_ships'))
+    fireEvent.click(screen.getByTestId('objective-pick-erect_a_monument'))
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
     expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
-    expect(screen.getByTestId('scored-more_ships-0')).toBeTruthy()
+    expect(screen.getByTestId('scored-erect_a_monument-0')).toBeTruthy()
   })
 
   it('R8: a trade post sells two commodities for two trade goods without ending the turn', () => {

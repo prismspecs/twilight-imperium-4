@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
-import { PUBLIC_OBJECTIVES } from '../data/objectives'
+import { STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
 import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32 } from './rng'
@@ -32,7 +32,8 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodityValue,
     techs: [...f.startingTechs], strategyCards: [], passed: false,
     scoredObjectives: [], scoredMandates: [],
-    resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
+    resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
+    spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
     inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
   }
 }
@@ -64,17 +65,26 @@ export function postRollEntry(posts: { west: PostId; east: PostId }): string {
   return `Trade posts: ${POSTS[posts.west].name} to the west, ${POSTS[posts.east].name} to the east`
 }
 
-/** R7: the pool is shuffled from the game seed, so the order of the objectives is different every game. */
-function shuffledObjectives(seed: number): string[] {
-  const rng = mulberry32(deriveSeed(seed, 91))
-  const ids = PUBLIC_OBJECTIVES.map(o => o.id)
-  for (let i = ids.length - 1; i > 0; i--) {
+function shuffleIds(ids: readonly string[], rng: () => number): string[] {
+  const out = [...ids]
+  for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1))
-    const swap = ids[i]
-    ids[i] = ids[j]
-    ids[j] = swap
+    const swap = out[i]
+    out[i] = out[j]
+    out[j] = swap
   }
-  return ids
+  return out
+}
+
+/**
+ * TI4 public objective deck: 5 Stage I objectives placed on top of 5 Stage II objectives.
+ * Shuffled from the game seed, so each game draws a unique set of 10 objectives.
+ */
+export function shuffledObjectives(seed: number): string[] {
+  const rng = mulberry32(deriveSeed(seed, 91))
+  const stage1 = shuffleIds(STAGE_1_OBJECTIVES.map(o => o.id), rng).slice(0, 5)
+  const stage2 = shuffleIds(STAGE_2_OBJECTIVES.map(o => o.id), rng).slice(0, 5)
+  return [...stage1, ...stage2]
 }
 
 export function createGame(config: GameConfig, seed: number): GameState {

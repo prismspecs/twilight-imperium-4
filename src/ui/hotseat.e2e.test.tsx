@@ -180,8 +180,8 @@ describe('a scripted hot-seat game', () => {
     // R3.3: scoring, the reveal and the next round
     expect(text('vp-1')).toBe('0 of 7')
     expect(text('vp-0')).toBe('0 of 7')
-    expect(screen.getByTestId('objective-win_space_combat')).toBeTruthy()
-    expect(screen.getByTestId('objective-control_4_outside_home')).toBeTruthy()
+    expect(screen.getByTestId('objective-diversify_research')).toBeTruthy()
+    expect(screen.getByTestId('objective-expand_borders')).toBeTruthy()
     expect(text('round')).toBe('Round 2 of 6, strategy phase')
     expect(text('strategy-state-leadership')).toBe('unpicked')
     expect(text('strategy-state-diplomacy')).toBe('unpicked, 1 trade good on it')

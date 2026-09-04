@@ -82,7 +82,11 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
   if (player.tokens.tactic < 1) return { ok: false, error: 'no tactic token left' }
   if (sys.activatedBy.includes(seat)) return { ok: false, error: `R3.2: ${systemId} already contains your command token` }
   const players = [...state.players] as GameState['players']
-  players[seat] = { ...player, tokens: { ...player.tokens, tactic: player.tokens.tactic - 1 } }
+  players[seat] = {
+    ...player,
+    tokens: { ...player.tokens, tactic: player.tokens.tactic - 1 },
+    tokensSpentThisRound: player.tokensSpentThisRound + 1,
+  }
   return {
     ok: true,
     value: {

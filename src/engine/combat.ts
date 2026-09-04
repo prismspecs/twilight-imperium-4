@@ -378,7 +378,11 @@ export function canMunitions(state: GameState, owner: Owner): boolean {
 function payMunitions(state: GameState, owner: Owner): GameState {
   if (owner === 'guardian') return state
   const players = [...state.players] as GameState['players']
-  players[owner] = { ...players[owner], tradeGoods: players[owner].tradeGoods - 2 }
+  players[owner] = {
+    ...players[owner],
+    tradeGoods: players[owner].tradeGoods - 2,
+    tradeGoodsSpentThisRound: players[owner].tradeGoodsSpentThisRound + 2,
+  }
   return { ...state, players }
 }
 

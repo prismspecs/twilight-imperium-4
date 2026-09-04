@@ -50,6 +50,9 @@ export interface Player {
   passed: boolean
   scoredObjectives: string[]; scoredMandates: string[]
   resourcesSpentThisRound: number        // R7: the "spend 6 resources" objective counts a whole round
+  influenceSpentThisRound: number
+  tradeGoodsSpentThisRound: number
+  tokensSpentThisRound: number
   spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
   trades: number                         // R7: trade post uses plus trades with the opponent, over the game
   tradedThisRound: { west: boolean; east: boolean }

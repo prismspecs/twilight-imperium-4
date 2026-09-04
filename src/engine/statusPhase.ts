@@ -78,7 +78,8 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   for (const seat of state.players.map((_, i) => i)) {
     players[seat] = {
       ...players[seat], strategyCards: [], passed: false, inheritanceExhausted: false,
-      resourcesSpentThisRound: 0, tradedThisRound: { west: false, east: false },
+      resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
+      tradedThisRound: { west: false, east: false },
     }
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected

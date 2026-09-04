@@ -36,6 +36,9 @@ export interface PublicPlayer {
   scoredObjectives: string[]
   scoredMandates: string[]
   resourcesSpentThisRound: number
+  influenceSpentThisRound: number
+  tradeGoodsSpentThisRound: number
+  tokensSpentThisRound: number
   spaceCombatWins: number
   trades: number
   tradedThisRound: { west: boolean; east: boolean }

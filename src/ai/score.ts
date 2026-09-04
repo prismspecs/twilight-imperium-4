@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions'
-import type { Move, Seat, StrategyCardId } from '../engine/types'
+import { findTech } from '../data/techs'
+import type { Move, PlanetTrait, Seat, StrategyCardId, TechColor } from '../engine/types'
 import type { GameStateView } from './fog'
 
 /** Tuneable weights per concern; a difficulty dial can scale these later. */
@@ -185,8 +186,60 @@ function tokensSpentRatio(view: GameStateView, seat: Seat): number {
   return total > 0 ? Math.min(1, (3 - total) / 3) : 1
 }
 
-function homeOf(_view: GameStateView, seat: Seat): string {
+function homeOf(view: GameStateView, seat: Seat): string | null {
+  for (const sys of Object.values(view.systems)) {
+    if (sys.home === seat) return sys.id
+  }
   return seat === 0 ? 'home-n' : 'home-s'
+}
+
+function maxTraitPlanets(view: GameStateView, seat: Seat): number {
+  const counts: Record<PlanetTrait, number> = { industrial: 0, hazardous: 0, cultural: 0 }
+  for (const sys of Object.values(view.systems)) {
+    for (const p of sys.planets) {
+      if (p.owner === seat && p.trait) counts[p.trait] += 1
+    }
+  }
+  return Math.max(counts.industrial, counts.hazardous, counts.cultural)
+}
+
+function techSpecialtyCount(view: GameStateView, seat: Seat): number {
+  let count = 0
+  for (const sys of Object.values(view.systems)) {
+    for (const p of sys.planets) {
+      if (p.owner === seat && p.techSkip !== null) count += 1
+    }
+  }
+  return count
+}
+
+function unitUpgradeTechs(view: GameStateView, seat: Seat): number {
+  let count = 0
+  for (const techId of view.players[seat].techs) {
+    const t = findTech(techId)
+    if (t && (t.kind === 'upgrade' || t.unit !== undefined)) count += 1
+  }
+  return count
+}
+
+function techColorsWith2(view: GameStateView, seat: Seat): number {
+  const counts: Record<TechColor, number> = { blue: 0, red: 0, green: 0, yellow: 0 }
+  for (const techId of view.players[seat].techs) {
+    const t = findTech(techId)
+    if (t?.colour) counts[t.colour] += 1
+  }
+  return Object.values(counts).filter(c => c >= 2).length
+}
+
+function shipsNearMecatol(view: GameStateView, seat: Seat): number {
+  const mecatol = view.systems['mecatol']
+  if (!mecatol) return 0
+  let count = 0
+  for (const adjId of mecatol.neighbours) {
+    const sys = view.systems[adjId]
+    if (sys && sys.space.some(u => u.owner === seat)) count += 1
+  }
+  return count
 }
 
 function countsCanScore(view: GameStateView, seat: Seat): number {
@@ -202,6 +255,35 @@ function countsCanScore(view: GameStateView, seat: Seat): number {
 function objectiveFulfilled(view: GameStateView, seat: Seat, id: string): boolean {
   const me = view.players[seat]
   switch (id) {
+    case 'corner_the_market': return maxTraitPlanets(view, seat) >= 4
+    case 'develop_weaponry': return unitUpgradeTechs(view, seat) >= 2
+    case 'diversify_research': return techColorsWith2(view, seat) >= 2
+    case 'erect_a_monument': return me.resourcesSpentThisRound >= 8
+    case 'expand_borders': return controlledOutsideHome(view, seat) >= 6
+    case 'found_research_outposts': return techSpecialtyCount(view, seat) >= 3
+    case 'intimidate_council': return shipsNearMecatol(view, seat) >= 2
+    case 'lead_from_the_front': return me.tokensSpentThisRound >= 3
+    case 'negotiate_trade_routes': return me.tradeGoodsSpentThisRound >= 5
+    case 'sway_the_council': return me.influenceSpentThisRound >= 8
+
+    case 'centralize_galactic_trade': return me.tradeGoodsSpentThisRound >= 10
+    case 'conquer_the_weak': {
+      const myHome = homeOf(view, seat)
+      for (const sys of Object.values(view.systems)) {
+        if (sys.home !== null && sys.home !== undefined && sys.home !== seat && sys.planets.some(p => p.owner === seat)) return true
+        if (sys.id !== myHome && (sys.id === 'home-n' || sys.id === 'home-s') && sys.planets.some(p => p.owner === seat)) return true
+      }
+      return false
+    }
+    case 'form_galactic_brain_trust': return techSpecialtyCount(view, seat) >= 5
+    case 'found_a_golden_age': return me.resourcesSpentThisRound >= 16
+    case 'galvanize_the_people': return me.tokensSpentThisRound >= 6
+    case 'manipulate_galactic_law': return me.influenceSpentThisRound >= 16
+    case 'master_the_sciences': return techColorsWith2(view, seat) >= 4
+    case 'revolutionize_warfare': return unitUpgradeTechs(view, seat) >= 3
+    case 'subdue_the_galaxy': return controlledOutsideHome(view, seat) >= 11
+    case 'unify_the_colonies': return maxTraitPlanets(view, seat) >= 6
+
     case 'win_space_combat': return me.spaceCombatWins >= 1
     case 'control_4_outside_home': return controlledOutsideHome(view, seat) >= 4
     case 'spend_6_resources': return me.resourcesSpentThisRound >= 6
@@ -215,7 +297,7 @@ function controlledOutsideHome(view: GameStateView, seat: Seat): number {
   const home = homeOf(view, seat)
   let n = 0
   for (const sys of Object.values(view.systems)) {
-    if (sys.id === home) continue
+    if (sys.home === seat || (home && sys.id === home)) continue
     for (const p of sys.planets) if (p.owner === seat) n += 1
   }
   return n
@@ -245,7 +327,7 @@ function scoreRetreat(_view: GameStateView, _seat: Seat, w: ScoreWeights): numbe
 }
 
 function scoreBombard(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
-  return w.military // bombarding a defended planet wins ground control
+  return w.military + w.objective + w.priority // bombarding softens defenders before landing ground forces
 }
 
 function scoreLand(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
