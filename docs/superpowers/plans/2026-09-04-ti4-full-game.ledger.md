@@ -177,3 +177,15 @@ Delivered:
 
 Next: make adjacency state-driven (read state.systems, not the static SYSTEMS) and wire createGame to use
 a generated galaxy for N-player configs, keeping the 2-player flower as the default. Then N-player setup.
+
+## Iteration 7 (Ralph iter 5) — state-driven adjacency (commit 393d11d, pushed)
+
+The keystone for dynamic maps: adjacency.ts previously read the static map module, coupling movement and
+combat to the fixed duel map. Now each System placed in game state carries its hex neighbours (createGame
+copies them from the map spec), and neighbours()/adjacent()/distance() take the systems record and read it,
+with wormhole links resolved on top. Only two engine call sites used these (movement.ts pathLength, combat.ts
+retreatTargets). The active 2-player map behaves identically — all 472 tests pass.
+
+Ruling: adjacency belongs to game state, not a module constant, so a generated galaxy and the fixed flower
+share the same movement/combat code. systemDef()/homeSystemId()/TRADE_POSTS still read the static map; those
+are the remaining couplings to lift when createGame is wired to generateGalaxy (next).

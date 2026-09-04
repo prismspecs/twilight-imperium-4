@@ -179,3 +179,20 @@ for N-player configs (keeping the 2-player flower default). Then N-player setup.
 Run from /home/grayson/workbench/mecatol-duel in a fresh shell:
     npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint
 Expected: 472+ tests passing, tsc no output, lint 0 errors (only pre-existing fast-refresh warnings).
+
+## Iteration 7 — state-driven adjacency (commit 393d11d)
+
+Delivered this iteration:
+- System now carries its hex neighbours; createGame populates them from the map spec
+- adjacency.ts neighbours()/adjacent()/distance() take the systems record (no static-map import)
+- Updated movement.ts pathLength, combat.ts retreatTargets, adjacency.test.ts
+- Active 2-player map behaves identically (472 tests pass)
+
+This is the keystone that lets a generated galaxy share the movement/combat code paths.
+
+Remaining static-map couplings to lift next: systemDef() (planet defs for objectives/UI),
+homeSystemId(), TRADE_POSTS, MECATOL_ID/SYSTEM_IDS.
+
+Next iteration: wire createGame to build systems from generateGalaxy for N-player configs (GameConfig
+carries faction+colour per seat), keeping the 2-player flower as the default; lift homeSystemId to be
+state-driven. Then N-player setup + UI.
