@@ -72,3 +72,23 @@ This is step 1 of the architecture sequence (engine N-player generalization). Th
 agenda/promissory decks, Politics + Construction + the agenda phase itself, the full map with anomalies and
 wormholes, N-player bots, and the 6-player UI) are a very large body of work that will span further sessions.
 Trade primary ("choose any number of other players") is the one remaining engine generalization.
+
+## Iteration complete — Trade primary N-player generalization (commit c40ba95, pushed)
+
+Trade primary now accepts `shareWith?: Seat[]` to choose which other players replenish without
+spending a strategy token. The UI renders a checkbox per other player, and legalMoves enumerates
+the bare primary plus one variant for each other seat. The trade count increments for both
+trading players.
+
+N-player engine generalization progress:
+- Step 1 (N-player core): ✅ seats, players arrays, snake draft, initiative, status/victory, strategic/secondary window.
+- Trade primary: ✅ N-player sharing (all strategy cards N-player except Trade secondary which is 2-player per player choice).
+- Diplomacy primary: ✅ N-player token placement.
+- Secondary window: ✅ N-player queue.
+
+Remaining N-player gaps:
+- Trade secondary: still 2-player (the responder is always the single other seat).
+- Objectives (most are duel-specific "opponent" references, need N-player rewrite).
+- AI/fog/score still assume a single foe (needs full player list iteration).
+
+Next: import the full 17-faction data to enable actual multi-faction games.
