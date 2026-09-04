@@ -137,3 +137,57 @@ describe('R4.2 guardian fleet', () => {
     expect(rerolled.systems.mecatol.space.every(u => u.owner === 'guardian')).toBe(true)
   })
 })
+
+describe('N-player galaxy setup', () => {
+  const three: GameConfig = {
+    players: [
+      { faction: 'l1z1x', color: 'blue', name: 'A' },
+      { faction: 'sol', color: 'red', name: 'B' },
+      { faction: 'hacan', color: 'yellow', name: 'C' },
+    ],
+    speaker: 0,
+  }
+  const six: GameConfig = {
+    players: [
+      { faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' },
+      { faction: 'sol', color: 'yellow', name: 'C' }, { faction: 'saar', color: 'green', name: 'D' },
+      { faction: 'hacan', color: 'purple', name: 'E' }, { faction: 'mentak', color: 'black', name: 'F' },
+    ],
+    speaker: 0,
+  }
+
+  it('builds a generated galaxy with one home system per seat for 3 and 6 players', () => {
+    const g3 = createGame(three, 1)
+    expect(Object.keys(g3.systems)).toHaveLength(34)   // radius-3 hex minus the three empty corners
+    expect(g3.players).toHaveLength(3)
+    for (const seat of [0, 1, 2]) expect(g3.systems[`home-${seat}`], `home-${seat}`).toBeDefined()
+
+    const g6 = createGame(six, 1)
+    expect(Object.keys(g6.systems)).toHaveLength(37)
+    expect(g6.players).toHaveLength(6)
+    for (const seat of [0, 1, 2, 3, 4, 5]) expect(g6.systems[`home-${seat}`]).toBeDefined()
+  })
+
+  it('places each faction printed starting units on its generated home', () => {
+    const g = createGame(three, 1)
+    const sol = g.systems['home-1']   // seat 1 is the Federation of Sol
+    expect(sol.planets.map(p => p.id)).toEqual(['jord'])
+    expect(count(sol.space, 'carrier')).toBe(2)
+    expect(count(sol.space, 'destroyer')).toBe(1)
+    expect(count(sol.space, 'fighter')).toBe(3)
+    expect(count(sol.planets[0].ground, 'infantry')).toBe(5)
+    expect(sol.planets[0].structures.map(u => u.type)).toEqual(['spacedock'])
+    expect(sol.planets[0].owner).toBe(1)
+    // l1z1x home (seat 0) uses the canonical catalogue planet id, not the duel map '000'
+    const l1z1xHome = g.systems['home-0']
+    expect(l1z1xHome.planets.map(p => p.id)).toEqual(['0.0.0'])
+    expect(count(l1z1xHome.planets[0].ground, 'infantry')).toBe(5)
+  })
+
+  it('is deterministic in the seed and starts in the strategy phase with a snake draft', () => {
+    expect(createGame(three, 7).systems).toEqual(createGame(three, 7).systems)
+    const g = createGame(three, 7)
+    expect(g.phase).toBe('strategy')
+    expect(g.draft).toEqual([0, 1, 2, 2, 1, 0])   // snake draft over three seats, two picks each
+  })
+})

@@ -1,7 +1,8 @@
 import { FACTIONS } from '../data/factions'
-import { MECATOL_ID, SYSTEMS } from '../data/map'
+import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
+import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32 } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
@@ -79,14 +80,18 @@ function shuffledObjectives(seed: number): string[] {
 export function createGame(config: GameConfig, seed: number): GameState {
   const counter = { nextUnitId: 1 }
   const order = shuffledObjectives(seed)
+  // Two players use the curated duel map; three to six generate a full galaxy from the tile catalogue.
+  const defs: SystemDef[] = config.players.length <= 2
+    ? SYSTEMS
+    : generateGalaxy(config.players.map((p, seat) => ({ seat, faction: p.faction })), seed)
   const systems: Record<string, System> = {}
-  for (const def of SYSTEMS) {
+  for (const def of defs) {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, owner: def.home, exhausted: false, ground: [], structures: [] }))
     systems[def.id] = { id: def.id, name: def.name, planets, wormhole: def.wormhole, neighbours: [...def.neighbours], space: [], activatedBy: [] }
   }
   const seats: Seat[] = config.players.map((_, i) => i)
   for (const seat of seats) {
-    const home = SYSTEMS.find(s => s.home === seat)
+    const home = defs.find(s => s.home === seat)
     if (!home) throw new Error('missing home system')
     const sys = systems[home.id]
     for (const su of FACTIONS[config.players[seat].faction].startingUnits) {
