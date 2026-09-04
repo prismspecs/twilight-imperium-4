@@ -760,27 +760,43 @@ button { font-family: inherit; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.sc .big {
-  position: absolute;
-  left: 50%; top: 86px;
-  width: 250px;
-  transform: translateX(-50%) scale(0.9);
-  transform-origin: 50% 0;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+
+/* the enlarged strategy card, hung on the document body so the top bar's stacking context cannot clip it */
+.strat-hover {
+  position: fixed;
+  left: 50%; top: 110px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 90;
   pointer-events: none;
-  z-index: 40;
+}
+.strat-hover-card {
+  width: 260px;
   border: 1px solid var(--alpha-border);
   border-radius: var(--radius-md);
   background: #000;
   box-shadow: var(--shadow-modal);
+  animation: strat-hover-in var(--transition-default) both;
 }
-.sc .big img { display: block; width: 100%; }
-.sc:hover .big, .sc:focus-visible .big {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) scale(1);
+.strat-hover-card img { display: block; width: 100%; border-radius: var(--radius-md); }
+.strat-hover-label {
+  font-family: var(--font-display);
+  font-size: var(--text-data);
+  font-weight: var(--weight-rail);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-bright);
+  padding: 3px 10px;
+  background: var(--deep-space-surface);
+  border: 1px solid var(--alpha-frame);
+  border-radius: var(--radius-sm);
+}
+@keyframes strat-hover-in {
+  from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ---- Objectives ------------------------------------------------------ */
@@ -1347,6 +1363,18 @@ button { font-family: inherit; }
   color: var(--ink);
 }
 .dhead .sub b { color: var(--ink-bright); font-weight: var(--weight-title); }
+.dialog .sub.err, .drawer .sub.err {
+  color: #fca5a5;
+  font-family: var(--font-text);
+  font-size: var(--text-data);
+  font-weight: var(--weight-data);
+  line-height: 1.4;
+  padding: 8px 10px;
+  margin-top: 8px;
+  background: rgba(252, 165, 165, 0.08);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+  border-radius: var(--radius-sm);
+}
 .dhead .right { margin-left: auto; display: flex; gap: 8px; }
 
 /* Unit cards in drawers */

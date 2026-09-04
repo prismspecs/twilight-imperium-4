@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { MANDATES, objectiveDef } from '../../data/objectives'
 import { cardOwner } from '../../engine'
@@ -37,6 +39,10 @@ function CompactPlayer({ state, seat, clockMs, clockMaxMs, clockRunning }: { sta
 }
 
 function StrategyCards({ state, onPick }: { state: GameState; onPick?: (card: StrategyCardId) => void }) {
+  // the enlarged card is hung on the document rather than inside the top bar, so no bar/board container
+  // clips it: the top bar's own stacking context would otherwise trap the popup behind the board
+  const [hovered, setHovered] = useState<StrategyCardId | null>(null)
+  useEffect(() => { return () => { setHovered(null) } }, [])
   return (
     <div className="strats">
       {onPick ? <div className="pickprompt" data-testid="pick-prompt">Pick a strategy card</div> : null}
@@ -56,6 +62,10 @@ function StrategyCards({ state, onPick }: { state: GameState; onPick?: (card: St
             className={`sc${owner === null ? ' free' : ` own-${owner}`}${used ? ' played' : ''}${pickable ? ' pick' : ''}`}
             data-testid={`strategy-card-${card}`} title={`${CARD_NAME[card]}, ${label}`}
             aria-label={`${CARD_NAME[card]}, ${label}`}
+            onMouseEnter={() => setHovered(card)}
+            onMouseLeave={() => setHovered(null)}
+            onFocus={() => setHovered(card)}
+            onBlur={() => setHovered(null)}
             onClick={pickable ? () => onPick(card) : undefined}
           >
             <span className="card">
@@ -70,10 +80,18 @@ function StrategyCards({ state, onPick }: { state: GameState; onPick?: (card: St
               ) : null}
             </span>
             <span className="vis" data-testid={`strategy-state-${card}`}>{label}</span>
-            <span className="big" aria-hidden="true"><img src={strategyCardUrl(card)} alt="" /></span>
           </button>
         )
       })}
+      {hovered !== null && typeof document !== 'undefined' ? createPortal(
+        <div className="strat-hover" data-testid={`strategy-hover-${hovered}`} aria-hidden="true">
+          <div className="strat-hover-card">
+            <img src={strategyCardUrl(hovered)} alt={CARD_NAME[hovered]} />
+          </div>
+          <div className="strat-hover-label">{CARD_NAME[hovered]}</div>
+        </div>,
+        document.body,
+      ) : null}
     </div>
   )
 }
