@@ -31,7 +31,9 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
     expect(Math.min(p.vp, p.tradeGoods, p.commodities, p.tokens.tactic, p.tokens.fleet, p.tokens.strategy)).toBeGreaterThanOrEqual(0)
     for (const n of Object.values(p.reinforcements)) expect(n).toBeGreaterThanOrEqual(0)
     expect(p.vp).toBeGreaterThanOrEqual(p.scoredObjectives.length)
-    for (const id of p.scoredObjectives) expect(state.publicObjectives).toContain(id)
+    for (const id of p.scoredObjectives) {
+      expect(state.publicObjectives.includes(id) || p.secretObjectives.includes(id)).toBe(true)
+    }
   }
   for (const sys of Object.values(state.systems)) {
     for (const seat of [0, 1] as Seat[]) {
@@ -207,7 +209,7 @@ describe('legal moves in every phase', () => {
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
 // 203 came in with the 20 base public objectives: shuffling 10 base objectives reshuffled
 // the deterministic paths, and seed 203 exercises both `bombard` and `groundCombatRound`.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203]
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

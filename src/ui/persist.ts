@@ -78,6 +78,18 @@ function normalise(state: GameState): GameState {
   if (typeof raw.posts !== 'object' || raw.posts === null) {
     next = { ...next, posts: { west: 'sarnex', east: 'kesh' }, postAbilityUsed: { west: false, east: false } }
   }
+  if (!Array.isArray(raw.secretObjectiveDeck)) {
+    next = { ...next, secretObjectiveDeck: [] }
+  }
+  if (Array.isArray(next.players)) {
+    next = {
+      ...next,
+      players: next.players.map(p => ({
+        ...p,
+        secretObjectives: Array.isArray(p.secretObjectives) ? p.secretObjectives : [],
+      })),
+    }
+  }
   return next.version === 3 ? next : { ...next, version: 3 }
 }
 

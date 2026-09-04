@@ -88,7 +88,16 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
     case 'technology': {
       const techs = researchable(state.players[seat])
       if (!techs.length) return [{ type: 'strategic', card, params: {} }]
-      return techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } }))
+      const out: Move[] = techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } }))
+      const affordSecond = cheapestPlanets(state, seat, 6)
+      if (affordSecond && techs.length >= 2) {
+        for (let i = 0; i < techs.length; i++) {
+          for (let j = i + 1; j < techs.length; j++) {
+            out.push({ type: 'strategic', card, params: { techId: techs[i], secondTechId: techs[j], planets: affordSecond } })
+          }
+        }
+      }
+      return out
     }
     case 'imperial': {
       const open = state.publicObjectives.filter(id => !state.players[seat].scoredObjectives.includes(id) && fulfils(state, seat, id))
@@ -103,9 +112,9 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
 }
 
 /** The affordable secondary answers; every one of them is accepted by its handler. */
-function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[] {
+function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFree = false): Move[] {
   const player = state.players[seat]
-  if (player.tokens.strategy < secondaryTokenCost(card)) return []
+  if (player.tokens.strategy < secondaryTokenCost(card, isFree)) return []
   const params: StrategicParams = {}
   switch (card) {
     case 'leadership':
@@ -188,7 +197,8 @@ export function legalMoves(state: GameState): Move[] {
     // queue who is not the head must not act, and the enumerator stays on the decline so a live phase never
     // hands back an empty list
     if (pending.queue[0] !== seat) return [{ type: 'secondary', card: pending.card, accept: false }]
-    return [{ type: 'secondary', card: pending.card, accept: false }, ...secondaryMoves(state, seat, pending.card)]
+    const isFree = pending.card === 'trade' && (pending.freeSeats?.includes(seat) ?? false)
+    return [{ type: 'secondary', card: pending.card, accept: false }, ...secondaryMoves(state, seat, pending.card, isFree)]
   }
   if (state.players[seat].passed) return []
   if (state.tactical) return tacticalMoves(state)

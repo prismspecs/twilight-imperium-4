@@ -5,6 +5,7 @@ import {
   getPlanetCentre, getPlanetSpot, getSpaceBox, getWormholeSpot, hexToPixel,
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
+import { diagnoseMovement } from '../debugLogger'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
 const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
@@ -93,12 +94,14 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const guardians = system.space.some(u => u.owner === 'guardian')
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
+  const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
       style={{ left: pos.left, top: pos.top, width: TILE_W, height: TILE_H }}
       role={activate ? 'button' : undefined}
       tabIndex={activate ? 0 : undefined}
+      title={reachDiag}
       aria-label={activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : undefined}
       onClick={activate}
       onKeyDown={activate

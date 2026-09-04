@@ -52,6 +52,7 @@ export interface Player {
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
   scoredObjectives: string[]; scoredMandates: string[]
+  secretObjectives: string[]
   resourcesSpentThisRound: number        // R7: the "spend 6 resources" objective counts a whole round
   influenceSpentThisRound: number
   tradeGoodsSpentThisRound: number
@@ -91,6 +92,7 @@ export interface GameState {
   draft: Seat[]                                          // remaining pick order in the strategy phase
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
   objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
+  secretObjectiveDeck: string[]                          // unrevealed secret objectives
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: Player[]
   systems: Record<string, System>
@@ -155,6 +157,7 @@ export interface SecondaryWindow {
   card: StrategyCardId
   owner: Seat
   queue: Seat[]   // seats still to answer; empty means the window is closed
+  freeSeats?: Seat[]
 }
 
 /**

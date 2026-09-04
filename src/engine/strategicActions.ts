@@ -2,7 +2,7 @@ import { FACTIONS } from '../data/factions'
 import { MECATOL_ID } from '../data/map'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, homeSystemOf } from './board'
-import { distributeTokens, exhaustPlanets, payCost } from './economy'
+import { cheapestPlanets, distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch } from './research'
@@ -10,7 +10,9 @@ import type { GameState, Result, Seat, StrategicParams, StrategyCardId } from '.
 
 /** The seat holding the card, used or not. */
 export function cardOwner(state: GameState, card: StrategyCardId): Seat | null {
-  for (const seat of [0, 1] as Seat[]) if (state.players[seat].strategyCards.some(c => c.id === card)) return seat
+  for (let seat = 0; seat < state.players.length; seat++) {
+    if (state.players[seat].strategyCards.some(c => c.id === card)) return seat
+  }
   return null
 }
 
@@ -18,9 +20,24 @@ export function unusedCards(state: GameState, seat: Seat): StrategyCardId[] {
   return state.players[seat].strategyCards.filter(c => !c.used).map(c => c.id)
 }
 
-/** R3.2: every secondary but Leadership costs one token from the strategy pool. */
-export function secondaryTokenCost(card: StrategyCardId): number {
-  return card === 'leadership' ? 0 : 1
+/** R3.2: every secondary but Leadership costs one token from the strategy pool; free Trade secondary costs 0. */
+export function secondaryTokenCost(card: StrategyCardId, isFree = false): number {
+  if (card === 'leadership' || isFree) return 0
+  return 1
+}
+
+export function drawSecretObjective(state: GameState, seat: Seat): GameState {
+  if (!state.secretObjectiveDeck || state.secretObjectiveDeck.length === 0) return state
+  const [drawn, ...rest] = state.secretObjectiveDeck
+  const players = [...state.players] as GameState['players']
+  const player = players[seat]
+  players[seat] = { ...player, secretObjectives: [...(player.secretObjectives ?? []), drawn] }
+  return {
+    ...state,
+    secretObjectiveDeck: rest,
+    players,
+    log: [...state.log, { t: 'info', text: `seat ${seat} draws a secret objective` }],
+  }
 }
 
 function spendStrategyTokens(state: GameState, seat: Seat, cost: number): Result<GameState> {
@@ -182,7 +199,8 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
   }
   if (params.secondTechId !== undefined) {
     if (params.techId === undefined) return { ok: false, error: 'R5: the second technology needs the first' }
-    const paid = payCost(next, seat, 6, params.planets ?? [], params.tradeGoods ?? 0)
+    const planets = params.planets !== undefined ? params.planets : (cheapestPlanets(next, seat, 6) ?? [])
+    const paid = payCost(next, seat, 6, planets, params.tradeGoods ?? 0)
     if (!paid.ok) return paid
     const second = grantTech(paid.value, seat, params.secondTechId, false)
     if (!second.ok) return second
@@ -193,12 +211,13 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
 
 function technologySecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   if (params.techId === undefined) return { ok: false, error: 'R5: name the technology to research' }
-  const paid = payCost(state, seat, 4, params.planets ?? [], params.tradeGoods ?? 0)
+  const planets = params.planets !== undefined ? params.planets : (cheapestPlanets(state, seat, 4) ?? [])
+  const paid = payCost(state, seat, 4, planets, params.tradeGoods ?? 0)
   if (!paid.ok) return paid
   return grantTech(paid.value, seat, params.techId, false)
 }
 
-/** R6/R7 Imperial: score one fulfilled public objective, then 1 VP for Mecatol Rex. */
+/** R6/R7 Imperial: score one fulfilled public objective, then 1 VP for Mecatol Rex or draw 1 secret objective. */
 function imperialPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   let next = state
   const id = params.objectiveId
@@ -208,7 +227,11 @@ function imperialPrimary(state: GameState, seat: Seat, params: StrategicParams):
     if (!fulfils(state, seat, id)) return { ok: false, error: `R7: ${id} is not fulfilled` }
     next = scoreObjective(next, seat, id)
   }
-  if (controlsMecatol(next, seat)) next = addVp(next, seat, 1, 'Imperial primary: Mecatol Rex')
+  if (controlsMecatol(next, seat)) {
+    next = addVp(next, seat, 1, 'Imperial primary: Mecatol Rex')
+  } else {
+    next = drawSecretObjective(next, seat)
+  }
   return { ok: true, value: next }
 }
 
@@ -252,7 +275,7 @@ function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, par
     case 'technology':
       return technologySecondary(state, seat, params)
     case 'imperial':
-      return { ok: true, value: addTradeGoods(state, seat, 2) }   // R6: replaces "draw a secret objective"
+      return { ok: true, value: drawSecretObjective(state, seat) }
   }
 }
 
@@ -276,8 +299,13 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   if (!played.ok) return played
   const players = [...played.value.players] as GameState['players']
   players[seat] = { ...players[seat], strategyCards: players[seat].strategyCards.map(c => c.id === card ? { ...c, used: true } : c) }
-  const queue = otherSeatsInOrder(state, seat)
-  const window = { card, owner: seat, queue }
+  const queue = card === 'technology'
+    ? [...otherSeatsInOrder(state, seat), seat]
+    : otherSeatsInOrder(state, seat)
+  const freeSeats = card === 'trade'
+    ? (params?.shareWith?.filter(s => s !== seat && s >= 0 && s < state.players.length) ?? [])
+    : undefined
+  const window = { card, owner: seat, queue, ...(freeSeats ? { freeSeats } : {}) }
   const active = queue[0] ?? seat
   // R3.2: the holder's strategic action is spent; their turn ends once everyone has answered the secondary
   return { ok: true, value: { ...played.value, players, pendingSecondary: window, active, turnDone: queue.length === 0 } }
@@ -288,11 +316,14 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
   const pending = state.pendingSecondary
   if (pending === null || pending.card !== card) return { ok: false, error: `R3.2: no secondary window for ${card}` }
   const seat = state.active
-  if (pending.owner === seat) return { ok: false, error: 'R3.2: the card holder does not answer their own card' }
+  if (pending.owner === seat && pending.card !== 'technology') {
+    return { ok: false, error: 'R3.2: the card holder does not answer their own card' }
+  }
   if (pending.queue[0] !== seat) return { ok: false, error: 'R3.2: it is not your turn to answer this secondary' }
   let next = state
   if (accept) {
-    const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card))
+    const isFree = pending.card === 'trade' && (pending.freeSeats?.includes(seat) ?? false)
+    const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card, isFree))
     if (!paid.ok) return paid
     const used = secondaryEffect(paid.value, seat, card, params ?? {})
     if (!used.ok) return used

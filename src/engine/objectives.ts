@@ -156,6 +156,59 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       )
     }
 
+    // Secret objectives (1 VP)
+    case 'ans':
+      return player.techs.filter(tId => findTech(tId)?.kind === 'faction').length >= 2
+    case 'btgk': {
+      const hasAlpha = Object.values(state.systems).some(s => s.wormhole === 'alpha' && s.space.some(u => u.owner === seat && isShip(u.type)))
+      const hasBeta = Object.values(state.systems).some(s => s.wormhole === 'beta' && s.space.some(u => u.owner === seat && isShip(u.type)))
+      return hasAlpha && hasBeta
+    }
+    case 'csl':
+      return Object.values(state.systems).some(s =>
+        s.space.some(u => u.owner === seat && isShip(u.type)) &&
+        s.planets.some(p => p.structures.some(u => u.owner !== seat && u.type === 'spacedock'))
+      )
+    case 'ctr':
+      return Object.values(state.systems).filter(s => s.space.some(u => u.owner === seat && isShip(u.type))).length >= 6
+    case 'dtgs':
+      return player.spaceCombatWins >= 1
+    case 'eap':
+      return Object.values(state.systems).flatMap(s => s.planets.flatMap(p => p.structures)).filter(u => u.owner === seat && u.type === 'pds').length >= 4
+    case 'faa':
+      return controlledPlanets(state, seat).filter(cp => state.systems[cp.systemId]?.planets.find(p => p.id === cp.planetId)?.trait === 'cultural').length >= 4
+    case 'fsn':
+      return player.tokensSpentThisRound >= 3 || player.tradeGoodsSpentThisRound >= 3
+    case 'fwm':
+      return Object.values(state.systems).flatMap(s => s.planets.flatMap(p => p.structures)).filter(u => u.owner === seat && u.type === 'spacedock').length >= 3
+    case 'gamf':
+      return Object.values(state.systems).flatMap(s => s.space).filter(u => u.owner === seat && u.type === 'dreadnought').length >= 5
+    case 'lsc': {
+      const anomalyTiles = ['41', '42', '43', '44', '45']
+      const anomalySystems = new Set(Object.values(state.systems).filter(s => s.tile && (anomalyTiles.includes(s.tile) || s.name.toLowerCase().includes('nebula') || s.name.toLowerCase().includes('supernova') || s.name.toLowerCase().includes('asteroid') || s.name.toLowerCase().includes('rift'))).map(s => s.id))
+      return Object.values(state.systems).filter(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id).some(nid => anomalySystems.has(nid))).length >= 3
+    }
+    case 'mew':
+      return player.spaceCombatWins >= 1
+    case 'mlp':
+      return techColorsWithAtLeast(state, seat, 4) >= 1
+    case 'mp':
+      return controlledPlanets(state, seat).filter(cp => state.systems[cp.systemId]?.planets.find(p => p.id === cp.planetId)?.trait === 'industrial').length >= 4
+    case 'mrm':
+      return controlledPlanets(state, seat).filter(cp => state.systems[cp.systemId]?.planets.find(p => p.id === cp.planetId)?.trait === 'hazardous').length >= 4
+    case 'ose':
+      return controlsMecatol(state, seat) && (state.systems[MECATOL_ID]?.space.filter(u => u.owner === seat && isShip(u.type)).length ?? 0) >= 3
+    case 'sar':
+      return player.spaceCombatWins >= 1
+    case 'te': {
+      const otherHomes = state.players.filter(p => p.seat !== seat).map(p => homeSystemOf(state, p.seat))
+      return Object.values(state.systems).some(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id).some(nid => otherHomes.includes(nid)))
+    }
+    case 'ttfd':
+      return player.spaceCombatWins >= 1
+    case 'uf':
+      return player.spaceCombatWins >= 1 && Object.values(state.systems).some(s => s.space.some(u => u.owner === seat && u.type === 'flagship'))
+
     default:
       return false
   }
@@ -168,6 +221,9 @@ export function scoreable(state: GameState, seat: Seat): string[] {
   const out = state.publicObjectives.filter(id => !player.scoredObjectives.includes(id) && fulfils(state, seat, id))
   for (const id of MANDATE_IDS) {
     if (!player.scoredMandates.includes(id) && fulfils(state, seat, id)) out.push(id)
+  }
+  for (const id of player.secretObjectives ?? []) {
+    if (!player.scoredObjectives.includes(id) && fulfils(state, seat, id)) out.push(id)
   }
   return out
 }

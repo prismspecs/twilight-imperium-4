@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   PUBLIC_OBJECTIVES,
+  SECRET_OBJECTIVES,
   STAGE_1_OBJECTIVES,
   STAGE_2_OBJECTIVES,
+  isSecretObjective,
   objectiveDef,
 } from './objectives'
 
@@ -74,6 +76,23 @@ describe('data/objectives', () => {
     for (const obj of PUBLIC_OBJECTIVES) {
       expect(objectiveDef(obj.id)).toEqual(obj)
     }
+    for (const obj of SECRET_OBJECTIVES) {
+      expect(objectiveDef(obj.id)).toEqual(obj)
+      expect(isSecretObjective(obj.id)).toBe(true)
+    }
     expect(objectiveDef('unknown_id')).toBeUndefined()
+  })
+
+  it('contains exactly 20 secret objectives worth 1 VP each', () => {
+    expect(SECRET_OBJECTIVES).toHaveLength(20)
+    for (const obj of SECRET_OBJECTIVES) {
+      expect(obj.stage).toBe('secret')
+      expect(obj.points).toBe(1)
+      expect(obj.name.length).toBeGreaterThan(0)
+      expect(obj.text.length).toBeGreaterThan(0)
+      expect(obj.short.length).toBeGreaterThan(0)
+    }
+    const ids = SECRET_OBJECTIVES.map(o => o.id)
+    expect(new Set(ids).size).toBe(20)
   })
 })

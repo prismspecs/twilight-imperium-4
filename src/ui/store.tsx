@@ -7,6 +7,7 @@ import { DEFAULT_WEIGHTS } from '../ai/score'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
+import { logError, logInfo, logWarn } from './debugLogger'
 
 export type { GameConfig } from '../engine/types'
 
@@ -105,9 +106,10 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // Pacing: instead of an AI seat playing its whole turn in one burst, each move lands on its own beat so a
   // human can watch. `pumpAi` schedules a step; `stepAi` applies exactly one move and — if the active seat is
   // still an AI, or the AI hands to another AI — schedules the one after. Both read `sessionRef` so a timeout
-  // always acts on the current session, never a stale closure. `stepAiRef` breaks the circular dependency
-  // between the two callbacks so `stepAi` (which re-pumps) does not need `pumpAi` declared up-front.
+  // always acts on the current session, never a stale closure. `stepAiRef` and `pumpAiRef` break the circular
+  // dependency between the two callbacks.
   const stepAiRef = useRef<(seed: number) => void>(() => undefined)
+  const pumpAiRef = useRef<(seed: number) => void>(() => undefined)
   const stepAi = useCallback((seed: number) => {
     const cur = sessionRef.current
     if (!cur || cur.state.winner !== null || cur.state.phase === 'ended') return
@@ -115,8 +117,13 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const moves = legalMoves(cur.state)
     if (moves.length === 0) return
     const chosen = aiChoose(cur.state, moves, cur.state.active, DEFAULT_WEIGHTS)
+    logInfo('AI', `Seat ${cur.state.active} chose move: ${chosen.type}`, chosen)
     const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
-    if (!r.ok) { setError(r.error); return }
+    if (!r.ok) {
+      logError('AI', `AI move rejected: ${r.error}`, { chosen, error: r.error })
+      setError(r.error)
+      return
+    }
     const next = closeTurn(r.value, seed)
     const keep = undoable(cur.state, next)
     setError(null)
@@ -124,7 +131,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff }
     sessionRef.current = updated
     setSession(updated)
-    if (next.winner === null && isAi(cur.config, next.active)) pumpAi(seed)
+    if (next.winner === null && isAi(cur.config, next.active)) pumpAiRef.current(seed)
   }, [])
   stepAiRef.current = stepAi
 
@@ -135,12 +142,16 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       stepAiRef.current(seed)
     }, AI_MOVE_DELAY_MS)
   }, [])
+  pumpAiRef.current = pumpAi
 
   const start = useCallback((config: GameConfig, seed: number, minutes: number) => {
     const ms = minutes * 60000
     const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
+    logInfo('Game', `Started new game: code=${code}, seed=${seed}, players=${config.players.length}`, {
+      players: config.players.map((p, seat) => ({ seat, faction: p.faction, playerType: p.playerType })),
+    })
     if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
     const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, config }
     sessionRef.current = fresh
@@ -154,6 +165,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const resume = useCallback((next: Session) => {
     roundRef.current = next.state.round
     setError(null)
+    logInfo('Game', `Resumed game: code=${next.code}, round=${next.state.round}, phase=${next.state.phase}, active=${next.state.active}`)
     sessionRef.current = next
     setSession(next)
     // a restored game may come back in the middle of an AI seat's turn: pick the loop back up
@@ -164,11 +176,14 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     if (!session) return false
     const seed = session.seed
     const config = session.config
+    logInfo('Action', `Seat ${session.state.active} applying move: ${move.type}`, move)
     const result = applyMove(session.state, move, deriveSeed(seed, moveCount(session.state)))
     if (!result.ok) {
+      logWarn('Action', `Move rejected for seat ${session.state.active}: ${result.error}`, { move, error: result.error })
       setError(result.error)
       return false
     }
+    logInfo('Action', `Move applied successfully: ${move.type}`)
     const next = closeTurn(result.value, seed)
     const keep = undoable(session.state, next)
     setError(null)

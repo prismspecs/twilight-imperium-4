@@ -132,4 +132,25 @@ describe('the HUD', () => {
     expect(screen.getByTestId('panel-2')).toBeTruthy()
     expect(screen.getByTestId('vp-2').textContent).toBe('0 of 10')
   })
+
+  it('renders secret objectives in the side panel for a player', () => {
+    const s = withPlayer(toActionPhase(), 0, { secretObjectives: ['fwm'], scoredObjectives: ['fwm'] })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('secret-objectives-0')).toBeTruthy()
+    expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Fuel the War Machine')
+    expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Scored (1 VP)')
+  })
+
+  it('opens log panel and allows switching to debug log tab', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-log'))
+    expect(screen.getByTestId('log-panel')).toBeTruthy()
+    expect(screen.getByTestId('tab-game-log')).toBeTruthy()
+    expect(screen.getByTestId('tab-debug-log')).toBeTruthy()
+
+    // Switch to debug log tab
+    fireEvent.click(screen.getByTestId('tab-debug-log'))
+    expect(screen.getByTestId('debug-log-list')).toBeTruthy()
+    expect(screen.getByTestId('btn-clear-debug-log')).toBeTruthy()
+  })
 })

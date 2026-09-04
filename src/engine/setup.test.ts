@@ -42,6 +42,12 @@ describe('R2 setup', () => {
     expect(new Set(ids).size).toBe(ids.length)
     expect(g.nextUnitId).toBe(Math.max(...ids) + 1)
   })
+  it('deals 1 secret objective to each player and keeps the rest in secretObjectiveDeck', () => {
+    expect(g.players[0].secretObjectives).toHaveLength(1)
+    expect(g.players[1].secretObjectives).toHaveLength(1)
+    expect(g.players[0].secretObjectives[0]).not.toBe(g.players[1].secretObjectives[0])
+    expect(g.secretObjectiveDeck).toHaveLength(18)
+  })
 })
 
 describe('R8 trade posts', () => {

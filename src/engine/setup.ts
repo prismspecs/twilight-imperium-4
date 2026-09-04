@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
-import { STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
+import { SECRET_OBJECTIVES, STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
 import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32 } from './rng'
@@ -31,7 +31,7 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     seat, faction: cfg.faction, color: cfg.color, name: cfg.name, vp: 0,
     tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodityValue,
     techs: [...f.startingTechs], strategyCards: [], passed: false,
-    scoredObjectives: [], scoredMandates: [],
+    scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
     inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
@@ -87,9 +87,17 @@ export function shuffledObjectives(seed: number): string[] {
   return [...stage1, ...stage2]
 }
 
+const SECRET_OBJECTIVES_SALT = 94
+
+export function shuffledSecretObjectives(seed: number): string[] {
+  const rng = mulberry32(deriveSeed(seed, SECRET_OBJECTIVES_SALT))
+  return shuffleIds(SECRET_OBJECTIVES.map(o => o.id), rng)
+}
+
 export function createGame(config: GameConfig, seed: number): GameState {
   const counter = { nextUnitId: 1 }
   const order = shuffledObjectives(seed)
+  const secretDeck = shuffledSecretObjectives(seed)
   // Two players use the curated duel map; three to six generate a full galaxy from the tile catalogue.
   const defs: SystemDef[] = config.players.length <= 2
     ? SYSTEMS
@@ -118,14 +126,20 @@ export function createGame(config: GameConfig, seed: number): GameState {
   const orderSeats = seats.map((_, i) => (config.speaker + i) % config.players.length)
   const draft = config.players.length <= 3 ? [...orderSeats, ...orderSeats.slice().reverse()] : orderSeats
   const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
+  const players = config.players.map((cfg, seat) => {
+    const p = makePlayer(seat, cfg)
+    const initialSecret = secretDeck[seat]
+    return initialSecret ? { ...p, secretObjectives: [initialSecret] } : p
+  })
   const state: GameState = {
     version: 3, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft,
     publicObjectives: [order[0]],
     objectiveOrder: order,
+    secretObjectiveDeck: secretDeck.slice(config.players.length),
     mecatolCombatWinner: null,
-    players: config.players.map((cfg, seat) => makePlayer(seat, cfg)),
+    players,
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     posts, postAbilityUsed: { west: false, east: false },
     nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, winner: null,

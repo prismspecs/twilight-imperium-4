@@ -223,11 +223,42 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(play(withPlayer(s, 0, { scoredObjectives: ['more_ships'] }), 'imperial', { objectiveId: 'more_ships' }).ok).toBe(false)
     expect(value(play(holder('imperial'), 'imperial')).players[0].vp).toBe(0)          // no objective, no Mecatol Rex
   })
-  it('R6 Imperial secondary: a strategy token for 2 trade goods', () => {
+  it('R6 Imperial secondary: a strategy token draws 1 secret objective', () => {
     const played = value(play(holder('imperial'), 'imperial'))
+    const prevSecretCount = played.players[1].secretObjectives?.length ?? 0
     const answered = value(answer(played, 'imperial', true))
-    expect(answered.players[1]).toMatchObject({ tradeGoods: 2, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
-    expect(value(answer(played, 'imperial', false)).players[1].tradeGoods).toBe(0)
+    expect(answered.players[1].tokens).toMatchObject({ tactic: 3, fleet: 3, strategy: 1 })
+    expect(answered.players[1].secretObjectives).toHaveLength(prevSecretCount + 1)
+    expect(value(answer(played, 'imperial', false)).players[1].secretObjectives?.length ?? 0).toBe(prevSecretCount)
+  })
+  it('Imperial primary draws 1 secret objective if player does not control Mecatol Rex', () => {
+    const s = holder('imperial')
+    const prevSecrets = s.players[0].secretObjectives?.length ?? 0
+    const played = value(play(s, 'imperial'))
+    expect(played.players[0].vp).toBe(0)
+    expect(played.players[0].secretObjectives).toHaveLength(prevSecrets + 1)
+  })
+  it('Trade secondary is free (0 tokens) for players in freeSeats', () => {
+    const s = withCards(toActionPhase(), 0, ['trade'])
+    const played = value(play(s, 'trade', { shareWith: [1] }))
+    expect(played.pendingSecondary?.freeSeats).toEqual([1])
+    const answered = value(answer(played, 'trade', true))
+    expect(answered.players[1].tokens.strategy).toBe(2) // 0 tokens spent!
+  })
+  it('Technology secondary allows card holder to research additional tech for 1 strategy token + 4 resources', () => {
+    const s = withCards(toActionPhase(), 0, ['technology'])
+    const played = value(play(s, 'technology', { techId: 'sarween_tools' }))
+    // Queue contains player 1 then player 0 (card holder)
+    expect(played.pendingSecondary?.queue).toEqual([1, 0])
+    // Player 1 declines
+    const after1 = value(answer(played, 'technology', false))
+    expect(after1.pendingSecondary?.queue).toEqual([0])
+    expect(after1.active).toBe(0)
+    // Player 0 answers with 4 resources (exhausting planets)
+    const after0 = value(answer(after1, 'technology', true, { techId: 'antimass_deflectors', planets: ['000'] }))
+    expect(after0.pendingSecondary).toBeNull()
+    expect(after0.players[0].techs).toContain('antimass_deflectors')
+    expect(after0.players[0].tokens.strategy).toBe(1) // 1 token spent
   })
   it('R3.2: with three players every other seat answers the secondary in order before the holder resumes', () => {
     // a minimal third seat bolted onto the two-player map so the strategic plumbing can be exercised at N=3
