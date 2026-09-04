@@ -18,13 +18,16 @@
 
 ## Architecture sequence
 
-**Progress (green on main):** Step 1 largely complete — seats/players are N-player arrays, snake draft +
-initiative generalize, the secondary window queues every other seat in order, and Diplomacy primary places a
-token for every other seat. Nearly all of the 2-player-only shapes are gone from the engine; Trade primary
-("choose any number") and the objectives are the main N-player gaps left. Remaining 2-player-only code lives
-mostly in `src/ai/` (fog view is N-player already but the bots/score still assume a single foe) and `src/ui/`.
+**Progress (green on main):** Step 1 nearly complete — all engine N-player foundations are in place:
+seats/players arrays, snake draft + initiative, status/victory phases, the secondary window queues
+every other seat in order, Diplomacy primary places a token for every other seat, and Trade primary
+accepts `shareWith: Seat[]` to let the player choose which others replenish. Nearly all of the
+2-player-only shapes are gone from the engine. The Trade secondary (single opponent) and the
+objectives (most are 2-player opponent references) remain the main N-player gaps. Remaining
+2-player-only code lives mostly in `src/ai/` (fog/score still assume a single foe) and `src/ui/` (some
+2-player phrasing).
 
-1. Generalize engine from 2 to N players (`types.ts` and all consumers). ✅ core done; Trade primary + objectives still duplicate-shaped.
+1. Generalize engine from 2 to N players (`types.ts` and all consumers). ✅ core done; Trade secondary + objectives still duplicate-shaped.
 2. Full data import (factions, techs/upgrades, objectives, action cards, agendas, promissory notes, 8 strategy cards, map tiles/planets, anomalies, wormholes).
 3. Full setup + draft (map gen, faction/colour pick, speaker, starting units/techs, decks, deals).
 4. Full round structure: strategy (8 cards, initiative), action (tactical/strategic/component/pass), agenda (new), status.
