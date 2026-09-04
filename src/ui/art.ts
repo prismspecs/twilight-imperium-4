@@ -216,17 +216,42 @@ export function planetArtUrl(planetId: string): string | null {
   return file ? `/assets/tiles/${file}` : null
 }
 
+/** The same six axial hex directions the galaxy generator lays tiles out with (src/engine/galaxy.ts). */
+const HEX_DIRECTIONS: readonly (readonly [number, number])[] = [
+  [1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1],
+]
+
+/** Every axial cell at exactly `ring` steps from the origin, walked corner to corner - the standard hex-ring
+ * traversal (redblobgames.com/grids/hexagons/#rings): start at `ring` steps in direction 4, then walk each
+ * of the six sides for `ring` steps. Ring 0 is just the origin itself. */
+function hexRing(ring: number): [number, number][] {
+  if (ring === 0) return [[0, 0]]
+  const cells: [number, number][] = []
+  let [q, r] = [HEX_DIRECTIONS[4][0] * ring, HEX_DIRECTIONS[4][1] * ring]
+  for (const [dq, dr] of HEX_DIRECTIONS) {
+    for (let step = 0; step < ring; step++) {
+      cells.push([q, r])
+      q += dq; r += dr
+    }
+  }
+  return cells
+}
+
 /**
- * The FFG catalog number a tile prints in a corner of the physical card, AsyncTI4-style (see
- * https://github.com/AsyncTI4/ti4_web_new): a quiet reference number, not the game data. `System.tile`
- * carries it two ways depending on where the system came from - the fixed duel map's composite strings
- * (`'06_000'`, `'35_Bereg'`) already lead with the zero-padded catalog number, and the generated galaxy's
- * plain numbers (`'6'`, `'18'`) are not padded - so this takes whatever comes before the first `_` (the
- * whole string when there is none) and pads it to two digits. Returns null when the system carries no tile.
+ * The map-position number a tile shows in a corner, AsyncTI4-style (see the user-supplied reference:
+ * https://github.com/AsyncTI4/ti4_web_new): Mecatol Rex at the centre is "000", the six tiles touching it
+ * are "101"-"106", the next ring out is "201"-"212", and so on - ring number times 100 plus a 1-indexed
+ * position within that ring. This is a map-position label, not the physical FFG catalog tile number; it
+ * only depends on the system's axial coordinates, so it works the same for the generated galaxy and the
+ * fixed duel map (which is exactly a radius-1 hex around Mecatol). Returns null off that hex entirely.
  */
-export function tileNumberLabel(tileFile: string | undefined): string | null {
-  if (!tileFile) return null
-  return tileFile.split('_')[0].padStart(2, '0')
+export function tileNumberLabel(q: number | undefined, r: number | undefined): string | null {
+  if (q === undefined || r === undefined) return null
+  const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r))
+  if (ring === 0) return '000'
+  const position = hexRing(ring).findIndex(([hq, hr]) => hq === q && hr === r)
+  if (position < 0) return null
+  return `${ring}${String(position + 1).padStart(2, '0')}`
 }
 export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
   return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`

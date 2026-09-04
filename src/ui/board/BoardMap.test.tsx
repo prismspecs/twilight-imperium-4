@@ -19,15 +19,16 @@ describe('the board', () => {
     expect(screen.getByTestId('planet-art-mecatol-rex').getAttribute('src')).toContain('planet_Mecatol.png')
   })
 
-  it('shows the catalog tile number in a corner, AsyncTI4-style, for the fixed map\'s composite tile strings', () => {
+  it('shows the AsyncTI4-style ring-position number in a corner: Mecatol is 000, its ring is the 100s', () => {
     render(<BoardMap state={state} />)
-    // 'tile' is a composite 'NN_name' string on the fixed map; the leading token is the real catalog number
-    expect(screen.getByTestId('tile-number-home-n').textContent).toBe('06')
-    expect(screen.getByTestId('tile-number-bereg').textContent).toBe('35')
-    expect(screen.getByTestId('tile-number-home-s').textContent).toBe('10')
-    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('18')
-    // quann/starpoint/sakulag share the plain, unnumbered backing art
-    expect(screen.getByTestId('tile-number-quann').textContent).toBe('00')
+    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('000')
+    // the duel map is exactly a radius-1 hex around Mecatol, so every other system is in the 100s
+    expect(screen.getByTestId('tile-number-starpoint').textContent).toBe('101')
+    expect(screen.getByTestId('tile-number-home-s').textContent).toBe('102')
+    expect(screen.getByTestId('tile-number-quann').textContent).toBe('103')
+    expect(screen.getByTestId('tile-number-bereg').textContent).toBe('104')
+    expect(screen.getByTestId('tile-number-home-n').textContent).toBe('105')
+    expect(screen.getByTestId('tile-number-sakulag').textContent).toBe('106')
   })
 
   it('stacks the units of a system with a count badge', () => {
@@ -152,9 +153,11 @@ describe('the board', () => {
     expect(screen.getByTestId('tile-home-2')).toBeTruthy()
     expect(screen.queryByTestId('post-west')).toBeNull()
     expect(screen.queryByTestId('post-east')).toBeNull()
-    // the galaxy generator's `tile` is a plain, unpadded catalog number ('18', '1'), so the label pads it
-    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('18')
-    expect(screen.getByTestId('tile-number-home-1').textContent).toBe('01')
+    // ring-position numbers: Mecatol is always the origin, home-1 sits on this 3p galaxy's radius-3 rim
+    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('000')
+    expect(screen.getByTestId('tile-number-home-1').textContent).toBe('313')
+    // the galaxy's tile art already prints the name/resources/influence, so no separate nameplate is drawn
+    expect(screen.queryByTestId('plate-mecatol-rex')).toBeNull()
   })
 
   it('renders delta wormhole and anomaly tiles with authentic art and non-overlapping spots', () => {

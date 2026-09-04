@@ -41,14 +41,20 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
         <img className="planet" src={art} alt={planet.name} data-testid={`planet-art-${planet.id}`}
           style={{ left: spot.art.left, top: spot.art.top, width: spot.art.width, height: spot.art.height }} />
       ) : null}
-      <span className={`plate ${planetTrait(planet.id, planet.trait)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}`}
-        data-testid={`plate-${planet.id}`} style={plateStyle}>
-        <span className="vals">
-          <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
-          <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+      {/* The generated galaxy's tile art is the AsyncTI4 catalog face: name, resource hexagon and
+       * influence shield are already printed on it (public/assets/tiles/NN_Name.png), so this nameplate
+       * would only duplicate static art. The fixed duel map still renders a plain background
+       * (00_blue.png, see tileUrl) with the planet composed on top, so it still needs its own nameplate. */}
+      {isGalaxy ? null : (
+        <span className={`plate ${planetTrait(planet.id, planet.trait)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}`}
+          data-testid={`plate-${planet.id}`} style={plateStyle}>
+          <span className="vals">
+            <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
+            <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+          </span>
+          <span className="nm">{planet.name}<i className="em" /></span>
         </span>
-        <span className="nm">{planet.name}<i className="em" /></span>
-      </span>
+      )}
       <span className="row-ground" style={{ left: centre.left, top: centre.top }} data-testid={`ground-row-${planet.id}`}>
         {planet.owner !== null ? (
           <img className="ctl" src={tokenUrl(state.players[planet.owner].faction, 'control')} alt="control"
@@ -129,10 +135,10 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
     >
       <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
-      {tileNumberLabel(system.tile) ? (
+      {tileNumberLabel(system.q, system.r) ? (
         <span className="tile-number" data-testid={`tile-number-${system.id}`}
           style={{ left: TILE_NUMBER_SPOT.left, top: TILE_NUMBER_SPOT.top }}>
-          {tileNumberLabel(system.tile)}
+          {tileNumberLabel(system.q, system.r)}
         </span>
       ) : null}
       {system.planets.map((planet, i) => (
