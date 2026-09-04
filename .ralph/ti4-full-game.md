@@ -295,3 +295,18 @@ Next iteration options:
 (c) N-player UI (setup screen + hex board) — large but makes the slice human-playable
 
 Faction abilities are the clearest unblocked mechanics path; card content needs the base-list sourcing first.
+
+## Iteration 11 — planet trait/tech-skip in state; base objective list sourced (commit 1144c52)
+
+Delivered this iteration:
+- Planet gains trait (industrial/hazardous/cultural) + techSkip colour, populated on the duel map and
+  generated galaxies. Foundation for real objectives + the tech-skip mechanic.
+- Sourced + verified the base-game public objective list (10 Stage I + 10 Stage II; recorded in ledger).
+  The objectives data is base-first ordered, so base = first 10 of each stage.
+
+Progress: N-player engine plays; factions data complete; map/galaxy complete; combat modifiers wired;
+planet traits/tech-skips in state. 483 tests.
+
+Next iteration: import the base public objectives (Stage I + Stage II) as the full-game objective deck with
+fulfils mechanics + the Stage-I-then-Stage-II reveal, replacing duel objectives for N-player games. Needs
+spend-tracking (influence/trade-goods/tokens) which the engine partially has.

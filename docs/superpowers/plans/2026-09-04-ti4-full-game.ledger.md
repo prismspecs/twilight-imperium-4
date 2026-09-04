@@ -243,3 +243,20 @@ the first 10 of each (names match the known base set), but action cards/agendas 
 To import base-only card content I need a verified base-card list (the Fandom wiki the user flagged, or
 AsyncTI4 set annotations). Until then, content that depends on it (Politics' action cards, the agenda
 phase, secrets, promissory notes) is blocked. Ruling to make: source the base card lists before importing.
+
+## Iteration 11 (Ralph iter 9) — planet trait/tech-skip in state; base objective list sourced (commit 1144c52, pushed)
+
+Added planet trait (industrial/hazardous/cultural) and tech-skip colour to the engine Planet, populated on
+the duel map (from the catalogue) and generated galaxies. Foundation for the real objectives and the
+tech-skip mechanic. Validated: every generated planet matches the catalogue. 483 tests.
+
+SOURCING RULING (objectives): the /tmp/ti4-rules objectives.json has Type (Stage 1/Stage 2/Secret) but no
+base/PoK label. Cross-referencing the Fandom wiki + twilightimperium.hu confirms the base game has exactly
+10 Stage I + 10 Stage II public objectives and 12 secret objectives, and the data is ordered base-first.
+Base public objectives (verified):
+- Stage I (1 VP): Corner the Market, Develop Weaponry, Diversify Research, Erect a Monument, Expand Borders,
+  Found Research Outposts, Intimidate Council, Lead From the Front, Negotiate Trade Routes, Sway the Council.
+- Stage II (2 VP): Centralize Galactic Trade, Conquer the Weak, Form Galactic Brain Trust, Found a Golden Age,
+  Galvanize the People, Manipulate Galactic Law, Master the Sciences, Revolutionize Warfare, Subdue the Galaxy,
+  Unify the Colonies.
+Action cards and agendas still lack a usable set marker in the data; source their base lists before import.
