@@ -1,7 +1,7 @@
 import { MECATOL_ID } from '../data/map'
 import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo } from './board'
+import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo, combatBonus } from './board'
 import { fleetPoolLimit, nonFighterShips } from './economy'
 import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
@@ -611,8 +611,8 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   if (wantAttacker && !canMunitions(state, ctx.attacker)) return { ok: false, error: 'Munitions Reserves is not available to the attacker' }
   if (wantDefender && !canMunitions(state, ctx.defender)) return { ok: false, error: 'Munitions Reserves is not available to the defender' }
   const salt = ctx.round * 4
-  const a = combatRolls(state, ctx, ctx.attacker, 0, wantAttacker, seed, salt + 10)
-  const d = combatRolls(state, ctx, ctx.defender, 0, wantDefender, seed, salt + 11)
+  const a = combatRolls(state, ctx, ctx.attacker, combatBonus(state, ctx.attacker), wantAttacker, seed, salt + 10)
+  const d = combatRolls(state, ctx, ctx.defender, combatBonus(state, ctx.defender), wantDefender, seed, salt + 11)
   let next = state
   if (wantAttacker) next = payMunitions(next, ctx.attacker)
   if (wantDefender) next = payMunitions(next, ctx.defender)

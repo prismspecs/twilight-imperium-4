@@ -1,5 +1,5 @@
 import { isShip, unitStats } from '../data/units'
-import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner } from './board'
+import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
 import { deriveSeed, mulberry32, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
 
@@ -220,9 +220,10 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
 function groundRolls(state: GameState, units: Unit[], owner: Owner, seed: number, salt: number): { rolls: DieRoll[]; hits: number } {
   const sOwner = statsOwner(state, owner)
   const rng = mulberry32(deriveSeed(seed, salt))
+  const bonus = combatBonus(state, owner)
   return rollGroup(rng, units, owner, type => {
     const stats = unitStats(type, sOwner)
-    return stats.combat === null ? null : { value: stats.combat, dice: stats.combatDice }
+    return stats.combat === null ? null : { value: stats.combat - bonus, dice: stats.combatDice }
   }, false)
 }
 

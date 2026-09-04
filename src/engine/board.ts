@@ -1,3 +1,4 @@
+import { FACTIONS } from '../data/factions'
 import { isShip, type StatsOwner } from '../data/units'
 import { capacity, fleetPoolLimit, nonFighterShips } from './economy'
 import { deriveSeed, mulberry32, rollDice, type Rng } from './rng'
@@ -12,6 +13,21 @@ export function homeSystemOf(state: GameState, seat: Seat): string {
   const home = Object.values(state.systems).find(s => s.home === seat)
   if (!home) throw new Error(`no home system for seat ${String(seat)}`)
   return home.id
+}
+
+/**
+ * Always-on faction ability modifiers to a unit's combat rolls. Applies to space-combat and ground-combat
+ * rolls only — not bombardment, anti-fighter barrage or space cannon, which are ability rolls, not combat
+ * rolls (LRR 66). Sardakk N'orr's Unrelenting is +1, Jol-Nar's Fragile is -1.
+ */
+const ABILITY_COMBAT_BONUS: Readonly<Record<string, number>> = { unrelenting: 1, fragile: -1 }
+
+/** The total always-on combat-roll modifier for a seat's units (added to each die result). */
+export function combatBonus(state: GameState, owner: Owner): number {
+  if (owner === 'guardian') return 0
+  let bonus = 0
+  for (const ability of FACTIONS[state.players[owner].faction].abilities) bonus += ABILITY_COMBAT_BONUS[ability] ?? 0
+  return bonus
 }
 
 export function hasTech(state: GameState, owner: Owner, tech: string): boolean {
