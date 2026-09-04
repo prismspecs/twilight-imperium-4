@@ -260,3 +260,26 @@ Base public objectives (verified):
   Galvanize the People, Manipulate Galactic Law, Master the Sciences, Revolutionize Warfare, Subdue the Galaxy,
   Unify the Colonies.
 Action cards and agendas still lack a usable set marker in the data; source their base lists before import.
+
+## Iteration 12 (Ralph iter 10) — 20 base public objectives imported, fulfils evaluation, Stage I/II deck structure, spend trackers
+
+Replaced the custom 2-player duel objective deck with the authoritative 20 base TI4 public objectives (10 Stage I and 10 Stage II):
+- `src/data/objectives.ts`: defined `ObjectiveDef` with `id`, `name`, `stage: 'stage1' | 'stage2'`, `points: 1 | 2`, `text`, `short`. Exported all 10 Stage I objectives (1 VP) and 10 Stage II objectives (2 VP), unified under `PUBLIC_OBJECTIVES`. Preserved legacy mandate definitions for transitional safety.
+- `src/engine/types.ts` and `src/ai/fog.ts`: added `influenceSpentThisRound`, `tradeGoodsSpentThisRound`, and `tokensSpentThisRound` to `Player` and `PublicPlayer`.
+- Engine spend tracking:
+  - `startTactical`, `spendStrategyTokens`, and `shipyard` increment `tokensSpentThisRound`.
+  - `payCost` cleanly separates resources paid from trade goods paid, incrementing `resourcesSpentThisRound` and `tradeGoodsSpentThisRound`.
+  - `payMunitions` tracks trade goods spent in combat.
+  - `leadership` tracks influence and trade goods spent on command tokens.
+  - `finishStatusPhase` resets all 4 round-spend counters to 0.
+- Public objective deck setup: `shuffledObjectives(seed)` shuffles 5 Stage I objectives on top of 5 Stage II objectives (10 cards total), drawn progressively across rounds.
+- Objective scoring:
+  - `fulfils()` evaluates all 20 base objectives (planet traits, unit upgrades, tech colors, non-home systems, tech specialties, ships adjacent to Mecatol, spend trackers, home planet capture).
+  - `scoreObjective()` awards `def.points` (1 VP for Stage I, 2 VP for Stage II).
+  - `ai/score.ts` evaluates all 20 base objectives in `objectiveFulfilled` and prioritizes `bombard` over `land` during invasion to soften defenders.
+- Tests & verification:
+  - `src/data/objectives.test.ts`: verified all 20 base objective definitions and points.
+  - `src/engine/objectives.test.ts`: 26 comprehensive unit tests verifying all 20 base objectives, 1 vs 2 VP scoring, 5 Stage I + 5 Stage II deck structure, and Mecatol control.
+  - Updated `production.test.ts`, `Strategic.test.tsx`, `hotseat.e2e.test.tsx`, and `fullGame.test.ts` (retuned SEEDS with 203 to cover bombard and ground combat).
+  - 51 test files passing (504 tests total), 0 type errors, 0 lint errors.
+

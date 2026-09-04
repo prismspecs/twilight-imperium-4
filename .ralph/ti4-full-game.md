@@ -307,6 +307,15 @@ Delivered this iteration:
 Progress: N-player engine plays; factions data complete; map/galaxy complete; combat modifiers wired;
 planet traits/tech-skips in state. 483 tests.
 
-Next iteration: import the base public objectives (Stage I + Stage II) as the full-game objective deck with
-fulfils mechanics + the Stage-I-then-Stage-II reveal, replacing duel objectives for N-player games. Needs
-spend-tracking (influence/trade-goods/tokens) which the engine partially has.
+## Iteration 12 — 20 base public objectives imported; stage I/II deck & spend tracking wired
+
+Delivered this iteration:
+- Imported all 20 base TI4 public objectives (10 Stage I worth 1 VP, 10 Stage II worth 2 VP) in `src/data/objectives.ts`.
+- Player and PublicPlayer state tracking: `resourcesSpentThisRound`, `influenceSpentThisRound`, `tradeGoodsSpentThisRound`, `tokensSpentThisRound`.
+- Per-round spend trackers wired into `startTactical`, `spendStrategyTokens`, `payCost`, `payMunitions`, `shipyard`, and `leadership`; reset on status phase.
+- Objective deck setup: 5 Stage I cards placed on top of 5 Stage II cards from seed.
+- `fulfils()` and `scoreObjective()` evaluate all 20 base objectives and award respective VP.
+- AI bot scoring in `ai/score.ts` updated for all 20 objectives and invasion bombardment ordering.
+- 504 passing tests across 51 test suites.
+
+Next iteration: N-player board/UI (render hex galaxy board and multi-player HUD), or 8 standard strategy cards (Politics / Construction).
