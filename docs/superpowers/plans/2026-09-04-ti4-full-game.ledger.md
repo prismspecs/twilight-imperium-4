@@ -189,3 +189,18 @@ retreatTargets). The active 2-player map behaves identically — all 472 tests p
 Ruling: adjacency belongs to game state, not a module constant, so a generated galaxy and the fixed flower
 share the same movement/combat code. systemDef()/homeSystemId()/TRADE_POSTS still read the static map; those
 are the remaining couplings to lift when createGame is wired to generateGalaxy (next).
+
+## Iteration 8 (Ralph iter 6) — planetIndex decoupling + createGame galaxy wiring (commits 2e4a5ec, 18c3c95, pushed)
+
+Ruling — starting-unit placement: FactionDef.startingUnits name the home planet by INDEX into the faction
+home system planets (catalogue home-tile order) rather than an absolute planet id. createGame resolves the
+index against the active map, so the same faction layout works on the fixed duel map (legacy ids 000,
+arc-prime, wren-terra) and on a generated galaxy (canonical tiles.json ids 0.0.0, arcprime, wrenterra). This
+avoided migrating ~87 references to the duel planet ids (engine tests + UI pixel layouts in art.ts/layout.ts).
+The duel letnev planet order [arc-prime, wren-terra] matches the catalogue [arcprime, wrenterra], so placement
+is byte-identical (472 tests stayed green).
+
+createGame now chooses its map by player count: 2 players keep the duel flower; 3-6 generate a galaxy from
+the catalogue. New setup tests cover 34-tile 3p and 37-tile 6p construction, per-faction starting units on
+canonical home planets, and determinism. 475 tests total. A 3-6 player game now CONSTRUCTS; playing one
+through end-to-end (full round loop, N-player bots) is the next verification.

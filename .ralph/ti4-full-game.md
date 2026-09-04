@@ -231,3 +231,19 @@ The full-game features (action cards/agendas/promissory/secrets/Politics/Constru
 full-game content: 8 strategy cards (add Politics/Construction), action cards, agenda phase, secrets.
 
 ---
+
+## Iteration 8 — planetIndex decoupling + createGame galaxy wiring (commits 2e4a5ec, 18c3c95)
+
+Delivered this iteration:
+- Refactored FactionDef.startingUnits to use planetIndex (index into home-system planets) instead of
+  absolute planet ids — decouples factions from the map id scheme without migrating ~87 duel-id references
+- createGame now picks its map by player count: 2 players keep the duel flower; 3-6 generate a galaxy
+  via generateGalaxy, placing each faction's starting units on its canonical home planets
+- New setup tests: 34-tile 3p / 37-tile 6p construction, per-faction units on home planets, determinism
+  (475 tests total)
+
+A 3-6 player game now CONSTRUCTS end-to-end. The duel (2p) is unchanged.
+
+Next iteration: verify a 3-player game can be PLAYED through a full round (strategy draft → action phase
+→ status) with N-player bots, not just constructed. Then minimal N-player board/UI. Then full-game content
+(action cards, agendas, 8 strategy cards, secrets, promissory notes).
