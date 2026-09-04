@@ -28,6 +28,7 @@ function savedGame(code: string, north: string, south: string) {
 describe('the setup screen', () => {
   it('offers seats with the factions and the eight TI colours', () => {
     renderApp()
+    fireEvent.click(screen.getByTestId('player-count-3'))
     expect(screen.getByTestId('seat-faction-0').textContent).toBe('L1Z1X Mindnet')
     expect(screen.getByTestId('seat-faction-1').textContent).toBe('Barony of Letnev')
     expect(screen.getByTestId('seat-position-0').textContent).toBe('East')
@@ -44,6 +45,7 @@ describe('the setup screen', () => {
 
   it('R2: keeps the colours distinct across seats', () => {
     renderApp()
+    fireEvent.click(screen.getByTestId('player-count-3'))
     expect(screen.getByTestId('colour-1-blue').hasAttribute('disabled')).toBe(true)
     expect(screen.getByTestId('colour-1-green').hasAttribute('disabled')).toBe(true)
     fireEvent.click(screen.getByTestId('colour-1-yellow'))

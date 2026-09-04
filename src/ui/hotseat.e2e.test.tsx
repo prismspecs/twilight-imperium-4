@@ -30,6 +30,7 @@ describe('a scripted hot-seat game', () => {
     render(<App ticking={false} />)
 
     // setup (seat 0 is the human by default; seats 1 and 2 default to AI, so switch them back for this hot-seat script)
+    click('player-count-3')
     fireEvent.change(screen.getByTestId('seat-name-0'), { target: { value: 'Despot' } })
     fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
     fireEvent.change(screen.getByTestId('seat-name-2'), { target: { value: 'Soran' } })

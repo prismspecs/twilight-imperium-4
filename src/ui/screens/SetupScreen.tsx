@@ -108,7 +108,7 @@ export function SetupScreen() {
   const fit = useFitScale()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
-  const [playerCount, setPlayerCount] = useState<number>(3)
+  const [playerCount, setPlayerCount] = useState<number>(6)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
   const [factions, setFactions] = useState<FactionId[]>(DEFAULT_FACTIONS)
   const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
