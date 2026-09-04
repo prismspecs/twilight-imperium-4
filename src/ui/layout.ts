@@ -258,6 +258,14 @@ export function pointInsideHex(x: number, y: number): boolean {
   return inside
 }
 
+/**
+ * The AsyncTI4-style catalog-number label: a quiet reference number low on the tile's left side, clear of
+ * the activation token above it (ends y126) and of the wide-system space boxes and plates that start at
+ * x61 or further right, so it never collides with a fleet, plate or wormhole glyph.
+ */
+export const TILE_NUMBER_SPOT: Point = { left: 32, top: 130 }
+export const TILE_NUMBER_SIZE = { width: 20, height: 18 }
+
 /** The activation command token, on the wide left flank and above everything else on the tile. */
 export const ACTIVATION_SPOT: Point = { left: 20, top: 92 }
 export const ACTIVATION_SIZE = 34

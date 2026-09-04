@@ -1,8 +1,8 @@
 import { useRef } from 'react'
-import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileUrl, tokenUrl } from '../art'
+import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileNumberLabel, tileUrl, tokenUrl } from '../art'
 import {
   ACTIVATION_SIZE, ACTIVATION_SPOT, GALAXY_ORIGIN, PLATE_VALS_W, SIGIL_SIZE, SIGIL_SPOT,
-  TILE_H, TILE_POS, TILE_W, WORMHOLE_SIZE, fleetScale,
+  TILE_H, TILE_NUMBER_SPOT, TILE_POS, TILE_W, WORMHOLE_SIZE, fleetScale,
   getPlanetCentre, getPlanetSpot, getSpaceBox, getWormholeSpot, hexToPixel,
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
@@ -129,6 +129,12 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
     >
       <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
+      {tileNumberLabel(system.tile) ? (
+        <span className="tile-number" data-testid={`tile-number-${system.id}`}
+          style={{ left: TILE_NUMBER_SPOT.left, top: TILE_NUMBER_SPOT.top }}>
+          {tileNumberLabel(system.tile)}
+        </span>
+      ) : null}
       {system.planets.map((planet, i) => (
         <PlanetMarkers key={planet.id} state={state} planet={planet} index={i} count={system.planets.length} isGalaxy={isGalaxy} />
       ))}

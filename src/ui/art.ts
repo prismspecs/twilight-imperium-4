@@ -215,6 +215,19 @@ export function planetArtUrl(planetId: string): string | null {
   const file = PLANET_FILE[planetId]
   return file ? `/assets/tiles/${file}` : null
 }
+
+/**
+ * The FFG catalog number a tile prints in a corner of the physical card, AsyncTI4-style (see
+ * https://github.com/AsyncTI4/ti4_web_new): a quiet reference number, not the game data. `System.tile`
+ * carries it two ways depending on where the system came from - the fixed duel map's composite strings
+ * (`'06_000'`, `'35_Bereg'`) already lead with the zero-padded catalog number, and the generated galaxy's
+ * plain numbers (`'6'`, `'18'`) are not padded - so this takes whatever comes before the first `_` (the
+ * whole string when there is none) and pads it to two digits. Returns null when the system carries no tile.
+ */
+export function tileNumberLabel(tileFile: string | undefined): string | null {
+  if (!tileFile) return null
+  return tileFile.split('_')[0].padStart(2, '0')
+}
 export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
   return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`
 }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { SYSTEMS } from '../data/map'
 import {
   ACTIVATION_OVERLAP, ACTIVATION_SIZE, ACTIVATION_SPOT, GROUND_ROW, PLANET_CENTRE, PLANET_SPOTS, PLATE_SIZE, SIGIL_SIZE,
-  SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS, boxInsideHex, discInsideHex,
-  fleetCapacity, fleetScale, plateBox, pointInsideHex,
+  SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_NUMBER_SIZE, TILE_NUMBER_SPOT, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS,
+  boxInsideHex, discInsideHex, fleetCapacity, fleetScale, plateBox, pointInsideHex,
 } from './layout'
 
 /** The drawn hexagon, written out again here so the test checks the numbers, not the source's own helper. */
@@ -36,6 +36,17 @@ describe('every overlay sits inside the drawn hexagon', () => {
   it('holds the activation token and the faction emblem', () => {
     expect(boxInsideHex(ACTIVATION_SPOT.left, ACTIVATION_SPOT.top, ACTIVATION_SIZE, ACTIVATION_SIZE)).toBe(true)
     expect(boxInsideHex(SIGIL_SPOT.left, SIGIL_SPOT.top, SIGIL_SIZE, SIGIL_SIZE)).toBe(true)
+  })
+  it('holds the catalog tile-number label, clear of the activation token, every space box and plate', () => {
+    const numberBox = { left: TILE_NUMBER_SPOT.left, top: TILE_NUMBER_SPOT.top, ...TILE_NUMBER_SIZE }
+    expect(boxInsideHex(numberBox.left, numberBox.top, numberBox.width, numberBox.height)).toBe(true)
+    expect(overlaps(numberBox, { left: ACTIVATION_SPOT.left, top: ACTIVATION_SPOT.top, width: ACTIVATION_SIZE, height: ACTIVATION_SIZE })).toBe(false)
+    for (const def of SYSTEMS) {
+      expect(overlaps(numberBox, SPACE_BOX[def.id]), `${def.id} space box`).toBe(false)
+      for (const planet of def.planets) {
+        expect(overlaps(numberBox, plateBox(planet.id)), `${planet.id} plate`).toBe(false)
+      }
+    }
   })
   it('holds every wormhole glyph', () => {
     for (const [systemId, spot] of Object.entries(WORMHOLE_SPOTS)) {

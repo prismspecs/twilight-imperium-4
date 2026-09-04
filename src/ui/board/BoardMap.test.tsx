@@ -19,6 +19,17 @@ describe('the board', () => {
     expect(screen.getByTestId('planet-art-mecatol-rex').getAttribute('src')).toContain('planet_Mecatol.png')
   })
 
+  it('shows the catalog tile number in a corner, AsyncTI4-style, for the fixed map\'s composite tile strings', () => {
+    render(<BoardMap state={state} />)
+    // 'tile' is a composite 'NN_name' string on the fixed map; the leading token is the real catalog number
+    expect(screen.getByTestId('tile-number-home-n').textContent).toBe('06')
+    expect(screen.getByTestId('tile-number-bereg').textContent).toBe('35')
+    expect(screen.getByTestId('tile-number-home-s').textContent).toBe('10')
+    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('18')
+    // quann/starpoint/sakulag share the plain, unnumbered backing art
+    expect(screen.getByTestId('tile-number-quann').textContent).toBe('00')
+  })
+
   it('stacks the units of a system with a count badge', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('stack-home-n-0-fighter').textContent).toBe('3')
@@ -141,6 +152,9 @@ describe('the board', () => {
     expect(screen.getByTestId('tile-home-2')).toBeTruthy()
     expect(screen.queryByTestId('post-west')).toBeNull()
     expect(screen.queryByTestId('post-east')).toBeNull()
+    // the galaxy generator's `tile` is a plain, unpadded catalog number ('18', '1'), so the label pads it
+    expect(screen.getByTestId('tile-number-mecatol').textContent).toBe('18')
+    expect(screen.getByTestId('tile-number-home-1').textContent).toBe('01')
   })
 
   it('renders delta wormhole and anomaly tiles with authentic art and non-overlapping spots', () => {

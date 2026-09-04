@@ -1257,6 +1257,21 @@ button { font-family: inherit; }
 .wh { position: absolute; }
 .chev { position: absolute; opacity: 0.9; }
 
+/* Catalog tile number: a quiet reference label, plainly less important than the plate or activation token */
+.tile-number {
+  position: absolute;
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: var(--weight-title);
+  line-height: 18px;
+  letter-spacing: 0.3px;
+  color: rgba(226, 232, 240, 0.45);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  pointer-events: none;
+  z-index: 1;
+  user-select: none;
+}
+
 /* Activation tokens */
 .tile .acts {
   position: absolute;
