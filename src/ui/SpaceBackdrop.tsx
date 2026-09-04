@@ -3,8 +3,9 @@ import { planetArtUrl } from './art'
 /**
  * The deep space behind every screen, the lobby's backdrop carried onto the board: a starfield, nebula
  * veils, two galaxies and a planet limb, plus two real planet renders for colour. It is scenery, never
- * information, so everything in it is held down in opacity. `dim` pulls the middle down further, which is
- * what the board wants behind it; the lobby and the end screen keep the brighter sky.
+ * information, so everything in it is held down in opacity. `dim` pulls the middle down further; the
+ * board and the lobby both want that calmer sky behind their panels, and only the game-over screen,
+ * which has nothing else on top of it, keeps the brighter version.
  */
 export function SpaceBackdrop({ dim = false }: { dim?: boolean } = {}) {
   return (
