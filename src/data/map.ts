@@ -4,7 +4,7 @@ export interface PlanetDef { id: string; name: string; resources: number; influe
 export interface SystemDef {
   id: string; name: string; tile: string
   planets: PlanetDef[]
-  wormhole: 'alpha' | 'beta' | null
+  wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]
   home: Seat | null
 }
