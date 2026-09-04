@@ -103,6 +103,19 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
   })
 
+  it('R3.2: a secondary with no strategy token to spend says so instead of a mute disabled button', () => {
+    const noTokens = withPlayer(withCards(withCards(toActionPhase(), 0, ['diplomacy']), 1, []), 1, { tokens: { tactic: 3, fleet: 3, strategy: 0 } })
+    renderWithSession(noTokens, <BoardScreen />)
+    playCard('diplomacy')
+    fireEvent.click(screen.getAllByTestId(/^system-pick-/)[0])
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    // seat 1 holds the secondary window now, and has no strategy token to pay its cost
+    expect(screen.getByTestId('secondary-unavailable').textContent).toContain('no strategy token')
+    expect(screen.getByTestId('btn-secondary-accept').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('btn-secondary-decline'))
+    expect(screen.queryByTestId('secondary-panel')).toBeNull()
+  })
+
   it('R7: the Imperial primary scores a fulfilled public objective', () => {
     const s = {
       ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { resourcesSpentThisRound: 8 }),

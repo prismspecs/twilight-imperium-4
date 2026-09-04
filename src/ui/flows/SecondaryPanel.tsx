@@ -64,6 +64,24 @@ export function SecondaryPanel() {
   const tokenTarget = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
   const tokensPending = card === 'leadership' && sheet.tactic + sheet.fleet + sheet.strategy !== tokenTarget
   const cannotAcceptLeadership = card === 'leadership' && gained < 1
+  // R3.2 / CLAUDE.md: when there is nothing to spend, the enumerator only offers the decline, and the panel
+  // has to say why out loud rather than presenting a mute greyed-out accept. Each reason names the input.
+  // A missing strategy token is the most common reason and applies to every card alike, so it is checked
+  // first; only when tokens are not the problem do the card-specific dead ends below get a look-in.
+  const tokenCost = secondaryTokenCost(card, isFree)
+  const unavailableReason = offer.accept === null && player.tokens.strategy < tokenCost
+    ? `You have no strategy token to spend (this secondary costs ${tokenCost}).`
+    : offer.accept === null
+      ? card === 'trade'
+        ? `You are already at your commodity limit (${player.commodities} of ${FACTIONS[player.faction].commodityValue}), so there is nothing to replenish.`
+        : card === 'leadership'
+          ? 'You have no influence to spend and no trade goods, so the secondary would hand out 0 command tokens.'
+          : card === 'diplomacy'
+            ? 'You have no exhausted planet to ready.'
+            : undefined
+      : card === 'leadership' && gained < 1
+        ? 'You have not spent any influence yet: spend 3 influence per command token gained, or trade goods 1 for 1.'
+        : undefined
   return (
     <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="secondary-panel">
       <div className="in">
@@ -82,6 +100,9 @@ export function SecondaryPanel() {
               onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
           </div>
         </div>
+        {unavailableReason ? (
+          <div className="sub err" role="alert" data-testid="secondary-unavailable">{unavailableReason}</div>
+        ) : null}
         {card === 'leadership' ? (
           <>
             <div className="sub" style={{ marginBottom: 6 }}>
