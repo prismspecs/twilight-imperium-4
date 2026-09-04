@@ -1,6 +1,7 @@
 import type { PostId } from '../data/posts'
 import { shipsThatCanReach } from '../engine/movement'
 import type {
+  FactionId,
   GameState,
   Phase,
   Player,
@@ -22,7 +23,7 @@ import type {
  */
 export interface PublicPlayer {
   seat: Seat
-  faction: 'l1z1x' | 'letnev'
+  faction: FactionId
   color: 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
   name: string
   vp: number

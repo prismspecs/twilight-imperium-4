@@ -36,6 +36,21 @@ export const UPGRADE_TECH: Partial<Record<UnitType, string>> = {
 const FLAGSHIPS: Record<FactionId, UnitStats> = {
   l1z1x: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 5, sustain: true }),
   letnev: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 3, sustain: true, bombardment: { value: 5, dice: 3 } }),
+  arborec: base({ cost: 8, combat: 7, combatDice: 2, move: 1, capacity: 5, sustain: true }),
+  saar: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 3, sustain: true, afb: { value: 6, dice: 4 } }),
+  muaat: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  hacan: base({ cost: 8, combat: 7, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  sol: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 12, sustain: true }),
+  creuss: base({ cost: 8, combat: 5, combatDice: 1, move: 1, capacity: 3, sustain: true }),
+  mentak: base({ cost: 8, combat: 7, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  naalu: base({ cost: 8, combat: 9, combatDice: 2, move: 1, capacity: 6, sustain: true }),
+  nekro: base({ cost: 8, combat: 9, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  sardakk: base({ cost: 8, combat: 6, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  jolnar: base({ cost: 8, combat: 6, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  winnu: base({ cost: 8, combat: 7, combatDice: 1, move: 1, capacity: 3, sustain: true }),
+  xxcha: base({ cost: 8, combat: 7, combatDice: 2, move: 1, capacity: 3, sustain: true, spaceCannon: { value: 5, dice: 3 } }),
+  yin: base({ cost: 8, combat: 9, combatDice: 2, move: 1, capacity: 3, sustain: true }),
+  yssaril: base({ cost: 8, combat: 5, combatDice: 2, move: 2, capacity: 3, sustain: true }),
 }
 
 const SUPER_DREADNOUGHT_I = base({ cost: 4, combat: 5, move: 1, capacity: 2, sustain: true, bombardment: { value: 5, dice: 1 } })

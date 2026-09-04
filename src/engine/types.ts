@@ -6,7 +6,9 @@ export type Result<T> = { ok: true; value: T } | { ok: false; error: string; int
 
 export type Seat = number  // 0..(playerCount-1); the full base game supports up to 6 players
 export type Owner = Seat | 'guardian'
-export type FactionId = 'l1z1x' | 'letnev'
+export type FactionId =
+  | 'arborec' | 'letnev' | 'saar' | 'muaat' | 'hacan' | 'sol' | 'creuss' | 'l1z1x'
+  | 'mentak' | 'naalu' | 'nekro' | 'sardakk' | 'jolnar' | 'winnu' | 'xxcha' | 'yin' | 'yssaril'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
 export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock'
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
