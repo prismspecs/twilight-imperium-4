@@ -173,12 +173,14 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const keep = undoable(session.state, next)
     setError(null)
     const handoff = handoffFor(config, session.state, next)
-    setSession({
+    const updated: Session = {
       ...session,
       state: next,
       history: keep ? [...session.history, session.state] : [],
       handoff,
-    })
+    }
+    sessionRef.current = updated
+    setSession(updated)
     // the AI is not burst: it plays each of its moves one at a time, a beat apart, so the game is watchable
     if (next.winner === null && isAi(config, next.active)) pumpAi(seed)
     return true

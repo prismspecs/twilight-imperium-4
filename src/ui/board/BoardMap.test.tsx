@@ -131,10 +131,35 @@ describe('the board', () => {
     expect(mecatol).toBeTruthy()
     expect(mecatol.style.left).toBe('522px')
     expect(mecatol.style.top).toBe('603px')
+    expect(screen.getByTestId('hex-mecatol').getAttribute('src')).toContain('18_MR.png')
+    expect(screen.queryByTestId('planet-art-mecatol-rex')).toBeNull()
     expect(screen.getByTestId('tile-home-0')).toBeTruthy()
     expect(screen.getByTestId('tile-home-1')).toBeTruthy()
+    expect(screen.getByTestId('hex-home-1').getAttribute('src')).toContain('01_Jord.png')
     expect(screen.getByTestId('tile-home-2')).toBeTruthy()
     expect(screen.queryByTestId('post-west')).toBeNull()
     expect(screen.queryByTestId('post-east')).toBeNull()
+  })
+
+  it('renders delta wormhole and anomaly tiles with authentic art and non-overlapping spots', () => {
+    const gCreuss = createGame({
+      players: [
+        { faction: 'creuss', color: 'blue', name: 'Ghosts' },
+        { faction: 'letnev', color: 'red', name: 'Barony' },
+        { faction: 'hacan', color: 'yellow', name: 'Emirates' },
+      ],
+      speaker: 0,
+    }, 42)
+    render(<BoardMap state={gCreuss} />)
+    const home0 = screen.getByTestId('tile-home-0')
+    expect(home0).toBeTruthy()
+    // Creuss Gate has a delta wormhole:
+    const wh = screen.getByTestId('wormhole-home-0')
+    expect(wh.getAttribute('src')).toContain('emoji_WHdelta.png')
+    // Sigil and wormhole spots must not collide on Creuss Gate
+    const sigil = screen.getByTestId('sigil-home-0')
+    expect(sigil).toBeTruthy()
+    expect(wh.style.left).toBe('36px')
+    expect(wh.style.top).toBe('40px')
   })
 })

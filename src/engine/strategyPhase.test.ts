@@ -66,4 +66,80 @@ describe('R3.1 strategy phase', () => {
     expect(s4.phase).toBe('action')
     expect(s4.draft).toEqual([])
   })
+
+  it('in a 6-player game, each seat drafts one card and the phase cleanly advances to action', () => {
+    const config6: GameConfig = {
+      players: [
+        { faction: 'sol', color: 'blue', name: 'P0' },
+        { faction: 'letnev', color: 'red', name: 'P1' },
+        { faction: 'hacan', color: 'yellow', name: 'P2' },
+        { faction: 'jolnar', color: 'purple', name: 'P3' },
+        { faction: 'l1z1x', color: 'green', name: 'P4' },
+        { faction: 'xxcha', color: 'orange', name: 'P5' },
+      ],
+      speaker: 0,
+    }
+    const g = createGame(config6, 42)
+    expect(g.draft).toEqual([0, 1, 2, 3, 4, 5])
+    let state = g
+    for (let seat = 0; seat < 6; seat++) {
+      expect(state.phase).toBe('strategy')
+      expect(state.active).toBe(seat)
+      const card = state.strategyPool[0].id
+      state = pick(state, card)
+    }
+    expect(state.phase).toBe('action')
+    expect(state.draft).toEqual([])
+    expect(state.players.every(p => p.strategyCards.length === 1)).toBe(true)
+    expect(legalMoves(state).length).toBeGreaterThan(0)
+  })
+
+  it('in a 5-player game, each seat drafts one card and the unchosen card gains a trade good bonus', () => {
+    const config5: GameConfig = {
+      players: [
+        { faction: 'sol', color: 'blue', name: 'P0' },
+        { faction: 'letnev', color: 'red', name: 'P1' },
+        { faction: 'hacan', color: 'yellow', name: 'P2' },
+        { faction: 'jolnar', color: 'purple', name: 'P3' },
+        { faction: 'l1z1x', color: 'green', name: 'P4' },
+      ],
+      speaker: 0,
+    }
+    const g = createGame(config5, 42)
+    expect(g.draft).toEqual([0, 1, 2, 3, 4])
+    let state = g
+    for (let seat = 0; seat < 5; seat++) {
+      const card = state.strategyPool[0].id
+      state = pick(state, card)
+    }
+    expect(state.phase).toBe('action')
+    expect(state.draft).toEqual([])
+    expect(state.strategyPool).toHaveLength(1)
+    expect(state.strategyPool[0].bonus).toBe(1)
+    expect(legalMoves(state).length).toBeGreaterThan(0)
+  })
+
+  it('in a 4-player game with 6 strategy cards, each seat drafts one card and 2 cards gain bonuses', () => {
+    const config4: GameConfig = {
+      players: [
+        { faction: 'sol', color: 'blue', name: 'P0' },
+        { faction: 'letnev', color: 'red', name: 'P1' },
+        { faction: 'hacan', color: 'yellow', name: 'P2' },
+        { faction: 'jolnar', color: 'purple', name: 'P3' },
+      ],
+      speaker: 0,
+    }
+    const g = createGame(config4, 42)
+    expect(g.draft).toEqual([0, 1, 2, 3])
+    let state = g
+    for (let seat = 0; seat < 4; seat++) {
+      const card = state.strategyPool[0].id
+      state = pick(state, card)
+    }
+    expect(state.phase).toBe('action')
+    expect(state.draft).toEqual([])
+    expect(state.strategyPool).toHaveLength(2)
+    expect(state.strategyPool.every(c => c.bonus === 1)).toBe(true)
+    expect(legalMoves(state).length).toBeGreaterThan(0)
+  })
 })

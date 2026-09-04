@@ -307,4 +307,25 @@ Delivered full human playability for 2 to 6 players across board, HUD, and lobby
   - 509 tests passing across 51 test suites.
   - Clean TypeScript compilation (`npx tsc -p tsconfig.app.json --noEmit`) and 0 lint errors (`npm run lint`).
 
+## Iteration 14 (Ralph iter 12) — Complete base-game tile assets & 4-6 player strategy phase draft fix
+
+Delivered this iteration:
+- **Tile Assets Imported**: Downloaded all 51 official high-res 345×299 PNG base-game system tiles (01 to 51) from AsyncTI4 (`TI4_map_generator_bot/src/main/resources/tiles/`) into `public/assets/tiles/` (`01_Jord.png` through `51_Creuss.png`).
+- **Wormhole Delta Asset**: Added `/assets/misc/emoji_WHdelta.png` and registered in `MISC.delta`.
+- **Tile Resolution & Board Rendering (`src/ui/art.ts`, `src/ui/board/Tile.tsx`, `BoardMap.tsx`, `layout.ts`)**:
+  - Added immutable `TILE_IMAGE_BY_NUMBER: Readonly<Record<number, string>>` for all 51 tiles and robust numerical/string name resolution in `tileUrl(systemId, tileFile, isGalaxy)`.
+  - Propagated `isGalaxy` through `BoardMap` and `Tile.tsx`. On generated galaxy boards, tiles render authentic printed art with planets, anomalies, and wormholes directly on the hex, suppressing redundant floating planet image discs (`planetArtUrl`) while preserving interactive control nameplates, ground forces, structures, and space fleet boxes.
+  - Resolved Creuss Gate (Tile 17) wormhole/sigil collision via `getWormholeSpot(systemId, hasSigil)` which places the delta wormhole on the left flank at `(36, 40)`.
+- **Strategy Phase Draft Freeze Fix (`src/engine/strategyPhase.ts`, `src/engine/setup.ts`, `src/ui/store.tsx`)**:
+  - Fixed `snakeOrder` in `strategyPhase.ts` and initial `draft` order in `setup.ts`:
+    - 2–3 players: draft 2 cards in snake order (`[s0, s1, s1, s0]` or `[s0, s1, s2, s2, s1, s0]`).
+    - 4–6 players: draft 1 card clockwise from speaker (`[s0, s1, ...]`).
+    - Fixed stall where 6 players previously generated 12 draft slots for 6 cards, exhausting the strategy pool after 6 picks and freezing with 0 legal moves.
+  - In `src/ui/store.tsx`: `apply()` synchronously updates `sessionRef.current = updated` before invoking `pumpAi(seed)`.
+- **Tests & Verification**:
+  - Added tests in `strategyPhase.test.ts` for 4, 5, and 6 player drafts, verifying transition to `action` phase, empty `draft`, trade good bonuses, and legal moves.
+  - Added tests in `BoardMap.test.tsx` verifying printed tile src on generated galaxies (`18_MR.png`, `01_Jord.png`) and Creuss Gate delta wormhole without sigil collision.
+  - 513 passing tests across 51 test suites, 0 type errors, 0 lint errors.
+
+
 

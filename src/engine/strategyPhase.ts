@@ -4,14 +4,14 @@ import type { GameState, Result, Seat, StrategyCardId } from './types'
 export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 }
 
 /**
- * N-player snake: speaker picks one, every other seat picks one clockwise, then the order reverses and they
- * each pick another back anti-clockwise to the speaker. For 2 players this is `[speaker, other, other, speaker]`,
- * which is exactly the duel's historic draft order.
+ * N-player strategy draft order:
+ * In a 2- or 3-player game, each player drafts 2 strategy cards in snake order (e.g. [speaker, other, other, speaker]).
+ * In a 4-, 5-, or 6-player game (with 6 strategy cards), each player drafts 1 strategy card clockwise from speaker.
  */
 export function snakeOrder(state: GameState): Seat[] {
   const n = state.players.length
   const seats = Array.from({ length: n }, (_, i) => (state.speaker + i) % n)
-  return [...seats, ...seats.slice().reverse()]
+  return n <= 3 ? [...seats, ...seats.slice().reverse()] : seats
 }
 
 export function initiativeOrder(state: GameState): Seat[] {

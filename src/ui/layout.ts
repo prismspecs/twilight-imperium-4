@@ -211,8 +211,10 @@ export function getSpaceBox(systemId: string, planetCount = 1): { left: number; 
   return { left: 77, top: 69, width: 114, height: 74 }
 }
 
-export function getWormholeSpot(systemId: string): Point {
-  return WORMHOLE_SPOTS[systemId] ?? { left: 170, top: 40 }
+export function getWormholeSpot(systemId: string, hasSigil = false): Point {
+  if (WORMHOLE_SPOTS[systemId]) return WORMHOLE_SPOTS[systemId]
+  if (hasSigil) return { left: 36, top: 40 }
+  return { left: 170, top: 40 }
 }
 
 /**

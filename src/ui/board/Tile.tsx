@@ -16,10 +16,10 @@ function colourOf(state: GameState, owner: Owner): Color | 'grey' {
 /** How far off the planet's centre the structures row sits, on the side the nameplate leaves free. */
 const STRUCT_OFFSET = 34
 
-function PlanetMarkers({ state, planet, index, count }: { state: GameState; planet: Planet; index: number; count: number }) {
+function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameState; planet: Planet; index: number; count: number; isGalaxy: boolean }) {
   const spot = getPlanetSpot(planet.id, index, count)
   const centre = getPlanetCentre(planet.id, spot)
-  const art = planetArtUrl(planet.id)
+  const art = isGalaxy ? null : planetArtUrl(planet.id)
   const ground = groupUnits(planet.ground)
   const structures = groupUnits(planet.structures)
   // the printed banner runs along the top of an upper planet and the bottom of a lower one; the space
@@ -74,11 +74,12 @@ export interface TileProps {
   selectable: boolean
   /** Selectable, but no ship can move in; the outline goes cold and the tile says so. */
   outOfReach?: boolean
+  isGalaxy?: boolean
   onSelect?: (systemId: string) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, onSelect }: TileProps) {
-  const isGalaxy = state.players.length > 2
+export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, onSelect }: TileProps) {
+  const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
     : hexToPixel(system.q ?? 0, system.r ?? 0, GALAXY_ORIGIN)
@@ -108,10 +109,10 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
         }
         : undefined}
     >
-      <img className="hex" src={tileUrl(system.id, system.tile)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
+      <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
       {system.planets.map((planet, i) => (
-        <PlanetMarkers key={planet.id} state={state} planet={planet} index={i} count={system.planets.length} />
+        <PlanetMarkers key={planet.id} state={state} planet={planet} index={i} count={system.planets.length} isGalaxy={isGalaxy} />
       ))}
       <span className="fleet" data-testid={`fleet-${system.id}`}
         style={{ left: box.left, top: box.top, width: box.width, height: box.height }}>
@@ -131,8 +132,8 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
         </span>
       ) : null}
       {system.wormhole ? (
-        <img className="wh" src={system.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${system.wormhole} wormhole`}
-          data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
+        <img className="wh" src={system.wormhole === 'alpha' ? MISC.alpha : (system.wormhole === 'beta' ? MISC.beta : MISC.delta)} alt={`${system.wormhole} wormhole`}
+          data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id, system.home !== null)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
       ) : null}
       {system.home !== null ? (
         <img className="sigil" src={SIGIL[state.players[system.home].faction]} alt="" data-testid={`sigil-${system.id}`}

@@ -114,9 +114,9 @@ export function createGame(config: GameConfig, seed: number): GameState {
       }
     }
   }
-  // N-player snake draft over the strategy pool (see strategyPhase.snakeOrder).
+  // N-player draft over the strategy pool: 2-3 players draft 2 cards (snake); 4-6 players draft 1 card.
   const orderSeats = seats.map((_, i) => (config.speaker + i) % config.players.length)
-  const draft = [...orderSeats, ...orderSeats.slice().reverse()]
+  const draft = config.players.length <= 3 ? [...orderSeats, ...orderSeats.slice().reverse()] : orderSeats
   const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
   const state: GameState = {
     version: 3, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,

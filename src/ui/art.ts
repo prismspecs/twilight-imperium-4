@@ -58,6 +58,7 @@ export const MISC = {
   speaker: '/assets/misc/emoji_SpeakerToken.png',
   alpha: '/assets/misc/emoji_WHalpha.png',
   beta: '/assets/misc/emoji_WHbeta.png',
+  delta: '/assets/misc/emoji_WHdelta.png',
   objectiveBack: '/assets/cards/cardback_public1.png',
   strategyBack: '/assets/cards/cardback_public2.png',
   mandateBack: '/assets/cards/cardback_secret.jpg',
@@ -125,9 +126,85 @@ export const SIGIL: Record<FactionId, string> = {
   yssaril: '/assets/factions/yssaril.png',
 }
 
-export function tileUrl(systemId: string, tileFile?: string): string {
+export const TILE_IMAGE_BY_NUMBER: Readonly<Record<number, string>> = {
+  1: '01_Jord.png',
+  2: '02_MollPrimus.png',
+  3: '03_Darien.png',
+  4: '04_Muaat.png',
+  5: '05_Nestphar.png',
+  6: '06_000.png',
+  7: '07_Winnu.png',
+  8: '08_MordaiII.png',
+  9: '09_Maaluuk.png',
+  10: '10_ArcPime.png',
+  11: '11_LisisII.png',
+  12: '12_Nar.png',
+  13: '13_Trenlak.png',
+  14: '14_ArchonRen.png',
+  15: '15_Retillion.png',
+  16: '16_Arretze.png',
+  17: '17_DeltaWH.png',
+  18: '18_MR.png',
+  19: '19_Wellon.png',
+  20: '20_VefutII.png',
+  21: '21_Thibah.png',
+  22: '22_Tarmann.png',
+  23: '23_Saudor.png',
+  24: '24_MeharXull.png',
+  25: '25_Quann.png',
+  26: '26_Lodor.png',
+  27: '27_NewAlbion.png',
+  28: '28_Tequran.png',
+  29: '29_Qucenn.png',
+  30: '30_Mellon.png',
+  31: '31_Lazar.png',
+  32: '32_DalBootha.png',
+  33: '33_Corneeq.png',
+  34: '34_Centauri.png',
+  35: '35_Bereg.png',
+  36: '36_Arnor.png',
+  37: '37_Arinam.png',
+  38: '38_Abyz.png',
+  39: '39_AlphaWH.png',
+  40: '40_BetaWH.png',
+  41: '41_GravityRift.png',
+  42: '42_Nebula.png',
+  43: '43_Supernova.png',
+  44: '44_Asteroids.png',
+  45: '45_Asteroids.png',
+  46: '46_Void.png',
+  47: '47_Void.png',
+  48: '48_Void.png',
+  49: '49_Void.png',
+  50: '50_Void.png',
+  51: '51_Creuss.png',
+} as const
+
+function resolveTileFile(tileFile: string): string | null {
+  const num = Number(tileFile)
+  if (!Number.isNaN(num) && TILE_IMAGE_BY_NUMBER[num]) {
+    return `/assets/tiles/${TILE_IMAGE_BY_NUMBER[num]}`
+  }
+  const base = tileFile.replace(/\.png$/, '')
+  if (base.startsWith('tile_')) return `/assets/tiles/${base}.png`
+  const byName = Object.values(TILE_IMAGE_BY_NUMBER).find(f => f.replace(/\.png$/, '').toLowerCase() === base.toLowerCase())
+  return byName ? `/assets/tiles/${byName}` : null
+}
+
+export function tileUrl(systemId: string, tileFile?: string, isGalaxy = false): string {
+  if (isGalaxy) {
+    if (tileFile) {
+      const resolved = resolveTileFile(tileFile)
+      if (resolved) return resolved
+    }
+    if (systemId === 'mecatol') return '/assets/tiles/18_MR.png'
+    return '/assets/tiles/00_blue.png'
+  }
+
   if (TILE_FILE[systemId]) return `/assets/tiles/${TILE_FILE[systemId]}`
   if (tileFile) {
+    const resolved = resolveTileFile(tileFile)
+    if (resolved) return resolved
     const known = ['00_blue', '06_000', '10_ArcPime', '18_MR', '35_Bereg', '42_Nebula', '44_Asteroids', 'tile_anomaly', 'tile_anomaly_chevron']
     const base = tileFile.replace(/\.png$/, '')
     if (known.includes(base)) return `/assets/tiles/${base}.png`

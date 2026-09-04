@@ -36,6 +36,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
           active={activeSystemId === system.id}
           selectable={selectable.includes(system.id)}
           outOfReach={outOfReach.includes(system.id)}
+          isGalaxy={!isDuel}
           onSelect={onSelect}
         />
       ))}
