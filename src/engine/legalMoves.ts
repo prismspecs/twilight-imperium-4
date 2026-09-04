@@ -9,7 +9,7 @@ import { postAbilityOptions } from './postAbilities'
 import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
-import { homeSystemId } from '../data/map'
+import { homeSystemOf } from './board'
 import { diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
@@ -117,7 +117,7 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
     case 'warfare': {
       // R6: the secondary is the space dock's full PRODUCTION ability, so the window opens as soon as any one
       // unit is affordable; the responder picks the units and the payment, the handler checks them.
-      const home = state.systems[homeSystemId(seat)]
+      const home = state.systems[homeSystemOf(state, seat)]
       const dock = home.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
       if (!dock || productionLimit(state, seat, home.id) < 1) return []
       const stats = { faction: player.faction, techs: player.techs }

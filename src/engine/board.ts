@@ -7,6 +7,13 @@ export function statsOwner(state: GameState, owner: Owner): StatsOwner {
   return owner === 'guardian' ? 'guardian' : { faction: state.players[owner].faction, techs: state.players[owner].techs }
 }
 
+/** The id of the seat's home system, read from the systems placed in the game (works on any map). */
+export function homeSystemOf(state: GameState, seat: Seat): string {
+  const home = Object.values(state.systems).find(s => s.home === seat)
+  if (!home) throw new Error(`no home system for seat ${String(seat)}`)
+  return home.id
+}
+
 export function hasTech(state: GameState, owner: Owner, tech: string): boolean {
   return owner !== 'guardian' && state.players[owner].techs.includes(tech)
 }

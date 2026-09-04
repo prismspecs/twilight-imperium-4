@@ -1,4 +1,4 @@
-import { SYSTEM_IDS, homeSystemId } from '../data/map'
+import { homeSystemOf } from './board'
 import type { GameState, Result, Seat, Unit } from './types'
 
 export function otherSeat(seat: Seat): Seat {
@@ -31,7 +31,7 @@ export function canPass(state: GameState, seat: Seat): boolean {
 export function reviveInfantry(state: GameState, seat: Seat): GameState {
   const player = state.players[seat]
   if (player.pendingInfantry < 1) return state
-  const homeId = homeSystemId(seat)
+  const homeId = homeSystemOf(state, seat)
   const sys = state.systems[homeId]
   const target = sys.planets.find(p => p.owner === seat)
   const count = Math.min(player.pendingInfantry, player.reinforcements.infantry)
@@ -66,7 +66,7 @@ export function passTurn(state: GameState): GameState {
 
 export function activatableSystems(state: GameState, seat: Seat): string[] {
   if (state.players[seat].tokens.tactic < 1) return []
-  return SYSTEM_IDS.filter(id => !state.systems[id].activatedBy.includes(seat))
+  return Object.keys(state.systems).filter(id => !state.systems[id].activatedBy.includes(seat))
 }
 
 export function startTactical(state: GameState, systemId: string): Result<GameState> {

@@ -161,7 +161,10 @@ function refit(state: GameState, seat: Seat, post: 'west' | 'east', params: Post
     if (!isShip(type)) return { ok: false, error: `R8: ${type} is not a ship` }
     cost += n * refitValue(type, stats)
   }
-  const systemId = TRADE_POSTS[post].find(id => state.systems[id].space.some(u => u.id === give[0]))
+  const systemId = TRADE_POSTS[post].find(id => {
+    const sys = state.systems[id]
+    return sys !== undefined && sys.space.some(u => u.id === give[0])
+  })
   if (systemId === undefined) return { ok: false, error: `R8: the ships must be in one system linked to the ${post} post` }
   const units: Unit[] = []
   let returned = 0
@@ -314,7 +317,9 @@ function refitOptions(state: GameState, seat: Seat, post: 'west' | 'east'): Post
   const out: PostAbilityParams[] = []
   const stats = statsOwner(state, seat)
   for (const systemId of TRADE_POSTS[post]) {
-    const ships = state.systems[systemId].space
+    const sys = state.systems[systemId]
+    if (!sys) continue
+    const ships = sys.space
       .filter(u => u.owner === seat && isShip(u.type))
       .slice(0, REFIT_SEARCH_LIMIT)
     if (!ships.length) continue

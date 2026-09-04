@@ -1,6 +1,7 @@
-import { MECATOL_ID, homeSystemId, systemDef } from '../data/map'
+import { MECATOL_ID } from '../data/map'
 import { MANDATE_IDS, objectiveDef } from '../data/objectives'
 import { isShip } from '../data/units'
+import { homeSystemOf } from './board'
 import type { GameState, Seat } from './types'
 
 export function controlledPlanets(state: GameState, seat: Seat): { systemId: string; planetId: string }[] {
@@ -32,7 +33,7 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'win_space_combat':
       return player.spaceCombatWins >= 1
     case 'control_4_outside_home':
-      return controlledPlanets(state, seat).filter(p => systemDef(p.systemId).home !== seat).length >= 4
+      return controlledPlanets(state, seat).filter(p => state.systems[p.systemId].home !== seat).length >= 4
     case 'spend_6_resources':
       return player.resourcesSpentThisRound >= 6
     case 'trade_three_times':
@@ -46,7 +47,7 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'foothold':
       // N-player: seat controls at least one other seat's home system
       return allOtherSeats.some(other =>
-        controlledPlanets(state, seat).some(p => p.systemId === homeSystemId(other))
+        controlledPlanets(state, seat).some(p => p.systemId === homeSystemOf(state, other))
       )
     default:
       return false

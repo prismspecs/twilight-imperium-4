@@ -1,7 +1,7 @@
 import { FACTIONS } from '../data/factions'
-import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
+import { MECATOL_ID } from '../data/map'
 import { ACTION_SPENT } from './actionPhase'
-import { checkFleet } from './board'
+import { checkFleet, homeSystemOf } from './board'
 import { distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
@@ -34,12 +34,12 @@ function spendStrategyTokens(state: GameState, seat: Seat, cost: number): Result
 
 /** R6 Diplomacy: every system but Mecatol Rex in which the seat controls a planet. */
 export function diplomacySystems(state: GameState, seat: Seat): string[] {
-  return SYSTEM_IDS.filter(id => id !== MECATOL_ID && state.systems[id].planets.some(p => p.owner === seat))
+  return Object.keys(state.systems).filter(id => id !== MECATOL_ID && state.systems[id].planets.some(p => p.owner === seat))
 }
 
 /** R6 Warfare: every system that holds a command token of the seat. */
 export function warfareTokenSystems(state: GameState, seat: Seat): string[] {
-  return SYSTEM_IDS.filter(id => state.systems[id].activatedBy.includes(seat))
+  return Object.keys(state.systems).filter(id => state.systems[id].activatedBy.includes(seat))
 }
 
 /** R6 Diplomacy: readies up to `max` exhausted planets the seat controls. */
@@ -157,7 +157,7 @@ function withFleetPoolIntact(result: Result<GameState>, seat: Seat): Result<Game
 
 /** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
 function warfareSecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
-  const staged: GameState = { ...state, tactical: { systemId: homeSystemId(seat), step: 'production' } }
+  const staged: GameState = { ...state, tactical: { systemId: homeSystemOf(state, seat), step: 'production' } }
   const made = produce(staged, params.units ?? {}, params.planets ?? [], params.tradeGoods ?? 0)
   if (!made.ok) return made
   return { ok: true, value: { ...made.value, tactical: state.tactical } }

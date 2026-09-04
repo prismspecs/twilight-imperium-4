@@ -125,7 +125,11 @@ export function postDef(state: GameState, post: 'west' | 'east'): PostDef {
 
 /** R8: whether the seat controls a planet in one of the two systems the post serves. */
 export function postLinked(state: GameState, seat: Seat, post: 'west' | 'east'): boolean {
-  return TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))
+  // trade posts are a duel-board mechanic; on a generated galaxy their systems are simply absent
+  return TRADE_POSTS[post].some(id => {
+    const sys = state.systems[id]
+    return sys !== undefined && sys.planets.some(p => p.owner === seat)
+  })
 }
 
 /** R8: the posts a seat may still sell commodities at this round. */

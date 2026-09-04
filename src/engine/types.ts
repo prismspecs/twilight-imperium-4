@@ -28,6 +28,7 @@ export interface System {
   planets: Planet[]
   wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]             // hex-adjacent system ids; wormhole links are added on top by adjacency.ts
+  home: Seat | null                // the seat whose home system this is, or null for a non-home system
   // ships, plus fighters and infantry being transported; NON_FIGHTER_SHIPS and isShip exclude infantry, so capacity and fleet-pool helpers work on this mixed array
   space: Unit[]                    // ships
   activatedBy: Seat[]              // command tokens on the system this round

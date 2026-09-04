@@ -5,7 +5,7 @@ import type { System } from './types'
 
 /** A systems map built from the static duel map, matching what createGame now stores (with neighbours). */
 const systems: Record<string, System> = Object.fromEntries(
-  SYSTEMS.map(def => [def.id, { id: def.id, name: def.name, planets: [], wormhole: def.wormhole, neighbours: def.neighbours, space: [], activatedBy: [] }]),
+  SYSTEMS.map(def => [def.id, { id: def.id, name: def.name, planets: [], wormhole: def.wormhole, neighbours: def.neighbours, home: def.home, space: [], activatedBy: [] }]),
 )
 
 describe('R1 map Bereg Standoff', () => {
