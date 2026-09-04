@@ -259,7 +259,7 @@ export function SetupScreen() {
       ) : null}
 
       <section className="menu" aria-label="Game mode">
-        <div className="box" data-testid="landing-hotseat">
+        <div className="box primary" data-testid="landing-hotseat">
           <div className="frame panel">
             <div className="lead">
               <div className="ico">
@@ -269,32 +269,32 @@ export function SetupScreen() {
               <p className="line"><span className="lbl">Hot-seat</span>Pass the tablet, chess clock {minutes} minutes each.</p>
             </div>
             <div className="foot">
-              <button type="button" className="btn ghost" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
+              <button type="button" className="btn gold" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
               <span className="note">No account, no network</span>
             </div>
           </div>
           <div className="tab">Play on this device</div>
         </div>
 
-        <div className="box primary" data-testid="landing-online">
+        <div className="box quiet" data-testid="landing-online">
           <div className="frame panel">
             <div className="lead">
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#3b82f6" strokeWidth="1.2" aria-hidden="true">
-                <circle cx="15" cy="15" r="3" fill="#3b82f6" stroke="none" />
+              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+                <circle cx="15" cy="15" r="3" fill="currentColor" stroke="none" />
                 <circle cx="15" cy="15" r="8" /><circle cx="15" cy="15" r="13" strokeOpacity=".55" />
                 <path d="M3 15h5M22 15h5M15 3v5M15 22v5" strokeOpacity=".8" />
               </svg>
               <p className="line"><span className="lbl">Online</span>You get a six-character code and a link. Your opponent joins from any browser.</p>
             </div>
             <div className="foot">
-              <button type="button" className="btn gold" data-testid="btn-create-online" disabled>Create lobby</button>
+              <button type="button" className="btn ghost" data-testid="btn-create-online" disabled>Create lobby</button>
               <span className="note">coming with online play</span>
             </div>
           </div>
           <div className="tab">Create online lobby</div>
         </div>
 
-        <div className="box" data-testid="landing-join">
+        <div className="box quiet" data-testid="landing-join">
           <div className="frame panel">
             <div className="lead">
               <p className="line"><span className="lbl">Code</span>Enter the six-character code your opponent shared.</p>
@@ -303,7 +303,7 @@ export function SetupScreen() {
               <div className="codefield">
                 <input type="text" placeholder="K7X2QP" aria-label="Lobby code" disabled />
               </div>
-              <button type="button" className="btn gold" data-testid="btn-join-code" disabled>Join</button>
+              <button type="button" className="btn ghost" data-testid="btn-join-code" disabled>Join</button>
             </div>
             <span className="note">coming with online play</span>
           </div>

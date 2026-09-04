@@ -348,6 +348,17 @@
   border-color: rgba(59,130,246,0.35);
   box-shadow: var(--machined-bevel), inset 0 0 80px rgba(59,130,246,0.06);
 }
+/* Inactive/administrative boxes (online play stubs): muted frame and tab so the eye
+   lands on the primary path instead. */
+.lobbyui .box.quiet > .frame {
+  border-color: var(--alpha-frame);
+  opacity: 0.6;
+}
+.lobbyui .box.quiet > .tab {
+  background: var(--deep-space-raised);
+  color: var(--ink-muted);
+}
+.lobbyui .box.quiet .lbl { color: var(--ink-muted); }
 .lobbyui .code {
   display: flex;
   align-items: center;
