@@ -125,3 +125,21 @@ Remaining:
 Next iteration: full faction data import (17 factions, abilities, techs) — the highest-value remaining
 item. Start by expanding src/data/factions.ts from 2 to all 17 base factions, then wire faction abilities
 into combat/research, then the full tech tree.
+
+## Iteration 4 — faction data foundation (commit a2481d1)
+
+Delivered this iteration:
+- FactionId widened to all 17 base-game factions
+- factions.ts: 15 new factions with real starting units/techs/commodities/ability ids
+- units.ts: flagship stats for all 17 factions
+- art.ts + fog.ts updated to match
+
+Scope note: the 15 new factions are data-only. Setup still swaps l1z1x/letnev and the map holds only
+their two home systems, so the new factions are never placed and their special abilities are not wired.
+
+Resource (user): https://twilight-imperium.fandom.com/wiki/Twilight_Imperium_Wiki can be scraped for
+faction portraits/sigils/tile art + extra data. Asset convention confirmed. Low priority until the
+faction picker + map expansion land; defer to the art pass.
+
+Next iteration: the big coupled item — full map import (all home systems + the rest of the base
+galaxy), which unblocks both N-player setup and placing the 15 new factions.

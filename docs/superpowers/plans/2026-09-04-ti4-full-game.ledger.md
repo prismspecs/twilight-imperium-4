@@ -115,3 +115,24 @@ Refactored strategicActions.test to reuse the shared helper.
 Engine N-player status: core, secondary window, diplomacy primary, trade primary, AI other(), and
 objectives are all N-player now. Remaining 2-player code: the Setup UI (hardcoded to [0,1]), the map
 (2 home systems), and the many duel-specific data modules.
+
+## Iteration 4 (Ralph iter 3) complete — faction data foundation (commit a2481d1, pushed)
+
+Widened FactionId to all 17 base-game factions and filled the data layer:
+- factions.ts: 15 new FactionDef entries with real starting units/techs/commodities/ability ids
+- units.ts: flagship stats for all 17 factions
+- art.ts: portrait/sigil paths for all 17 (assets to follow)
+- fog.ts: PublicPlayer.faction widened to FactionId
+
+Ruling recorded here: the 15 new factions are DATA ONLY this iteration. The setup screen hardcodes a
+l1z1x/letnev swap and the map holds only those two home systems, so the new factions are never placed —
+no gameplay change, and picking them is not possible yet. Wiring their abilities, their home systems
+(the map import), a faction picker in Setup, and N-player setup are all still ahead.
+
+## Resource note (user) — art + extra data source
+
+The Fandom wiki https://twilight-imperium.fandom.com/wiki/Twilight_Imperium_Wiki can be scraped for all
+faction portraits/sigils/tile art (and any extra data). Asset convention confirmed: public/assets/factions
+already holds l1z1x.png / leader_l1z1x_commander.png, matching the per-faction paths added in art.ts.
+Low priority — the 15 new factions are not selectable yet so their images are never loaded. Defer to the
+art/faction-picker pass once the map supports more home systems.
