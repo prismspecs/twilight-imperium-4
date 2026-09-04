@@ -92,3 +92,15 @@ Remaining N-player gaps:
 - AI/fog/score still assume a single foe (needs full player list iteration).
 
 Next: import the full 17-faction data to enable actual multi-faction games.
+
+## Iteration 2 complete — AI opponent generalized to N players (commit 787ed86, pushed)
+
+The AI score's `other()` function now returns `(seat + 1) % n` instead of the hardcoded `seat === 0 ? 1 : 0`.
+This enables the AI to play against any seat in an N-player game by using the next seat in order.
+
+N-player engine generalization progress:
+- Step 1 (N-player core): ✅ seats, players arrays, snake draft, initiative, status/victory, secondary window, diplomacy primary, Trade primary.
+- AI opponent: ✅ generalized to any seat.
+- Remaining: objectives (duel-specific opponent references), Setup UI (hardcoded to 2 players).
+
+Next steps: objective N-player generalization or full faction data import to enable actual multi-faction games.
