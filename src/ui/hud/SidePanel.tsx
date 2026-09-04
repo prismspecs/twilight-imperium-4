@@ -1,4 +1,5 @@
 import { FACTIONS } from '../../data/factions'
+import { objectiveDef } from '../../data/objectives'
 import { techDef } from '../../data/techs'
 import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { useState } from 'react'
@@ -34,7 +35,7 @@ export function SidePanel({ state, seat, side, onSelectSeat }: SidePanelProps) {
   const targetVp = state.players.length <= 2 ? 7 : 10
 
   return (
-    <div className={`${panelSide === 'left' ? 'colL' : 'colR'} cut`} data-testid={`panel-${seat}`}>
+    <div className={`${panelSide === 'left' ? 'colL' : 'colR'}`} data-testid={`panel-${seat}`}>
       {state.players.length > 2 && (
         <div className="seat-tabs" data-testid={`seat-tabs-${panelSide}`}>
           {state.players.map((p, idx) => (
@@ -127,8 +128,40 @@ export function SidePanel({ state, seat, side, onSelectSeat }: SidePanelProps) {
             })}
           </div>
         </div>
+        {player.secretObjectives && player.secretObjectives.length > 0 && (
+          <div className="sec" data-testid={`secret-objectives-${seat}`}>
+            <span className="lbl bul">Secret Objectives</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+              {player.secretObjectives.map(id => {
+                const def = objectiveDef(id)
+                const scored = player.scoredObjectives.includes(id)
+                return (
+                  <div
+                    key={id}
+                    className={`secret-item${scored ? ' scored' : ''}`}
+                    data-testid={`secret-${seat}-${id}`}
+                    style={{
+                      padding: '5px 8px',
+                      background: scored ? 'rgba(34,197,94,0.10)' : 'var(--socket-bg)',
+                      border: `1px solid ${scored ? 'rgba(34,197,94,0.30)' : 'var(--alpha-frame)'}`,
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-label)', fontWeight: 600, color: scored ? '#86efac' : 'var(--ink)' }}>{def?.name ?? id}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', padding: '1px 4px', borderRadius: 'var(--radius-sm)', background: scored ? 'rgba(34,197,94,0.20)' : 'var(--graphite-socket)', color: scored ? '#86efac' : 'var(--ink-muted)' }}>
+                        {scored ? 'Scored (1 VP)' : 'Secret'}
+                      </span>
+                    </div>
+                    {def?.text && <div style={{ fontFamily: 'var(--font-text)', fontSize: 'var(--text-micro)', color: 'var(--ink-muted)', lineHeight: '1.2' }}>{def.text}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
-      {/* the panel is clipped to its cut-corner shape, so the card is hung on the document instead */}
+      {/* the panel is clipped by its container, so the card is hung on the document instead */}
       {shown && typeof document !== 'undefined' ? createPortal(
         <div className="unitcard" data-testid={`unitcard-${seat}-${shown}`}>
           <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />

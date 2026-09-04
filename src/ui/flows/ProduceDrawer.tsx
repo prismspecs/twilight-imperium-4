@@ -23,7 +23,7 @@ export function ProduceDrawer() {
     return sum + (planet ? planet.resources : 0)
   }, 0) + tradeGoods
   return (
-    <div className="drawer bottom wide cut" data-testid="produce-drawer">
+    <div className="drawer bottom wide" data-testid="produce-drawer">
       <div className="in">
         <div className="dhead">
           <span className="tab">Production at {systemLabel(systemId)}</span>

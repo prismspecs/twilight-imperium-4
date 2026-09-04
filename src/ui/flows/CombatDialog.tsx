@@ -58,7 +58,7 @@ export function CombatDialog() {
   }
   const complete = head && assigning && assignmentComplete(state, picks.destroy, picks.sustain)
   return (
-    <div className="dialog cut" data-testid="combat-dialog">
+    <div className="dialog" data-testid="combat-dialog">
       <div className="in">
         <div className="dhead">
           <span className="tab">Space combat in {systemLabel(state.tactical?.systemId ?? '')}</span>

@@ -33,7 +33,7 @@ export function InvasionPanel() {
   const split = suggestedSplit(pool, landings.length, deriveSeed(session.seed, moveCount(state)))
   const countOf = (planetId: string, index: number) => counts[planetId] ?? split[index] ?? 0
   return (
-    <div className="drawer bottom cut" data-testid="invasion-panel">
+    <div className="drawer bottom" data-testid="invasion-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">Invasion</span>

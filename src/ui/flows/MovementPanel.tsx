@@ -96,7 +96,7 @@ export function MovementPanel() {
   const obstacle = origins.length === 0 ? movementObstacle(state, seat, target) : null
 
   return (
-    <div className="drawer bottom cut" data-testid="movement-panel">
+    <div className="drawer bottom" data-testid="movement-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">Movement into {systemLabel(target)}</span>

@@ -17,7 +17,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
   const yards = shipyardOffers(legal)
   const posts = tradePostOffers(legal)
   return (
-    <div className="dialog cut" data-testid="component-panel">
+    <div className="dialog" data-testid="component-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">Component actions</span>

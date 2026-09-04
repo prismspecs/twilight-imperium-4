@@ -9,7 +9,9 @@ import { productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
+import { isAi } from '../../engine/types'
 import type { Seat, StrategyCardId } from '../../engine/types'
+import { diagnoseMovement, logInfo, logWarn } from '../debugLogger'
 // tactical flows (Task 4a)
 import { CombatDialog } from '../flows/CombatDialog'
 import { InvasionPanel } from '../flows/InvasionPanel'
@@ -76,6 +78,7 @@ export function BoardScreen() {
   const idleTactical = state.tactical !== null
     && (state.tactical.step === 'production' || state.tactical.step === 'done')
     && !producing
+  const isAiTurn = isAi(session.config, state.active)
   return (
     <>
       <div
@@ -93,38 +96,50 @@ export function BoardScreen() {
             activeSystemId={state.tactical?.systemId ?? null}
             selectable={selectable}
             outOfReach={outOfReach}
-            onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
+            onSelect={systemId => {
+              const diag = diagnoseMovement(state, state.active, systemId)
+              logInfo('Tactical', `Tile clicked: ${systemId} in mode=${mode ?? 'idle'} (seat ${state.active})`, {
+                outOfReach: outOfReach.includes(systemId),
+                diagnostics: diag,
+              })
+              if (outOfReach.includes(systemId)) {
+                logWarn('Tactical', `System ${systemId} has 0 reachable ships for seat ${state.active}`, diag)
+              }
+              if (apply({ type: 'startTactical', systemId })) setMode(null)
+            }}
           />
           {/* tactical flows (Task 4a) */}
-          <>
-            {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
-            {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
-            {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
-            {producing ? <ProduceDrawer /> : null}
-          {idleTactical ? (
-            <div className="drawer bottom cut" data-testid="end-tactical-bar">
-              <div className="in">
-                <div className="dhead">
-                  <span className="tab">{systemLabel(state.tactical?.systemId ?? '')}</span>
-                  <span className="sub">No space dock here, so there is nothing to produce.</span>
-                  <div className="right">
-                    <button
-                      type="button" className="btn gold" data-testid="btn-end-tactical"
-                      disabled={!legal.some(m => m.type === 'endTactical')}
-                      onClick={() => apply({ type: 'endTactical' })}
-                    >
-                      End tactical action
-                    </button>
+          {!isAiTurn ? (
+            <>
+              {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
+              {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+              {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
+              {producing ? <ProduceDrawer /> : null}
+              {idleTactical ? (
+                <div className="drawer bottom" data-testid="end-tactical-bar">
+                  <div className="in">
+                    <div className="dhead">
+                      <span className="tab">{systemLabel(state.tactical?.systemId ?? '')}</span>
+                      <span className="sub">No space dock here, so there is nothing to produce.</span>
+                      <div className="right">
+                        <button
+                          type="button" className="btn gold" data-testid="btn-end-tactical"
+                          disabled={!legal.some(m => m.type === 'endTactical')}
+                          onClick={() => apply({ type: 'endTactical' })}
+                        >
+                          End tactical action
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              ) : null}
+            </>
           ) : null}
-          </>
           {/* strategic, component and status flows (Task 4b) */}
           <div className="flows-4b">
-            {mode === 'strategic' && card === null ? (
-              <div className="dialog cut" data-testid="strategic-picker">
+            {!isAiTurn && mode === 'strategic' && card === null ? (
+              <div className="dialog" data-testid="strategic-picker">
                 <div className="in">
                   <div className="dhead"><span className="tab">Strategic action</span></div>
                   <div className="rowline">
@@ -135,10 +150,10 @@ export function BoardScreen() {
                 </div>
               </div>
             ) : null}
-            {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
-            {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
-            {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
-            {state.phase === 'status' ? <StatusDialog /> : null}
+            {!isAiTurn && mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
+            {!isAiTurn && mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+            {!isAiTurn && state.pendingSecondary !== null ? <SecondaryPanel /> : null}
+            {!isAiTurn && state.phase === 'status' ? <StatusDialog /> : null}
           </div>
           {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
         </div>

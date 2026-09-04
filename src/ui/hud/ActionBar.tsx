@@ -37,7 +37,7 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
             onClick={() => { setMenu(!menu) }}>Menu</button>
           {menu ? (
             // the game stays saved under its own code, so leaving is always a way back, never a loss
-            <div className="menu-pop cut" data-testid="game-menu">
+            <div className="menu-pop" data-testid="game-menu">
               <div className="in">
                 <span className="lbl dim">Game {session.code}</span>
                 <button type="button" className="btn quiet" data-testid="btn-menu-lobby"

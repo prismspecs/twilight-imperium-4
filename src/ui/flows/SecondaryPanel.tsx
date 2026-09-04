@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { cardOwner, homeSystemOf, productionLimit, secondaryTokenCost } from '../../engine'
+import { cardOwner, homeSystemOf, isAi, productionLimit, secondaryTokenCost } from '../../engine'
 import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, systemLabel, techLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
@@ -21,12 +21,14 @@ export function SecondaryPanel() {
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   if (!session) return null
   const state = session.state
+  if (isAi(session.config, state.active)) return null
   const window = state.pendingSecondary
   if (window === null) return null
   const card = window.card
   const seat = state.active
   const player = state.players[seat]
   const owner = cardOwner(state, card)
+  const isFree = window.freeSeats?.includes(seat) ?? false
   const offer = secondaryOffer(legal)
   const template: StrategicParams = offer.accept ?? {}
   const pay = planets ?? template.planets ?? []
@@ -35,8 +37,8 @@ export function SecondaryPanel() {
     return sum + (planet ? planet.influence : 0)
   }, 0) + tradeGoods
   const gained = card === 'leadership' ? Math.floor(influence / 3) : 0
-  // the new tokens start unplaced: the player adds them pool by pool
-  const sheet = tokens ?? { ...player.tokens }
+  // auto-allocate newly gained tokens so the user doesn't hit a blocking tokensPending error by default
+  const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
   const techOptions = legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : [])
 
   function params(): StrategicParams {
@@ -61,16 +63,20 @@ export function SecondaryPanel() {
   // the Leadership secondary also hands out tokens, and they must all be placed before it can be accepted
   const tokenTarget = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
   const tokensPending = card === 'leadership' && sheet.tactic + sheet.fleet + sheet.strategy !== tokenTarget
+  const cannotAcceptLeadership = card === 'leadership' && gained < 1
   return (
-    <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="secondary-panel">
+    <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="secondary-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, secondary</span>
           <span className="sub">
-            {owner === null ? 'Your opponent' : state.players[owner].name} played {CARD_NAME[card]}.
+            {owner === seat
+              ? `You played ${CARD_NAME[card]}.`
+              : `${owner === null ? 'Your opponent' : state.players[owner].name} played ${CARD_NAME[card]}.`}
           </span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked || tokensPending}
+            <button type="button" className="btn gold" data-testid="btn-secondary-accept"
+              disabled={offer.accept === null || cannotAcceptLeadership || warfareBlocked || tokensPending}
               onClick={() => apply({ type: 'secondary', card, accept: true, params: params() })}>Use the secondary</button>
             <button type="button" className="btn quiet" data-testid="btn-secondary-decline"
               onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
@@ -78,10 +84,13 @@ export function SecondaryPanel() {
         </div>
         {card === 'leadership' ? (
           <>
+            <div className="sub" style={{ marginBottom: 6 }}>
+              Spend 3 influence (planets or trade goods) per command token gained. Costs 0 strategy tokens.
+            </div>
             <Rewards items={[
               { icon: tokenUrl(player.faction, 'command'), alt: 'Command token', count: gained, label: 'Command tokens' },
-            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
-            <PayRow state={state} seat={seat} unit="influence" needed={0} planets={pay} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
+            ]} note={`${influence} influence spent → ${gained} command token(s) gained.`} />
+            <PayRow state={state} seat={seat} unit="influence" needed={Math.max(3, (gained + 1) * 3)} planets={pay} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
               tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
             <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
           </>
@@ -127,17 +136,17 @@ export function SecondaryPanel() {
         ) : null}
         {card === 'trade' ? (
           <>
-            <div className="sub">Your commodities come back.</div>
+            <div className="sub">Replenish commodities.</div>
             <Rewards items={[
               { icon: MISC.commodity, alt: 'Commodity', count: Math.max(0, FACTIONS[player.faction].commodityValue - player.commodities), label: 'Commodities' },
-            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+            ]} note={isFree ? 'Free replenishment (chosen by active player) — costs 0 strategy tokens.' : `Costs you ${secondaryTokenCost(card, isFree)} strategy token.`} />
           </>
         ) : null}
         {card === 'imperial' ? (
           <>
-            <div className="sub">You get trade goods.</div>
+            <div className="sub">Draw 1 secret objective.</div>
             <Rewards items={[
-              { icon: MISC.tradeGood, alt: 'Trade good', count: 2, label: 'Trade goods' },
+              { icon: MISC.mandateBack, alt: 'Secret objective', count: 1, label: 'Secret objective' },
             ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
           </>
         ) : null}

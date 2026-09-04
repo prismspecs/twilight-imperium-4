@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { objectiveDef } from '../../data/objectives'
-import { controlsMecatol } from '../../engine'
+import { controlsMecatol, isAi } from '../../engine'
 import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
@@ -24,12 +24,17 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [tradeGoods, setTradeGoods] = useState(0)
   const [systemId, setSystemId] = useState<string | null>(null)
   const [techId, setTechId] = useState<string | null>(null)
+  const [secondTechEnabled, setSecondTechEnabled] = useState(false)
+  const [secondTechId, setSecondTechId] = useState<string | null>(null)
+  const [secondPlanets, setSecondPlanets] = useState<string[]>([])
+  const [secondTradeGoods, setSecondTradeGoods] = useState(0)
   const [objectiveId, setObjectiveId] = useState<string | null>(null)
   const [shared, setShared] = useState<Seat[]>([])
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   useEscape(onClose)
   if (!session) return null
   const state = session.state
+  if (isAi(session.config, state.active)) return null
   const seat = state.active
   const player = state.players[seat]
   const others = state.players.filter((_, i) => i !== seat)
@@ -52,7 +57,11 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
       case 'diplomacy': return systemId ? { systemId, planets } : { planets }
       case 'trade': return { shareWith: shared }
       case 'warfare': return systemId ? { systemId, tokens: sheet } : { tokens: sheet }
-      case 'technology': return techId ? { techId } : {}
+      case 'technology':
+        if (secondTechEnabled && secondTechId) {
+          return { techId: techId ?? undefined, secondTechId, planets: secondPlanets, tradeGoods: secondTradeGoods }
+        }
+        return techId ? { techId } : {}
       case 'imperial': return objectiveId ? { objectiveId } : {}
     }
   }
@@ -66,6 +75,9 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const tokensPlaced = sheet.tactic + sheet.fleet + sheet.strategy
   const tokensPending = (card === 'leadership' || card === 'warfare') && tokensPlaced !== tokenTarget
 
+  const secondPaidResources = secondPlanets.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + secondTradeGoods
+  const secondTechBlocked = card === 'technology' && secondTechEnabled && (secondTechId === null || secondPaidResources < 6)
+
   const missing =
     card === 'technology' ? techOptions.length > 0 && techId === null
       : card === 'imperial' ? objectives.length > 0 && objectiveId === null
@@ -73,12 +85,12 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
           : false
 
   return (
-    <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="strategic-dialog">
+    <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="strategic-dialog">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, primary</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing || tokensPending}
+            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing || tokensPending || secondTechBlocked}
               onClick={() => { if (apply({ type: 'strategic', card, params: params() })) onClose() }}>Play the card</button>
             <button type="button" className="btn quiet" data-testid="btn-strategic-cancel" onClick={onClose}>Cancel</button>
           </div>
@@ -164,20 +176,60 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
 
         {card === 'technology' ? (
           <>
-            <div className="sub">Research one technology.</div>
+            <div className="sub">Research 1 technology. Optionally spend 6 resources to research 1 additional technology.</div>
             <Rewards items={[
-              { icon: techId ? techArtUrl(techId) : strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Technology' },
+              { icon: techId ? techArtUrl(techId) : strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Tech #1' },
+              ...(secondTechEnabled && secondTechId ? [{ icon: techArtUrl(secondTechId), alt: techLabel(secondTechId), count: 1, label: techLabel(secondTechId) }] : []),
             ]} />
+            <div className="tab" style={{ margin: '12px 0 6px' }}>Technology #1 (Free)</div>
             <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId} onSelect={setTechId} />
+            <div style={{ marginTop: 16 }}>
+              <label className="pay" style={{ cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  data-testid="chk-second-tech"
+                  checked={secondTechEnabled}
+                  onChange={e => setSecondTechEnabled(e.target.checked)}
+                />
+                Research additional technology (Costs 6 resources)
+              </label>
+            </div>
+            {secondTechEnabled ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="tab" style={{ marginBottom: 6 }}>Technology #2 (Costs 6 resources)</div>
+                <PayRow
+                  state={state}
+                  seat={seat}
+                  needed={6}
+                  planets={secondPlanets}
+                  onPlanets={setSecondPlanets}
+                  tradeGoods={secondTradeGoods}
+                  onTradeGoods={setSecondTradeGoods}
+                />
+                <TechDrawer
+                  state={state}
+                  seat={seat}
+                  allowed={techOptions.filter(id => id !== techId)}
+                  selected={secondTechId}
+                  onSelect={setSecondTechId}
+                />
+              </div>
+            ) : null}
           </>
         ) : null}
 
         {card === 'imperial' ? (
           <>
-            <div className="sub">Score one fulfilled objective.</div>
+            <div className="sub">
+              {controlsMecatol(state, seat)
+                ? 'Score one fulfilled public objective. Gain 1 VP for controlling Mecatol Rex.'
+                : 'Score one fulfilled public objective. Draw 1 secret objective.'}
+            </div>
             <Rewards items={[
-              { icon: tokenUrl(player.faction, 'control'), alt: 'Victory point', count: 1, label: 'Victory point' },
-              ...(controlsMecatol(state, seat) ? [{ icon: tokenUrl(player.faction, 'control'), alt: 'Victory point, Mecatol Rex', count: 1, label: 'Mecatol Rex' }] : []),
+              ...(objectiveId ? [{ icon: tokenUrl(player.faction, 'control'), alt: 'Victory point', count: 1, label: 'Objective VP' }] : []),
+              ...(controlsMecatol(state, seat)
+                ? [{ icon: tokenUrl(player.faction, 'control'), alt: 'Victory point, Mecatol Rex', count: 1, label: 'Mecatol Rex (+1 VP)' }]
+                : [{ icon: MISC.mandateBack, alt: 'Secret objective', count: 1, label: 'Secret objective' }]),
             ]} />
             <div className="rowline">
               {objectives.map(id => (

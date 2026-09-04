@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { objectiveDef } from '../../data/objectives'
-import { scoreable, tokensGained } from '../../engine'
+import { isSecretObjective, objectiveDef } from '../../data/objectives'
+import { isAi, scoreable, tokensGained } from '../../engine'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
 import type { Player } from '../../engine/types'
@@ -10,6 +10,7 @@ export function StatusDialog() {
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   if (!session) return null
   const state = session.state
+  if (isAi(session.config, state.active)) return null
   const seat = state.active
   const player = state.players[seat]
   const gained = tokensGained(state, seat)
@@ -21,7 +22,7 @@ export function StatusDialog() {
   const target = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
   const placed = sheet.tactic + sheet.fleet + sheet.strategy
   return (
-    <div className="dialog cut" data-testid="status-dialog">
+    <div className="dialog" data-testid="status-dialog">
       <div className="in">
         <div className="dhead">
           <span className="tab">Status phase, {player.name}</span>
@@ -35,7 +36,9 @@ export function StatusDialog() {
           <span className="lbl">Scoring</span>
           {scoring.length === 0 ? <span className="sub">Nothing to score.</span> : null}
           {scoring.map(id => (
-            <span className="chip gold" key={id}>{objectiveDef(id)?.text ?? id}</span>
+            <span className={`chip ${isSecretObjective(id) ? 'purple' : 'gold'}`} key={id}>
+              {isSecretObjective(id) ? 'Secret: ' : ''}{objectiveDef(id)?.text ?? id}
+            </span>
           ))}
         </div>
         <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />

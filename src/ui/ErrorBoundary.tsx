@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
     return (
       <div className="crash" data-testid="error-boundary">
         <SpaceBackdrop />
-        <div className="crashbox cut">
+        <div className="crashbox">
           <div className="in">
             <h1 className="title goldtext">Something broke</h1>
             <p className="crashmsg" data-testid="error-message">{error.message}</p>

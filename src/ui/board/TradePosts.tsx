@@ -15,7 +15,7 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
   return (
     <>
       {(['west', 'east'] as const).map(post => (
-        <div key={post} className={`post cut ${post}`} style={POST_POS[post]} data-testid={`post-${post}`}>
+        <div key={post} className={`post ${post}`} style={POST_POS[post]} data-testid={`post-${post}`}>
           <div className="in">
             <span className="tab">{NAMES[post]}</span>
             <div className={`station ${post}`} aria-hidden="true" />
