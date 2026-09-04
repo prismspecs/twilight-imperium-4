@@ -1104,7 +1104,14 @@ button { font-family: inherit; }
 .unitcard img { display: block; width: 100%; }
 
 /* ---- Map pieces ------------------------------------------------------ */
-.tile { position: absolute; }
+/* AsyncTI4/ti4_web_new's own fix for this exact bug (SystemHexTarget.tsx): "Tile PNGs are rectangular even
+ * though the visible systems are hexes. Their transparent corners overlap neighboring systems and used to
+ * steal the pointer." Every tile div is a TILE_W x TILE_H rectangle, so two adjacent hexes' rectangles
+ * overlap at the corners; without this, a click near an edge could silently hit the wrong (later-painted)
+ * neighbour instead of the hex actually under the cursor - with no error, nothing visibly wrong, just a
+ * click that does nothing. clip-path shapes the div's hit-test region (not just its paint) to the real hex,
+ * so a click in the dead corner space falls through to whatever tile is actually there. */
+.tile { position: absolute; clip-path: polygon(58px 1px, 174px 1px, 231px 100.5px, 174px 200px, 58px 200px, 1px 100.5px); }
 .tile > img.hex { filter: drop-shadow(0 8px 12px rgba(0,0,0,0.7)); }
 .tile svg.line {
   position: absolute;
@@ -1124,6 +1131,16 @@ button { font-family: inherit; }
 .tile.selectable svg.line polygon {
   stroke: rgba(59,130,246,0.55);
   stroke-dasharray: 6 5;
+}
+/* AsyncTI4/ti4_web_new: every tile answers to the pointer, selectable for an action or just inspectable -
+   a quiet brightness wash, not a colour change, so it never competes with the selectable/active outline. */
+.tile.hoverable { cursor: pointer; }
+.tile.hoverable:hover > img.hex, .tile.hoverable:focus-visible > img.hex {
+  filter: brightness(1.18) drop-shadow(0 8px 12px rgba(0,0,0,0.7));
+}
+.tile.hoverable:hover svg.line polygon, .tile.hoverable:focus-visible svg.line polygon {
+  stroke: rgba(241,243,245,0.45);
+  stroke-width: 1.6;
 }
 .tile .fleet {
   position: absolute;
@@ -1425,6 +1442,39 @@ button { font-family: inherit; }
   text-transform: uppercase;
 }
 .uc.off { opacity: 0.5; }
+
+/* System info popup: click any tile that is not selectable for an action right now */
+.sysinfo-planets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sysinfo-planet {
+  flex: 1 1 160px;
+  border: 1px solid var(--alpha-frame);
+  border-radius: var(--radius-sm);
+  background: var(--deep-space-surface);
+  padding: 8px 10px;
+}
+.sysinfo-planet-name {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: var(--weight-title);
+  text-transform: uppercase;
+  color: var(--ink-bright);
+}
+.sysinfo-vals {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-family: var(--font-data);
+  font-size: var(--text-data);
+  color: var(--ink);
+}
+.sysinfo-vals img { width: 18px; height: 18px; }
+.sysinfo-trait {
+  margin-left: 8px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  font-size: var(--text-label);
+}
 
 /* Steppers */
 .step {

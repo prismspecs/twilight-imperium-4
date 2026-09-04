@@ -89,9 +89,11 @@ export interface TileProps {
   outOfReach?: boolean
   isGalaxy?: boolean
   onSelect?: (systemId: string) => void
+  /** Not currently selectable for an action - clicking it instead opens the system's info panel. */
+  onInspect?: (systemId: string) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, onSelect }: TileProps) {
+export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, onSelect, onInspect }: TileProps) {
   const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
@@ -102,34 +104,36 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const fleet = groupUnits(system.space)
   const scale = fleetScale(fleet.length, box)
   const home = system.home === null ? '' : ` home-${system.home}`
-  const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}`
-  const guardians = system.space.some(u => u.owner === 'guardian')
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
+  const inspect = onInspect ? () => onInspect(system.id) : undefined
+  const act = activate ?? inspect
+  const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
+  const guardians = system.space.some(u => u.owner === 'guardian')
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
   const pointerDown = useRef<{ x: number; y: number } | null>(null)
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
       style={{ left: pos.left, top: pos.top, width: TILE_W, height: TILE_H }}
-      role={activate ? 'button' : undefined}
-      tabIndex={activate ? 0 : undefined}
+      role={act ? 'button' : undefined}
+      tabIndex={act ? 0 : undefined}
       title={reachDiag}
-      aria-label={activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : undefined}
-      onPointerDown={activate ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
-      onClick={activate
+      aria-label={act ? (activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : `View ${system.name}`) : undefined}
+      onPointerDown={act ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
+      onClick={act
         ? event => {
           const down = pointerDown.current
           pointerDown.current = null
           if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > CLICK_DRAG_TOLERANCE) return
-          activate()
+          act()
         }
         : undefined}
-      onKeyDown={activate
+      onKeyDown={act
         ? event => {
           if (event.key !== 'Enter' && event.key !== ' ') return
           event.preventDefault()
-          activate()
+          act()
         }
         : undefined}
     >

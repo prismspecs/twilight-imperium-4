@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { BoardMap } from '../board/BoardMap'
+import { SystemInfo } from '../board/SystemInfo'
 import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
@@ -44,6 +45,7 @@ export function BoardScreen() {
   // the single side panel follows the active player by default; the seat tabs override it during the turn
   const [sideSeat, setSideSeat] = useState<Seat | null>(null)
   const [mode, setMode] = useState<ActionMode>(null)
+  const [inspecting, setInspecting] = useState<string | null>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
   const [showLog, setShowLog] = useState(() => import.meta.env.DEV
@@ -117,7 +119,9 @@ export function BoardScreen() {
               }
               if (apply({ type: 'startTactical', systemId })) setMode(null)
             }}
+            onInspect={setInspecting}
           />
+          {inspecting ? <SystemInfo state={state} systemId={inspecting} onClose={() => setInspecting(null)} /> : null}
           {/* tactical flows (Task 4a) */}
           {!isAiTurn ? (
             <>
