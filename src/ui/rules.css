@@ -1,69 +1,175 @@
-/* Rules page. The lobby's language (setup.css: `.space`, `.frame`, `.tab`, `.btn`, the gold label) laid
-   out as a document instead of a screen: one reading column, no 1440x900 frame and no `zoom`, so the page
-   reflows and scrolls down to phone width. Everything here is scoped to `.rules`. */
+/* Rules page — Tactical readout aesthetic. */
 
-.rules{position:relative;z-index:1;min-height:100vh;padding:38px 24px 44px}
-.rules .doc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+.rules {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 38px 24px 44px;
+}
+.rules .doc {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
 
-/* hero: the lobby's title treatment, one size down, because this page is read rather than presented */
-.rules .hero{text-align:center;margin:0}
-.rules .title{font-size:46px}
-.rules .hero .btn{margin-top:18px}
+.rules .hero { text-align: center; margin: 0; }
+.rules .title { font-size: 46px; }
+.rules .hero .btn { margin-top: 18px; }
 
-/* sections: the framed panel, its heading riding on the gold tab */
-.rules .sect .panel{padding:30px 26px 26px}
-.rules h2.tab{margin:0}
-.rules p{margin:0 0 13px;font:400 15px/1.55 var(--body);color:var(--ink-dim)}
-.rules p:last-child{margin-bottom:0}
-.rules b{color:var(--gold-hi);font-weight:600}
+.rules .sect .panel { padding: 30px 26px 26px; }
+.rules h2.tab { margin: 0; }
+.rules p {
+  margin: 0 0 13px;
+  font-family: var(--font-text);
+  font-size: 0.9375rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.55;
+  color: var(--ink);
+}
+.rules p:last-child { margin-bottom: 0; }
+.rules b { color: var(--accent-blue-light); font-weight: var(--weight-title); }
 
-/* one difference per group, separated by a gold hairline */
-.rules .grp{margin-top:18px;padding-top:18px;border-top:1px solid rgba(201,162,77,.20)}
-.rules .grp:first-child{margin-top:0;padding-top:0;border-top:0}
-.rules .grp>.lbl{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;letter-spacing:.12em}
+.rules .grp {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--panel-separator);
+}
+.rules .grp:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.rules .grp > .lbl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--text-data);
+  letter-spacing: 0.12em;
+}
 
-/* where the victory points come from. The li is the flex row (diamond, then the whole line as one item),
-   so the bold lead keeps flowing inside its sentence instead of becoming a column of its own. */
-.rules ul,.rules ol{margin:0;padding:0;list-style:none}
-.rules .pts{display:flex;flex-direction:column;gap:9px;margin:2px 0 0}
-.rules .pts li{display:flex;gap:11px;font:400 15px/1.5 var(--body);color:var(--ink-dim)}
-.rules .pts li::before{content:"";flex:none;width:6px;height:6px;margin-top:9px;background:var(--gold);transform:rotate(45deg)}
-.rules .pts li>span{min-width:0}
-.rules p.after{margin-top:16px}
+.rules ul, .rules ol { margin: 0; padding: 0; list-style: none; }
+.rules .pts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 2px 0 0;
+}
+.rules .pts li {
+  display: flex;
+  gap: 11px;
+  font-family: var(--font-text);
+  font-size: 0.9375rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.5;
+  color: var(--ink);
+}
+.rules .pts li::before {
+  content: "";
+  flex: none;
+  width: 6px; height: 6px;
+  margin-top: 9px;
+  background: var(--accent-blue);
+  transform: rotate(45deg);
+}
+.rules .pts li > span { min-width: 0; }
+.rules p.after { margin-top: 16px; }
 
-/* the six public objectives, in the order the engine reveals them */
-.rules .objlist{display:flex;flex-direction:column;gap:9px;margin-top:11px}
-.rules .objlist li{display:flex;gap:14px;align-items:baseline;padding-left:13px;
-  border-left:1px solid rgba(201,162,77,.32);font:400 14.5px/1.45 var(--body);color:var(--ink-dim)}
-.rules .rnd{flex:none;width:62px;font:600 11px/1.45 var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.rules .objlist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 11px;
+}
+.rules .objlist li {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding-left: 13px;
+  border-left: 1px solid var(--alpha-frame);
+  font-family: var(--font-text);
+  font-size: 0.90625rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.45;
+  color: var(--ink);
+}
+.rules .rnd {
+  flex: none;
+  width: 62px;
+  font-family: var(--font-display);
+  font-size: var(--text-label);
+  font-weight: var(--weight-title);
+  line-height: 1.45;
+  letter-spacing: var(--track-rail);
+  text-transform: uppercase;
+  color: var(--accent-blue);
+}
 
-/* the six trade posts: render, name, commodity limit, ability sentence, one row each.
-   `.postrow`, not `.post` — theme.css already owns a bare, unscoped `.post{position:absolute;...}`
-   for the board pieces, and it would otherwise leak into this list. */
-.rules .posts{display:flex;flex-direction:column;margin-top:2px}
-.rules .postrow{display:flex;gap:20px;align-items:flex-start;padding:18px 0;border-top:1px solid rgba(201,162,77,.20)}
-.rules .postrow:first-child{padding-top:0;border-top:0}
-.rules .postrow .art{flex:none;width:120px;height:auto;display:block;filter:drop-shadow(0 8px 16px rgba(0,0,0,.55))}
-.rules .postrow .body{min-width:0}
-.rules .postrow .name{font:700 16px/1.25 var(--hud);letter-spacing:.01em;color:var(--gold-hi)}
-.rules .postrow .limit{margin-top:3px;font:600 11px/1 var(--hud);letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}
-.rules .postrow .ability{margin:8px 0 0;font:400 14.5px/1.5 var(--body);color:var(--ink-dim)}
+.rules .posts {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2px;
+}
+.rules .postrow {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 18px 0;
+  border-top: 1px solid var(--panel-separator);
+}
+.rules .postrow:first-child { padding-top: 0; border-top: 0; }
+.rules .postrow .art {
+  flex: none;
+  width: 120px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.55));
+}
+.rules .postrow .body { min-width: 0; }
+.rules .postrow .name {
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: var(--weight-rail);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: var(--ink-bright);
+}
+.rules .postrow .limit {
+  margin-top: 3px;
+  font-family: var(--font-display);
+  font-size: var(--text-label);
+  font-weight: var(--weight-title);
+  line-height: 1;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-blue);
+}
+.rules .postrow .ability {
+  margin: 8px 0 0;
+  font-family: var(--font-text);
+  font-size: 0.90625rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.5;
+  color: var(--ink);
+}
 
-.rules .back{display:flex;justify-content:center}
-.rules .legal{margin:0}
+.rules .back { display: flex; justify-content: center; }
+.rules .legal { margin: 0; }
 
-@media (max-width:560px){
-  .rules{padding:26px 14px 34px}
-  .rules .doc{gap:30px}
-  .rules .title{font-size:34px}
-  .rules .tagline{font-size:13px}
-  .rules h2.tab{font-size:11.5px;left:16px;padding:0 20px 0 12px}
-  .rules .sect .panel{padding:26px 16px 20px}
-  .rules p{font-size:14.5px}
-  .rules .objlist li{flex-direction:column;gap:3px}
-  .rules .rnd{width:auto}
-  .rules .postrow{gap:14px;padding:14px 0}
-  .rules .postrow .art{width:76px}
-  .rules .postrow .name{font-size:14px}
-  .rules .postrow .ability{font-size:13.5px}
+@media (max-width: 560px) {
+  .rules { padding: 26px 14px 34px; }
+  .rules .doc { gap: 30px; }
+  .rules .title { font-size: 34px; }
+  .rules .tagline { font-size: 13px; }
+  .rules h2.tab { font-size: 11.5px; left: 16px; padding: 0 20px 0 12px; }
+  .rules .sect .panel { padding: 26px 16px 20px; }
+  .rules p { font-size: 14.5px; }
+  .rules .objlist li { flex-direction: column; gap: 3px; }
+  .rules .rnd { width: auto; }
+  .rules .postrow { gap: 14px; padding: 14px 0; }
+  .rules .postrow .art { width: 76px; }
+  .rules .postrow .name { font-size: 14px; }
+  .rules .postrow .ability { font-size: 13.5px; }
 }

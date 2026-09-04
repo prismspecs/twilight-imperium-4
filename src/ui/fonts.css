@@ -1,0 +1,20 @@
+/*
+ * Slider — the display face, self-hosted. The @font-face family name must be a
+ * literal string; it is the definition the --font-display token points at, so it
+ * can never itself be a var().
+ */
+@font-face {
+  font-family: "Slider";
+  src:
+    url("/font/slider.woff2") format("woff2"),
+    url("/font/Slider.woff") format("woff");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * IBM Plex Sans and Mono — loaded from Google Fonts CDN.
+ * These carry every piece of UI text (Sans) and every numeral (Mono).
+ */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");

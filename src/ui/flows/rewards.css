@@ -1,6 +1,39 @@
-/* Reward rows: gold hairline chips that summarise what a strategy-card action gives, replacing prose. */
-.rewards{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
-.rw{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px 0 6px;border:1px solid var(--hair);background:rgba(0,0,0,.35)}
-.rw .ic{height:28px;width:auto;object-fit:contain;flex:none}
-.rw .n{font:700 13px/1 var(--hud);color:var(--gold-hi)}
-.rw .t{font:600 11px/1.05 var(--hud);letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
+/* Reward rows — blue accent chips summarising strategy-card actions. */
+.rewards {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.rw {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--alpha-frame);
+  border-radius: var(--radius-sm);
+  background: var(--socket-bg);
+}
+.rw .ic {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  flex: none;
+}
+.rw .n {
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  font-weight: var(--weight-rail);
+  color: var(--ink-bright);
+}
+.rw .t {
+  font-family: var(--font-display);
+  font-size: var(--text-label);
+  font-weight: var(--weight-title);
+  line-height: 1.05;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
