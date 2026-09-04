@@ -196,3 +196,38 @@ homeSystemId(), TRADE_POSTS, MECATOL_ID/SYSTEM_IDS.
 Next iteration: wire createGame to build systems from generateGalaxy for N-player configs (GameConfig
 carries faction+colour per seat), keeping the 2-player flower as the default; lift homeSystemId to be
 state-driven. Then N-player setup + UI.
+
+---
+
+## 🪞 REFLECTION (after iteration 7 / Ralph iter 6)
+
+**Accomplished.** The N-player *engine core* is done and green: seats as numbers, players[], snake draft,
+initiative order, status/victory, secondary-window queue, N-player diplomacy/trade primaries, AI other(),
+N-player objectives. On top of that, three foundational layers for the full game: all 17 base factions as
+data (FactionId, starting units/techs/commodities/ability ids, flagship stats); the full 51-tile base-game
+catalogue (tiles.ts) with planets/traits/tech-skips/wormholes/anomalies; and a seeded galaxy generator
+(generateGalaxy) that lays out 3-6 player radius-3 hex maps with computed adjacency. The keystone refactor
+(state-driven adjacency) means a generated galaxy and the fixed duel map now share movement/combat code.
+
+**Working well.** The incremental, green-every-commit discipline (455 → 472 tests, never red on push).
+Building pure, well-tested data/generator modules *before* wiring them in keeps risk low and each chunk
+honestly verifiable. Recording rulings in the ledger as decisions are made. Small conventional commits
+pushed immediately to main.
+
+**Not working / blocking.** (1) The active map is still the 2-player flower; generateGalaxy is not yet wired
+into createGame, and systemDef()/homeSystemId()/TRADE_POSTS still read the static map. (2) The 15 new
+factions are data-only — abilities not wired. (3) The *bulk* of the full game is untouched: action cards,
+agendas, promissory notes, Politics/Construction strategy cards, secret objectives, the agenda phase. That is
+a very large surface and the real risk to "finishing."
+
+**Adjust approach?** Yes, one steering change: stop perfecting foundations and get to a *playable N-player
+vertical slice* as fast as possible — createGame builds a generated galaxy for N factions, a 3-6 player game
+runs start-to-finish with the existing 6 strategy cards, minimal playable UI. A running N-player game is
+worth more than further groundwork and de-risks the big feature surface by giving it somewhere to live.
+The full-game features (action cards/agendas/promissory/secrets/Politics/Construction) come after the slice.
+
+**Next priorities.** (1) Wire createGame to generateGalaxy for N-player configs + lift homeSystemId to state
+(this iteration). (2) Prove a 3-player game constructs and runs. (3) Minimal N-player board/UI. (4) Then the
+full-game content: 8 strategy cards (add Politics/Construction), action cards, agenda phase, secrets.
+
+---

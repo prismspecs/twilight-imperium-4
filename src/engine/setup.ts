@@ -92,9 +92,9 @@ export function createGame(config: GameConfig, seed: number): GameState {
     for (const su of FACTIONS[config.players[seat].faction].startingUnits) {
       for (let i = 0; i < su.count; i++) {
         const unit = makeUnit(counter, su.type, seat)
-        if (!su.planetId) { sys.space.push(unit); continue }
-        const planet = sys.planets.find(p => p.id === su.planetId)
-        if (!planet) throw new Error(`unknown planet ${su.planetId}`)
+        if (su.planetIndex === undefined) { sys.space.push(unit); continue }
+        const planet = sys.planets[su.planetIndex]
+        if (!planet) throw new Error(`no home planet index ${String(su.planetIndex)} for faction ${config.players[seat].faction}`)
         if (su.type === 'infantry') planet.ground.push(unit); else planet.structures.push(unit)
       }
     }

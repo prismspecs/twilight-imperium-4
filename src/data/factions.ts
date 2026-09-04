@@ -3,15 +3,21 @@ import type { FactionId, UnitType } from '../engine/types'
 export interface FactionDef {
   id: FactionId; name: string; commodityValue: number
   startingTechs: string[]
-  startingUnits: { type: UnitType; count: number; planetId?: string }[]
+  /**
+   * `planetIndex` is the index into the faction's home-system planets (the catalogue home-tile order in
+   * src/data/tiles.ts), not an absolute planet id, so the same starting layout works on the fixed duel map
+   * and on a generated galaxy. Ships (no planetIndex) are placed in the home system's space; infantry and
+   * structures go on the named home planet.
+   */
+  startingUnits: { type: UnitType; count: number; planetIndex?: number }[]
   abilities: string[]
 }
 
 /**
- * All 17 base-game factions. Only l1z1x and letnev are currently selectable and placed (the map has
+ * All 17 base-game factions. Only l1z1x and letnev are currently selectable and placed (the duel map has
  * their two home systems); the other fifteen are complete data — starting units/techs, commodities and
- * ability ids — pending the full map import and per-faction ability wiring. Their `planetId`s reference
- * the home planets that map will add, so they are never dereferenced until then.
+ * ability ids — pending per-faction ability wiring, and are placed once a galaxy is generated for N-player
+ * games. Home-planet indices follow the catalogue home-tile planet order.
  */
 export const FACTIONS: Record<FactionId, FactionDef> = {
   l1z1x: {
@@ -19,7 +25,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['neural_motivator', 'plasma_scoring'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 5, planetId: '000' }, { type: 'spacedock', count: 1, planetId: '000' }, { type: 'pds', count: 1, planetId: '000' },
+      { type: 'infantry', count: 5, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['assimilate', 'harrow'],
   },
@@ -28,7 +34,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['antimass_deflectors', 'plasma_scoring'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'destroyer', count: 1 }, { type: 'fighter', count: 1 },
-      { type: 'infantry', count: 2, planetId: 'arc-prime' }, { type: 'infantry', count: 1, planetId: 'wren-terra' }, { type: 'spacedock', count: 1, planetId: 'arc-prime' },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 1, planetIndex: 1 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['munitions_reserves', 'armada'],
   },
@@ -37,7 +43,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['magen_defense_grid'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 4, planetId: 'nestphar' }, { type: 'spacedock', count: 1, planetId: 'nestphar' }, { type: 'pds', count: 1, planetId: 'nestphar' },
+      { type: 'infantry', count: 4, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['mitosis'],
   },
@@ -46,7 +52,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['antimass_deflectors'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'lisisii' }, { type: 'infantry', count: 2, planetId: 'ragh' }, { type: 'spacedock', count: 1, planetId: 'ragh' },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 2, planetIndex: 1 }, { type: 'spacedock', count: 1, planetIndex: 1 },
     ],
     abilities: ['scavenge', 'nomadic'],
   },
@@ -55,7 +61,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['plasma_scoring'],
     startingUnits: [
       { type: 'warsun', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 4, planetId: 'muaat' }, { type: 'spacedock', count: 1, planetId: 'muaat' },
+      { type: 'infantry', count: 4, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['star_forge', 'gashlai_physiology'],
   },
@@ -64,8 +70,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['antimass_deflectors', 'sarween_tools'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'hercant' }, { type: 'infantry', count: 1, planetId: 'arretze' }, { type: 'infantry', count: 1, planetId: 'kamdorn' },
-      { type: 'spacedock', count: 1, planetId: 'arretze' },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 1, planetIndex: 1 }, { type: 'infantry', count: 1, planetIndex: 2 },
+      { type: 'spacedock', count: 1, planetIndex: 1 },
     ],
     abilities: ['masters_of_trade', 'guild_ships', 'arbiters'],
   },
@@ -74,7 +80,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['neural_motivator', 'antimass_deflectors'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'destroyer', count: 1 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 5, planetId: 'jord' }, { type: 'spacedock', count: 1, planetId: 'jord' },
+      { type: 'infantry', count: 5, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['orbital_drop', 'versatile'],
   },
@@ -83,7 +89,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['gravity_drive'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'destroyer', count: 2 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 4, planetId: 'creuss' }, { type: 'spacedock', count: 1, planetId: 'creuss' },
+      { type: 'infantry', count: 4, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['quantum_entanglement', 'slipstream', 'creuss_gate'],
   },
@@ -92,7 +98,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['sarween_tools', 'plasma_scoring'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 2 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 4, planetId: 'mollprimus' }, { type: 'spacedock', count: 1, planetId: 'mollprimus' }, { type: 'pds', count: 1, planetId: 'mollprimus' },
+      { type: 'infantry', count: 4, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['ambush', 'pillage'],
   },
@@ -101,7 +107,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['sarween_tools', 'neural_motivator'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 1 }, { type: 'destroyer', count: 1 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 3, planetId: 'druaa' }, { type: 'infantry', count: 1, planetId: 'maaluuk' }, { type: 'spacedock', count: 1, planetId: 'druaa' }, { type: 'pds', count: 1, planetId: 'druaa' },
+      { type: 'infantry', count: 3, planetIndex: 1 }, { type: 'infantry', count: 1, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 1 }, { type: 'pds', count: 1, planetIndex: 1 },
     ],
     abilities: ['telepathic', 'foresight'],
   },
@@ -110,7 +116,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['dacxive_animators', 'valefar_assimilator_x', 'valefar_assimilator_y'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'mordaiii' }, { type: 'spacedock', count: 1, planetId: 'mordaiii' },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['galactic_threat', 'propagation', 'technological_singularity'],
   },
@@ -119,8 +125,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: [],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 },
-      { type: 'infantry', count: 3, planetId: 'quinarra' }, { type: 'infantry', count: 2, planetId: 'trenlak' },
-      { type: 'spacedock', count: 1, planetId: 'quinarra' }, { type: 'pds', count: 1, planetId: 'quinarra' },
+      { type: 'infantry', count: 3, planetIndex: 1 }, { type: 'infantry', count: 2, planetIndex: 0 },
+      { type: 'spacedock', count: 1, planetIndex: 1 }, { type: 'pds', count: 1, planetIndex: 1 },
     ],
     abilities: ['unrelenting'],
   },
@@ -129,8 +135,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['neural_motivator', 'antimass_deflectors', 'sarween_tools', 'plasma_scoring'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 2 }, { type: 'fighter', count: 1 },
-      { type: 'infantry', count: 1, planetId: 'jol' }, { type: 'infantry', count: 1, planetId: 'nar' },
-      { type: 'spacedock', count: 1, planetId: 'nar' }, { type: 'pds', count: 2, planetId: 'nar' },
+      { type: 'infantry', count: 1, planetIndex: 1 }, { type: 'infantry', count: 1, planetIndex: 0 },
+      { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 2, planetIndex: 0 },
     ],
     abilities: ['fragile', 'brilliant', 'analytical'],
   },
@@ -140,7 +146,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: [],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetId: 'winnu' }, { type: 'spacedock', count: 1, planetId: 'winnu' }, { type: 'pds', count: 1, planetId: 'winnu' },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['blood_ties', 'reclamation'],
   },
@@ -149,8 +155,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['graviton_laser_system'],
     startingUnits: [
       { type: 'carrier', count: 1 }, { type: 'cruiser', count: 2 }, { type: 'fighter', count: 3 },
-      { type: 'infantry', count: 3, planetId: 'archonren' }, { type: 'infantry', count: 1, planetId: 'archontau' },
-      { type: 'spacedock', count: 1, planetId: 'archonren' }, { type: 'pds', count: 1, planetId: 'archonren' },
+      { type: 'infantry', count: 3, planetIndex: 0 }, { type: 'infantry', count: 1, planetIndex: 1 },
+      { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['peace_accords', 'quash'],
   },
@@ -159,7 +165,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['sarween_tools'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'destroyer', count: 1 }, { type: 'fighter', count: 4 },
-      { type: 'infantry', count: 4, planetId: 'darien' }, { type: 'spacedock', count: 1, planetId: 'darien' },
+      { type: 'infantry', count: 4, planetIndex: 0 }, { type: 'spacedock', count: 1, planetIndex: 0 },
     ],
     abilities: ['indoctrination', 'devotion'],
   },
@@ -168,8 +174,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['neural_motivator'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 3, planetId: 'retillion' }, { type: 'infantry', count: 2, planetId: 'shalloq' },
-      { type: 'spacedock', count: 1, planetId: 'retillion' }, { type: 'pds', count: 1, planetId: 'retillion' },
+      { type: 'infantry', count: 3, planetIndex: 0 }, { type: 'infantry', count: 2, planetIndex: 1 },
+      { type: 'spacedock', count: 1, planetIndex: 0 }, { type: 'pds', count: 1, planetIndex: 0 },
     ],
     abilities: ['stall_tactics', 'scheming', 'crafty'],
   },
