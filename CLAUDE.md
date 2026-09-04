@@ -1,6 +1,6 @@
 # Mecatol Duel
 
-Two-player Twilight Imperium 4 distillation. Pure TypeScript rules engine in `src/engine/` and `src/data/`, React UI on top, Vitest tests next to the modules.
+Full Twilight Imperium 4 (base game plus Codices), for 2-6 players (primarily 6). Pure TypeScript rules engine in `src/engine/` and `src/data/`, React UI on top, Vitest tests next to the modules.
 
 ## Rules for every change
 
