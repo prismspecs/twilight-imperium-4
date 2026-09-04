@@ -288,10 +288,14 @@
 /* Menu boxes */
 .lobbyui .menu {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr 1fr;
   gap: 24px;
   margin-top: 28px;
 }
+/* Hot-seat is the only working path today: give it more room and a bigger call to action so it
+   reads as the hero, not one of three equal tiles. */
+.lobbyui .box.primary .lead .ico img { height: 30px; }
+.lobbyui .box.primary .foot .btn { min-width: 190px; }
 .lobbyui .menu .box { min-height: 150px; }
 .lobbyui .menu .panel {
   padding: 26px 22px 18px;

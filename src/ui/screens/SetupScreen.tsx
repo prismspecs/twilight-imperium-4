@@ -213,7 +213,7 @@ export function SetupScreen() {
 
   return (
     <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom }}>
-      <SpaceBackdrop />
+      <SpaceBackdrop dim />
 
       <header className="hero">
         <h1 className="title goldtext">Twilight Imperium IV</h1>
@@ -269,7 +269,7 @@ export function SetupScreen() {
               <p className="line"><span className="lbl">Hot-seat</span>Pass the tablet, chess clock {minutes} minutes each.</p>
             </div>
             <div className="foot">
-              <button type="button" className="btn gold" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
+              <button type="button" className="btn gold big" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
               <span className="note">No account, no network</span>
             </div>
           </div>
