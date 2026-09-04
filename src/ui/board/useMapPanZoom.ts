@@ -16,7 +16,10 @@ export interface PanZoomState {
 
 const MIN_ZOOM = 0.4
 const MAX_ZOOM = 3.0
-const DRAG_THRESHOLD = 5
+// R3.2: below this, an ordinary mouse or trackpad click reads as a few pixels of pointer drift and the
+// click-vs-pan disambiguation below would eat the click meant for a tile, with no on-screen feedback at
+// all - the tactical action button stays highlighted and nothing else happens.
+const DRAG_THRESHOLD = 12
 
 export function useMapPanZoom(): PanZoomState {
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
