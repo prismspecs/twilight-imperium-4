@@ -102,3 +102,26 @@ Next iteration: objective N-player generalization (or full faction data import).
 ## Ledger
 
 See `docs/superpowers/plans/2026-09-04-ti4-full-game.ledger.md` for all rulings and completion notes.
+
+## Iteration 3 — N-player objectives generalization (commit d2b042c)
+
+Delivered this iteration:
+- more_ships and foothold objectives now compare against any other seat (at-least-one semantics), not a single opponent
+- Added shared thirdSeat()/withThirdSeat() helpers in testUtils
+- New N-player objectives test (458 tests total)
+- Refactored strategicActions tests to reuse the shared helper
+
+N-player engine status:
+- ✅ Core (seats, draft, initiative, status/victory)
+- ✅ Secondary window, diplomacy primary, trade primary
+- ✅ AI other()
+- ✅ Objectives (more_ships, foothold)
+
+Remaining:
+- Setup UI hardcoded to [0,1]
+- Map with only 2 home systems
+- Full faction data import (the big next step)
+
+Next iteration: full faction data import (17 factions, abilities, techs) — the highest-value remaining
+item. Start by expanding src/data/factions.ts from 2 to all 17 base factions, then wire faction abilities
+into combat/research, then the full tech tree.

@@ -104,3 +104,14 @@ N-player engine generalization progress:
 - Remaining: objectives (duel-specific opponent references), Setup UI (hardcoded to 2 players).
 
 Next steps: objective N-player generalization or full faction data import to enable actual multi-faction games.
+
+## Iteration 3 (Ralph iter 2) complete — N-player objectives (commit d2b042c, pushed)
+
+more_ships and foothold no longer depend on otherSeat(). They compare against every other seat with
+"at least one other" semantics, identical to the 2-player behaviour at N=2 and scaling to N players.
+Added shared thirdSeat()/withThirdSeat() helpers in testUtils and an N-player objectives test.
+Refactored strategicActions.test to reuse the shared helper.
+
+Engine N-player status: core, secondary window, diplomacy primary, trade primary, AI other(), and
+objectives are all N-player now. Remaining 2-player code: the Setup UI (hardcoded to [0,1]), the map
+(2 home systems), and the many duel-specific data modules.
