@@ -21,7 +21,7 @@ export function gameKey(code: string): string {
 /** What the lobby needs to list a game without parsing the whole state. */
 export interface GameSummary {
   code: string
-  names: [string, string]
+  names: string[]
   round: number
   updatedAt: number
 }
@@ -30,7 +30,7 @@ interface Legacy {
   version: 1
   seed: number
   minutes: number
-  clockMs: [number, number]
+  clockMs: number[]
   state: GameState
   history: GameState[]
   /** Which seat is an AI; absent in a game saved before the AI existed, which loaded as hot-seat. */
@@ -43,7 +43,7 @@ function isLegacy(value: unknown): value is Legacy {
   if (typeof value !== 'object' || value === null) return false
   const p = value as Partial<Legacy>
   return p.version === 1 && typeof p.seed === 'number' && typeof p.minutes === 'number'
-    && Array.isArray(p.clockMs) && p.clockMs.length === 2
+    && Array.isArray(p.clockMs) && p.clockMs.length >= 2
     && Array.isArray(p.history)
     // R7 changed the objectives and with them the shape of a player, so a game saved under version 1 is
     // not readable any more and is dropped rather than crashed into
@@ -54,8 +54,8 @@ function isSummary(value: unknown): value is GameSummary {
   if (typeof value !== 'object' || value === null) return false
   const s = value as Partial<GameSummary>
   return typeof s.code === 'string' && s.code.length > 0
-    && Array.isArray(s.names) && s.names.length === 2
-    && typeof s.names[0] === 'string' && typeof s.names[1] === 'string'
+    && Array.isArray(s.names) && s.names.length >= 2
+    && s.names.every(n => typeof n === 'string')
     && typeof s.round === 'number' && typeof s.updatedAt === 'number'
 }
 
@@ -149,7 +149,7 @@ function readIndex(): GameSummary[] {
 function store(session: Session): void {
   const summary: GameSummary = {
     code: session.code,
-    names: [session.state.players[0].name, session.state.players[1].name],
+    names: session.state.players.map(p => p.name),
     round: session.state.round,
     updatedAt: Date.now(),
   }

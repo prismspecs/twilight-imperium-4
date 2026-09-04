@@ -21,11 +21,13 @@ export function GameOverScreen() {
       <header className="hero">
         <h1 className="title goldtext" data-testid="winner">{winner.name} wins</h1>
         <p className="tagline" data-testid="final-score">
-          {state.players[0].name} {state.players[0].vp} victory points, {state.players[1].name} {state.players[1].vp}
+          {state.players.length <= 2
+            ? `${state.players[0].name} ${state.players[0].vp} victory points, ${state.players[1].name} ${state.players[1].vp}`
+            : state.players.map(p => `${p.name} ${p.vp} VP`).join(' · ')}
         </p>
       </header>
       <div className="seats">
-        {([0, 1] as Seat[]).map(seat => (
+        {state.players.map((_, i) => i as Seat).map(seat => (
           <div className="cut seat" key={seat}>
             <div className="in">
               <div className="lbl">{state.players[seat].name}</div>

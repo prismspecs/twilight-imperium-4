@@ -81,7 +81,8 @@ const PLANET_TRAIT: Record<string, PlanetTrait> = {
   'mecatol-rex': 'none', quann: 'cultural', starpoint: 'hazardous', centauri: 'cultural',
   'arc-prime': 'none', 'wren-terra': 'none',
 }
-export function planetTrait(planetId: string): PlanetTrait {
+export function planetTrait(planetId: string, traitOverride?: PlanetTrait | null): PlanetTrait {
+  if (traitOverride) return traitOverride
   return PLANET_TRAIT[planetId] ?? 'none'
 }
 
@@ -124,8 +125,14 @@ export const SIGIL: Record<FactionId, string> = {
   yssaril: '/assets/factions/yssaril.png',
 }
 
-export function tileUrl(systemId: string): string {
-  return `/assets/tiles/${TILE_FILE[systemId]}`
+export function tileUrl(systemId: string, tileFile?: string): string {
+  if (TILE_FILE[systemId]) return `/assets/tiles/${TILE_FILE[systemId]}`
+  if (tileFile) {
+    const known = ['00_blue', '06_000', '10_ArcPime', '18_MR', '35_Bereg', '42_Nebula', '44_Asteroids', 'tile_anomaly', 'tile_anomaly_chevron']
+    const base = tileFile.replace(/\.png$/, '')
+    if (known.includes(base)) return `/assets/tiles/${base}.png`
+  }
+  return '/assets/tiles/00_blue.png'
 }
 export function planetArtUrl(planetId: string): string | null {
   const file = PLANET_FILE[planetId]
@@ -134,8 +141,10 @@ export function planetArtUrl(planetId: string): string | null {
 export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
   return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`
 }
+const KNOWN_TOKEN_FACTIONS = new Set<FactionId>(['l1z1x', 'letnev'])
 export function tokenUrl(faction: FactionId, kind: 'command' | 'command-fleet' | 'control'): string {
-  return `/assets/tokens/${faction}_${kind}.png`
+  const f = KNOWN_TOKEN_FACTIONS.has(faction) ? faction : 'l1z1x'
+  return `/assets/tokens/${f}_${kind}.png`
 }
 export function strategyCardUrl(card: StrategyCardId): string {
   return `/assets/cards/strat_base_game_${CARD_NUMBER[card]}.png`

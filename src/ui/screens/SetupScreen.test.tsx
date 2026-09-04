@@ -182,4 +182,39 @@ describe('the setup screen', () => {
     expect(legal).toContain('Kevin MacLeod')
     expect(legal).toContain('Creative Commons By Attribution 4.0')
   })
+
+  it('supports selecting 3 to 6 players and updates seats and map target accordingly', () => {
+    renderApp()
+    fireEvent.click(screen.getByTestId('player-count-3'))
+    expect(screen.getByTestId('seat-position-0').textContent).toBe('East')
+    expect(screen.getByTestId('seat-position-1').textContent).toBe('North-West')
+    expect(screen.getByTestId('seat-position-2').textContent).toBe('South-West')
+    expect(screen.getByTestId('setup-map').textContent).toContain('Generated Galaxy (34 systems)')
+    expect(screen.getByTestId('setup-target').textContent).toContain('10 victory points')
+    expect(screen.getByTestId('lobby-status').textContent).toContain('3 of 3 seats taken')
+
+    fireEvent.click(screen.getByTestId('player-count-6'))
+    expect(screen.getByTestId('seat-position-5')).toBeTruthy()
+    expect(screen.getByTestId('setup-map').textContent).toContain('Generated Galaxy (37 systems)')
+    expect(screen.getByTestId('lobby-status').textContent).toContain('6 of 6 seats taken')
+  })
+
+  it('allows picking any of the 17 factions and updates techs, fleet, and commodities', () => {
+    renderApp()
+    fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'sol' } })
+    expect(screen.getByTestId('seat-faction-0').textContent).toBe('Federation of Sol')
+    expect(screen.getByTestId('seat-0-techs').textContent).toContain('Antimass Deflectors')
+    expect(screen.getByTestId('seat-0-commodities').textContent).toContain('4')
+  })
+
+  it('starts a 3-player game on the generated galaxy', () => {
+    renderApp()
+    fireEvent.click(screen.getByTestId('player-count-3'))
+    fireEvent.click(screen.getByTestId('btn-start'))
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(screen.getByTestId('player-0')).toBeTruthy()
+    expect(screen.getByTestId('player-1')).toBeTruthy()
+    expect(screen.getByTestId('player-2')).toBeTruthy()
+    expect(screen.getByTestId('tile-mecatol')).toBeTruthy()
+  })
 })

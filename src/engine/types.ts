@@ -32,6 +32,9 @@ export interface Planet {
 }
 export interface System {
   id: string; name: string
+  tile?: string
+  q?: number
+  r?: number
   planets: Planet[]
   wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]             // hex-adjacent system ids; wormhole links are added on top by adjacency.ts

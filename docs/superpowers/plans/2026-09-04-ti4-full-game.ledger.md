@@ -283,3 +283,28 @@ Replaced the custom 2-player duel objective deck with the authoritative 20 base 
   - Updated `production.test.ts`, `Strategic.test.tsx`, `hotseat.e2e.test.tsx`, and `fullGame.test.ts` (retuned SEEDS with 203 to cover bombard and ground combat).
   - 51 test files passing (504 tests total), 0 type errors, 0 lint errors.
 
+## Iteration 13 (Ralph iter 11) — N-player board & UI (rendered hex galaxy, dynamic 2-6p lobby, multi-seat HUD)
+
+Delivered full human playability for 2 to 6 players across board, HUD, and lobby:
+- **Map & Layout Coordinates**:
+  - `src/data/map.ts` & `src/engine/setup.ts`: assigned axial coordinates `(q, r)` to duel systems and propagated `tile`, `q`, and `r` to `state.systems` in `createGame`.
+  - `src/ui/layout.ts`: implemented flat-topped axial `hexToPixel(q, r, origin)`, configured `FLOWER_ORIGIN` (480, 480) & `GALAXY_ORIGIN` (522, 603), and set `GALAXY_MAP_SIZE` (1276x1407). Generic fallback planet markers (`planetCenters`, `fallbackSpots` for 1, 2, or 3 planets) and space boxes for arbitrary systems so generated galaxy tiles never crash.
+- **Board Rendering**:
+  - `src/ui/board/Tile.tsx`: positions tiles via axial coords on galaxy maps and `TILE_POS` on duel maps, correctly placing Mecatol Rex at (522, 603) on galaxy boards; displays planet traits, tech-skips, and commodities.
+  - `src/ui/board/BoardMap.tsx`: iterates dynamically over `Object.values(state.systems)`, sets dynamic CSS `--map-w` and `--map-h`, conditionally hides duel-only trade posts on generated galaxies.
+- **HUD & Side Panels**:
+  - `src/ui/hud/TopBar.tsx`: renders compact multi-player strip for 3-6p (and preserves classic dual layout for 2p) with portraits, faction names, VP, clocks, turn chips, and speaker token; `Objectives` maps scored tokens across all `state.players`.
+  - `src/ui/hud/SidePanel.tsx`: added seat selector tabs for 3-6p, safe seat clamping (`safeSeat`) avoiding undefined access, dynamic `0 of 7` / `0 of 10` VP targets.
+  - `src/ui/hud/ActionBar.tsx` & `src/ui/screens/GameOverScreen.tsx`: dynamic round limits (6 for 2p, 8 for 3-6p) and multi-seat game over rankings.
+- **Dynamic Lobby (SetupScreen)**:
+  - `src/ui/screens/SetupScreen.tsx`: 2-6 player count selector, responsive grid for 2-6 seat cards, 17-faction `<select>` picker per seat with portrait, sigil, starting fleet, starting techs, and commodities.
+  - Automatic faction and color collision resolution on player count changes; AI/Human controller toggle per seat; dynamic map & target summary (Bereg Standoff 7 VP vs Generated Galaxy 10 VP).
+- **State & Storage**:
+  - `src/ui/store.tsx`: dynamic `clockMs: number[]` for arbitrary player counts.
+  - `src/ui/persist.ts`: allows arbitrary player count in saves and game summary validation.
+- **Tests & Verification**:
+  - Added comprehensive tests in `src/ui/screens/SetupScreen.test.tsx`, `src/ui/board/BoardMap.test.tsx`, and `src/ui/hud/Hud.test.tsx`.
+  - 509 tests passing across 51 test suites.
+  - Clean TypeScript compilation (`npx tsc -p tsconfig.app.json --noEmit`) and 0 lint errors (`npm run lint`).
+
+

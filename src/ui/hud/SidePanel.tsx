@@ -13,22 +13,50 @@ import type { GameState, Seat, UnitType } from '../../engine/types'
 const POOLS = ['tactic', 'fleet', 'strategy'] as const
 const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
 
-export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
+export interface SidePanelProps {
+  state: GameState
+  seat: Seat
+  side?: 'left' | 'right'
+  onSelectSeat?: (seat: Seat) => void
+}
+
+export function SidePanel({ state, seat, side, onSelectSeat }: SidePanelProps) {
   // hovering a force opens its reference card next to the column; the column itself does not scroll, so the
   // card is rendered here rather than inside the scrolling content, where it would be clipped away
   const [shown, setShown] = useState<UnitType | null>(null)
   const { style } = useModelStyle()
-  const player = state.players[seat]
-  const planets = ownedPlanets(state, seat)
+  const safeSeat = (seat < state.players.length ? seat : 0) as Seat
+  const player = state.players[safeSeat]
+  const planets = ownedPlanets(state, safeSeat)
   const counts = new Map<UnitType, number>()
-  for (const unit of unitsOf(state, seat)) counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1)
+  for (const unit of unitsOf(state, safeSeat)) counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1)
+  const panelSide = side ?? (safeSeat === 0 ? 'left' : 'right')
+  const targetVp = state.players.length <= 2 ? 7 : 10
+
   return (
-    <div className={`${seat === 0 ? 'colL' : 'colR'} cut`} data-testid={`panel-${seat}`}>
+    <div className={`${panelSide === 'left' ? 'colL' : 'colR'} cut`} data-testid={`panel-${seat}`}>
+      {state.players.length > 2 && (
+        <div className="seat-tabs" data-testid={`seat-tabs-${panelSide}`}>
+          {state.players.map((p, idx) => (
+            <button
+              key={p.seat}
+              type="button"
+              className={`seat-tab ${p.seat === seat ? 'active' : ''}`}
+              onClick={() => onSelectSeat?.(p.seat as Seat)}
+              data-testid={`tab-${panelSide}-${p.seat}`}
+            >
+              P{idx + 1}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="in pcontent">
         <div className="sec">
-          <span className="lbl bul">Victory points <span data-testid={`vp-${seat}`}>{player.vp} of 7</span></span>
+          <span className="lbl bul">Victory points <span data-testid={`vp-${seat}`}>{player.vp} of {targetVp}</span></span>
           <div className="vp">
-            {[1, 2, 3, 4, 5, 6, 7].map(n => <i key={n} className={n <= player.vp ? 'on' : ''} data-n={n} />)}
+            {Array.from({ length: targetVp }, (_, i) => i + 1).map(n => (
+              <i key={n} className={n <= player.vp ? 'on' : ''} data-n={n} />
+            ))}
           </div>
         </div>
         <div className="sec">

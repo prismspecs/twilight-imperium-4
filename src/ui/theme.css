@@ -131,7 +131,7 @@ button{font-family:inherit}
   display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:1}
 /* a grouping wrapper only; its dialogs position themselves against the stage */
 .stage>.flows-4b{display:contents}
-.map{position:relative;width:940px;height:698px;zoom:var(--s);z-index:1}
+.map{position:relative;width:var(--map-w, 940px);height:var(--map-h, 698px);zoom:var(--s);z-index:1}
 .actions{display:flex;gap:10px;margin:0 auto}
 /* the in-game menu: the way back to the lobby and the rules without abandoning the game */
 .menuwrap{position:relative}
@@ -157,6 +157,23 @@ button{font-family:inherit}
 .runbar{position:relative;height:2px;width:118px;background:rgba(201,162,77,.25);margin:3px 0 4px}
 .runbar i{position:absolute;left:0;top:-1px;height:4px;background:linear-gradient(90deg,transparent,var(--gold-hi))}
 .speaker{width:34px;height:22px;object-fit:contain}
+
+/* multi-player HUD layout */
+.topbar.multi{justify-content:space-between;overflow-x:auto;max-width:100%}
+.players-group{display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0}
+.pblock.compact{display:flex;align-items:center;gap:6px;width:auto;min-width:90px;max-width:145px;flex:0 1 auto}
+.pblock.compact .portrait.mini{width:48px;height:48px;padding:2px}
+.pblock.compact .portrait.mini .face{width:44px;height:44px;background-size:132px 88px;background-position:-5px -25px}
+.pblock.compact .portrait.mini .sym{width:18px;height:18px;right:-5px;bottom:-5px}
+.pblock.compact .pname{font-size:12px;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pblock.compact .pnick{font-size:9px}
+.pblock.compact .clock.mini{font-size:18px;margin-top:1px}
+.pblock.compact .subrow{display:flex;align-items:center;gap:6px}
+.pblock.compact .vp-chip{font:700 10px/1 var(--hud);color:var(--gold-hi);background:rgba(201,162,77,.2);padding:1px 4px}
+.pblock.compact .runbar{width:80px;margin:2px 0}
+.seat-tabs{display:flex;gap:4px;padding:6px 8px;background:rgba(0,0,0,0.5);border-bottom:1px solid var(--hair)}
+.seat-tab{flex:1;padding:4px 0;font:700 11px/1 var(--hud);color:var(--ink-dim);background:rgba(10,16,32,0.8);border:1px solid rgba(201,162,77,0.3);cursor:pointer}
+.seat-tab.active{color:#fff;border-color:var(--gold);background:rgba(201,162,77,0.25)}
 
 /* strategy cards and objectives */
 .strats{position:relative;display:flex;gap:7px;flex:none;margin-left:auto}

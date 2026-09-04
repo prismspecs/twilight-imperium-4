@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { createGame } from '../../engine'
 import { toActionPhase } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
 import type { Seat } from '../../engine/types'
@@ -114,5 +115,26 @@ describe('the board', () => {
     expect(screen.getByTestId('activation-sakulag-1').getAttribute('alt')).toBe(`${state.players[1].name} command token`)
     expect(screen.queryByTestId('activation-quann-0')).toBeNull()
     expect(screen.queryByTestId('activation-quann-1')).toBeNull()
+  })
+
+  it('renders all systems in a generated galaxy without trade posts', () => {
+    const g3 = createGame({
+      players: [
+        { faction: 'l1z1x', color: 'blue', name: 'A' },
+        { faction: 'sol', color: 'red', name: 'B' },
+        { faction: 'hacan', color: 'yellow', name: 'C' },
+      ],
+      speaker: 0,
+    }, 42)
+    render(<BoardMap state={g3} />)
+    const mecatol = screen.getByTestId('tile-mecatol')
+    expect(mecatol).toBeTruthy()
+    expect(mecatol.style.left).toBe('522px')
+    expect(mecatol.style.top).toBe('603px')
+    expect(screen.getByTestId('tile-home-0')).toBeTruthy()
+    expect(screen.getByTestId('tile-home-1')).toBeTruthy()
+    expect(screen.getByTestId('tile-home-2')).toBeTruthy()
+    expect(screen.queryByTestId('post-west')).toBeNull()
+    expect(screen.queryByTestId('post-east')).toBeNull()
   })
 })

@@ -8,7 +8,8 @@ import { TopBar } from '../hud/TopBar'
 import { productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
-import type { StrategyCardId } from '../../engine/types'
+import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
+import type { Seat, StrategyCardId } from '../../engine/types'
 // tactical flows (Task 4a)
 import { CombatDialog } from '../flows/CombatDialog'
 import { InvasionPanel } from '../flows/InvasionPanel'
@@ -38,14 +39,18 @@ const HINTS: Record<string, string> = {
 
 export function BoardScreen() {
   const { session, legal, apply, clockRunning } = useGame()
-  // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
-  const { k, s } = useViewportScale()
+  const [leftSeat, setLeftSeat] = useState<Seat>(0)
+  const [rightSeat, setRightSeat] = useState<Seat>(1)
   const [mode, setMode] = useState<ActionMode>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
   const [showLog, setShowLog] = useState(() => import.meta.env.DEV
     && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'log')
   const [card, setCard] = useState<StrategyCardId | null>(null)
+  const isGalaxy = (session?.state.players.length ?? 2) > 2
+  const mapSize = isGalaxy ? GALAXY_MAP_SIZE : FLOWER_MAP_SIZE
+  // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
+  const { k, s } = useViewportScale(mapSize.width, mapSize.height)
   if (!session) return null
   const state = session.state
   const drafting = state.phase === 'strategy'
@@ -79,8 +84,8 @@ export function BoardScreen() {
       >
         <SpaceBackdrop dim />
         <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
-        <SidePanel state={state} seat={0} />
-        <SidePanel state={state} seat={1} />
+        <SidePanel state={state} seat={(leftSeat < state.players.length ? leftSeat : 0) as Seat} side="left" onSelectSeat={setLeftSeat} />
+        <SidePanel state={state} seat={(rightSeat < state.players.length ? rightSeat : Math.min(1, state.players.length - 1)) as Seat} side="right" onSelectSeat={setRightSeat} />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
         <div className="stage" data-testid="stage">
           <BoardMap

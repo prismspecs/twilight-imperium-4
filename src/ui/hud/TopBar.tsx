@@ -82,8 +82,40 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
   )
 }
 
+function CompactPlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
+  const player = state.players[seat]
+  const active = state.active === seat && state.winner === null
+  const running = active && clockRunning
+  return (
+    <div className="pblock compact" data-testid={`player-${seat}`}>
+      <div className="portrait mini">
+        <div className="face" style={{ backgroundImage: `url(${PORTRAIT[player.faction]})` }} />
+        <div className="sym"><img src={SIGIL[player.faction]} alt="" /></div>
+      </div>
+      <div className="pinfo">
+        <div className="namerow">
+          <span className="pname goldtext">{FACTIONS[player.faction].name}</span>
+          {state.speaker === seat ? <img className="speaker" src={MISC.speaker} alt="Speaker" data-testid={`speaker-${seat}`} /> : null}
+        </div>
+        <div className="subrow">
+          <span className="pnick">{player.name}</span>
+          <span className="vp-chip">{player.vp} VP</span>
+        </div>
+        <div className="clock mini">
+          <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
+          <small>{running ? 'running' : 'paused'}</small>
+        </div>
+        <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
+        <div>
+          <span className={`chip ${player.color}`} data-testid={`turn-${seat}`}>{active ? 'Your turn' : 'Waiting'}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Objectives({ state }: { state: GameState }) {
-  const scoredBy = (test: (seat: Seat) => boolean) => ([0, 1] as Seat[]).filter(test)
+  const scoredBy = (test: (seat: Seat) => boolean) => state.players.map((_, i) => i as Seat).filter(test)
   return (
     <div className="objs">
       <div className="objrow">
@@ -122,15 +154,53 @@ function Objectives({ state }: { state: GameState }) {
 
 export function TopBar(
   { state, clockMs, clockMinutes, clockRunning, onPick }:
-  { state: GameState; clockMs: [number, number]; clockMinutes: number; clockRunning: boolean; onPick?: (card: StrategyCardId) => void },
+  { state: GameState; clockMs: number[]; clockMinutes: number; clockRunning: boolean; onPick?: (card: StrategyCardId) => void },
 ) {
   const clockMaxMs = clockMinutes * 60000
+  if (state.players.length === 2) {
+    return (
+      <div className="topbar">
+        <PlayerBlock state={state} seat={0} clockMs={clockMs[0] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+        <StrategyStrip state={state} onPick={onPick} />
+        <Objectives state={state} />
+        <PlayerBlock state={state} seat={1} clockMs={clockMs[1] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+      </div>
+    )
+  }
+
+  const n = state.players.length
+  const half = Math.ceil(n / 2)
+  const leftSeats = Array.from({ length: half }, (_, i) => i as Seat)
+  const rightSeats = Array.from({ length: n - half }, (_, i) => (half + i) as Seat)
+
   return (
-    <div className="topbar">
-      <PlayerBlock state={state} seat={0} clockMs={clockMs[0]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+    <div className="topbar multi">
+      <div className="players-group left">
+        {leftSeats.map(seat => (
+          <CompactPlayerBlock
+            key={seat}
+            state={state}
+            seat={seat}
+            clockMs={clockMs[seat] ?? 0}
+            clockMaxMs={clockMaxMs}
+            clockRunning={clockRunning}
+          />
+        ))}
+      </div>
       <StrategyStrip state={state} onPick={onPick} />
       <Objectives state={state} />
-      <PlayerBlock state={state} seat={1} clockMs={clockMs[1]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+      <div className="players-group right">
+        {rightSeats.map(seat => (
+          <CompactPlayerBlock
+            key={seat}
+            state={state}
+            seat={seat}
+            clockMs={clockMs[seat] ?? 0}
+            clockMaxMs={clockMaxMs}
+            clockRunning={clockRunning}
+          />
+        ))}
+      </div>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 {
   "name": "ti4-full-game",
   "taskFile": ".ralph/ti4-full-game.md",
-  "iteration": 11,
+  "iteration": 12,
   "maxIterations": 60,
   "itemsPerIteration": 1,
   "reflectEvery": 5,

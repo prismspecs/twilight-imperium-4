@@ -49,12 +49,12 @@ function round3(value: number): number {
   return Math.round(value * 1000) / 1000
 }
 
-export function viewportScale(width: number, height: number): ViewportScale {
+export function viewportScale(width: number, height: number, mapW = MAP_W, mapH = MAP_H): ViewportScale {
   const k = round3(clamp(K_MIN, Math.min(width / (GUTTERS + MIN_STAGE_W), height / (BARS + MIN_STAGE_H)), K_MAX))
   // the stage's own size in design pixels, i.e. after `k` has been applied to the regions around it
   const stageW = width / k - GUTTERS
   const stageH = height / k - BARS
-  const s = round3(clamp(S_MIN, Math.min(stageW / MAP_W, stageH / MAP_H), S_MAX))
+  const s = round3(clamp(S_MIN, Math.min(stageW / mapW, stageH / mapH), S_MAX))
   return { k, s }
 }
 
@@ -91,20 +91,20 @@ export function useFitScale(): number {
 
 const FALLBACK: ViewportScale = { k: 1, s: 1 }
 
-export function useViewportScale(): ViewportScale {
+export function useViewportScale(mapW = MAP_W, mapH = MAP_H): ViewportScale {
   const [scale, setScale] = useState<ViewportScale>(
-    () => typeof window === 'undefined' ? FALLBACK : viewportScale(window.innerWidth, window.innerHeight),
+    () => typeof window === 'undefined' ? FALLBACK : viewportScale(window.innerWidth, window.innerHeight, mapW, mapH),
   )
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onResize = () => {
-      const next = viewportScale(window.innerWidth, window.innerHeight)
+      const next = viewportScale(window.innerWidth, window.innerHeight, mapW, mapH)
       setScale(prev => prev.k === next.k && prev.s === next.s ? prev : next)
     }
     window.addEventListener('resize', onResize)
     // the first paint may predate a resize that happened between render and effect
     onResize()
     return () => { window.removeEventListener('resize', onResize) }
-  }, [])
+  }, [mapW, mapH])
   return scale
 }

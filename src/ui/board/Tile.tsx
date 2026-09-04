@@ -1,8 +1,8 @@
-import { systemDef } from '../../data/map'
 import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileUrl, tokenUrl } from '../art'
 import {
-  ACTIVATION_SIZE, ACTIVATION_SPOT, PLANET_CENTRE, PLANET_SPOTS, PLATE_VALS_W, SIGIL_SIZE, SIGIL_SPOT,
-  SPACE_BOX, TILE_H, TILE_POS, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS, fleetScale,
+  ACTIVATION_SIZE, ACTIVATION_SPOT, GALAXY_ORIGIN, PLATE_VALS_W, SIGIL_SIZE, SIGIL_SPOT,
+  TILE_H, TILE_POS, TILE_W, WORMHOLE_SIZE, fleetScale,
+  getPlanetCentre, getPlanetSpot, getSpaceBox, getWormholeSpot, hexToPixel,
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
@@ -16,9 +16,9 @@ function colourOf(state: GameState, owner: Owner): Color | 'grey' {
 /** How far off the planet's centre the structures row sits, on the side the nameplate leaves free. */
 const STRUCT_OFFSET = 34
 
-function PlanetMarkers({ state, planet }: { state: GameState; planet: Planet }) {
-  const spot = PLANET_SPOTS[planet.id]
-  const centre = PLANET_CENTRE[planet.id]
+function PlanetMarkers({ state, planet, index, count }: { state: GameState; planet: Planet; index: number; count: number }) {
+  const spot = getPlanetSpot(planet.id, index, count)
+  const centre = getPlanetCentre(planet.id, spot)
   const art = planetArtUrl(planet.id)
   const ground = groupUnits(planet.ground)
   const structures = groupUnits(planet.structures)
@@ -34,7 +34,7 @@ function PlanetMarkers({ state, planet }: { state: GameState; planet: Planet }) 
         <img className="planet" src={art} alt={planet.name} data-testid={`planet-art-${planet.id}`}
           style={{ left: spot.art.left, top: spot.art.top, width: spot.art.width, height: spot.art.height }} />
       ) : null}
-      <span className={`plate ${planetTrait(planet.id)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}`}
+      <span className={`plate ${planetTrait(planet.id, planet.trait)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}`}
         data-testid={`plate-${planet.id}`} style={plateStyle}>
         <span className="vals">
           <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
@@ -78,14 +78,16 @@ export interface TileProps {
 }
 
 export function Tile({ state, system, active, selectable, outOfReach = false, onSelect }: TileProps) {
-  const def = systemDef(system.id)
-  const pos = TILE_POS[system.id]
+  const isGalaxy = state.players.length > 2
+  const pos = !isGalaxy && TILE_POS[system.id]
+    ? TILE_POS[system.id]
+    : hexToPixel(system.q ?? 0, system.r ?? 0, GALAXY_ORIGIN)
   // everything the system holds in space, ships and the fighters and infantry they carry, drawn inside
   // the tile's own space box and shrunk rather than allowed to spill out of it
-  const box = SPACE_BOX[system.id]
+  const box = getSpaceBox(system.id, system.planets.length)
   const fleet = groupUnits(system.space)
   const scale = fleetScale(fleet.length, box)
-  const home = def.home === null ? '' : def.home === 0 ? ' home-0' : ' home-1'
+  const home = system.home === null ? '' : ` home-${system.home}`
   const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
@@ -106,9 +108,11 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
         }
         : undefined}
     >
-      <img className="hex" src={tileUrl(system.id)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
+      <img className="hex" src={tileUrl(system.id, system.tile)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
-      {system.planets.map(planet => <PlanetMarkers key={planet.id} state={state} planet={planet} />)}
+      {system.planets.map((planet, i) => (
+        <PlanetMarkers key={planet.id} state={state} planet={planet} index={i} count={system.planets.length} />
+      ))}
       <span className="fleet" data-testid={`fleet-${system.id}`}
         style={{ left: box.left, top: box.top, width: box.width, height: box.height }}>
         <span className="in" style={{ zoom: scale, width: box.width / scale, maxHeight: box.height / scale }}>
@@ -126,12 +130,12 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
           ))}
         </span>
       ) : null}
-      {def.wormhole ? (
-        <img className="wh" src={def.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${def.wormhole} wormhole`}
-          data-testid={`wormhole-${system.id}`} style={WORMHOLE_SPOTS[system.id]} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
+      {system.wormhole ? (
+        <img className="wh" src={system.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${system.wormhole} wormhole`}
+          data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
       ) : null}
-      {def.home !== null ? (
-        <img className="sigil" src={SIGIL[state.players[def.home].faction]} alt="" data-testid={`sigil-${system.id}`}
+      {system.home !== null ? (
+        <img className="sigil" src={SIGIL[state.players[system.home].faction]} alt="" data-testid={`sigil-${system.id}`}
           style={{ left: SIGIL_SPOT.left, top: SIGIL_SPOT.top }} width={SIGIL_SIZE} height={SIGIL_SIZE} />
       ) : null}
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}

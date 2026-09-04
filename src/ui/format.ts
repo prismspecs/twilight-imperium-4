@@ -75,8 +75,13 @@ export function planetLabel(state: GameState, planetId: string): string {
   return planetId
 }
 
-export function systemLabel(systemId: string): string {
-  return systemDef(systemId).name
+export function systemLabel(systemId: string, state?: GameState): string {
+  if (state?.systems[systemId]) return state.systems[systemId].name
+  try {
+    return systemDef(systemId).name
+  } catch {
+    return systemId
+  }
 }
 
 export function ownedPlanets(state: GameState, seat: Seat): Planet[] {

@@ -52,9 +52,11 @@ function seatAfter(state: GameState, seat: Seat): number {
   return (seat - state.speaker + state.players.length) % state.players.length
 }
 
-/** R7: the check fires at 7 VP and unconditionally after the round 6 status phase. */
+/** R7: the check fires at 7 VP (10 VP for 3-6p) and unconditionally after round 6 (round 8 for 3-6p). */
 export function victoryCheck(state: GameState): Seat | null {
-  if (state.players.every(p => p.vp < 7) && state.round < 6) return null
+  const targetVp = state.players.length <= 2 ? 7 : 10
+  const maxRounds = state.players.length <= 2 ? 6 : 8
+  if (state.players.every(p => p.vp < targetVp) && state.round < maxRounds) return null
   return decideWinner(state)
 }
 

@@ -60,7 +60,7 @@ export interface Session {
   minutes: number
   state: GameState
   history: GameState[]
-  clockMs: [number, number]
+  clockMs: number[]
   handoff: Seat | null
   /** Which seat is an AI. Absent (an old saved game) means both seats are human. */
   config?: GameConfig
@@ -142,7 +142,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     roundRef.current = 1
     setError(null)
     if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
-    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null, config }
+    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, config }
     sessionRef.current = fresh
     setSession(fresh)
     // the URL names the game from the first move on, so the code and the address cannot drift apart
@@ -230,8 +230,8 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const id = setInterval(() => {
       setSession(prev => {
         if (!prev) return prev
-        const clockMs: [number, number] = [prev.clockMs[0], prev.clockMs[1]]
-        clockMs[seat] = Math.max(0, clockMs[seat] - TICK_MS)
+        const clockMs = [...prev.clockMs]
+        if (clockMs[seat] !== undefined) clockMs[seat] = Math.max(0, clockMs[seat] - TICK_MS)
         return { ...prev, clockMs }
       })
     }, TICK_MS)
@@ -242,7 +242,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // card, an open secondary window, a running tactical action) the clock stays at zero until it becomes legal
   useEffect(() => {
     if (!session || !running) return
-    if (session.clockMs[session.state.active] > 0) return
+    if ((session.clockMs[session.state.active] ?? 0) > 0) return
     if (legal.some(m => m.type === 'pass')) apply({ type: 'pass' })
   }, [session, running, legal, apply])
 
@@ -253,7 +253,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     roundRef.current = session.state.round
     setSession(prev => prev ? {
       ...prev,
-      clockMs: [prev.clockMs[0] || ROUND_BONUS_MS, prev.clockMs[1] || ROUND_BONUS_MS],
+      clockMs: prev.clockMs.map(c => c || ROUND_BONUS_MS),
     } : prev)
   }, [session])
 

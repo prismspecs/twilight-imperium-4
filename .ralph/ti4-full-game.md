@@ -318,4 +318,23 @@ Delivered this iteration:
 - AI bot scoring in `ai/score.ts` updated for all 20 objectives and invasion bombardment ordering.
 - 504 passing tests across 51 test suites.
 
-Next iteration: N-player board/UI (render hex galaxy board and multi-player HUD), or 8 standard strategy cards (Politics / Construction).
+## Iteration 13 — N-player board/UI (rendered hex galaxy, dynamic 2-6p lobby, multi-seat HUD)
+
+Delivered this iteration:
+- `src/data/map.ts` & `src/engine/setup.ts`: assigned axial `q, r` coordinates to duel map systems and propagated `tile`, `q`, `r` to `state.systems` in `createGame`.
+- `src/ui/layout.ts`: implemented flat-topped axial `hexToPixel(q, r, origin)`, `FLOWER_ORIGIN` (480, 480) & `GALAXY_ORIGIN` (522, 603), `GALAXY_MAP_SIZE` (1276x1407), generic planet markers (centers and fallback spots for 1, 2, or 3 planets), and space boxes for arbitrary systems.
+- `src/ui/art.ts`: added `planetTrait` lookup, fallback tile asset (`00_blue.png`) for empty/untextured hexes, and generic token URL fallbacks for non-duel factions.
+- `src/ui/board/Tile.tsx` & `src/ui/board/BoardMap.tsx`: dynamically renders every system in `state.systems` with exact hex positioning (guarding Mecatol placement on galaxy maps), sets CSS `--map-w`/`--map-h`, suppresses duel-only trade posts on generated galaxies.
+- `src/ui/hud/TopBar.tsx`, `SidePanel.tsx`, `ActionBar.tsx`, `GameOverScreen.tsx`: multi-player top bar (compact blocks for 3-6p, classic dual layout for 2p, scored tokens across all seats), side panel seat inspection tabs, dynamic round and VP targets (7 VP / 6 rounds for 2p, 10 VP / 8 rounds for 3-6p).
+- `src/ui/screens/SetupScreen.tsx`: 2-6 player toggle, dynamic seat config for all 17 factions with faction portraits, sigils, starting fleets, techs, commodities, duplicate faction/color collision auto-resolution, AI/Human controller selection, dynamic map summary and VP targets.
+- `src/ui/store.tsx`: dynamic `clockMs: number[]` for arbitrary player count.
+- Added comprehensive unit and UI tests in `SetupScreen.test.tsx`, `BoardMap.test.tsx`, and `Hud.test.tsx`.
+- 509 passing tests across 51 test suites, 0 type errors, 0 lint errors.
+
+MILESTONE: Full 2-to-6 player games are now completely human-playable through the UI!
+
+Next iteration options:
+(a) Import the 8 standard TI4 base strategy cards (Politics / Construction to replace custom duel versions)
+(b) Wire action card deck, player hands, and action card play window
+(c) Wire secret objectives deck and scoring
+

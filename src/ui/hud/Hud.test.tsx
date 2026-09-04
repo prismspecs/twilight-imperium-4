@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { createGame } from '../../engine'
 import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
 import { renderWithSession } from '../test/harness'
 import { BoardScreen } from '../screens/BoardScreen'
@@ -107,5 +108,28 @@ describe('the HUD', () => {
     // toActionPhase has every card drafted already
     expect(screen.queryByTestId('pick-prompt')).toBeNull()
     expect(document.querySelectorAll('.sc.pick')).toHaveLength(0)
+  })
+
+  it('renders all player blocks, seat tabs, and 10 VP target in a 3-player game', () => {
+    const state3 = createGame({
+      players: [
+        { faction: 'l1z1x', color: 'blue', name: 'Alpha' },
+        { faction: 'sol', color: 'red', name: 'Beta' },
+        { faction: 'hacan', color: 'yellow', name: 'Gamma' },
+      ],
+      speaker: 0,
+    }, 42)
+    renderWithSession(state3, <BoardScreen />)
+    expect(screen.getByTestId('player-0').textContent).toContain('Alpha')
+    expect(screen.getByTestId('player-1').textContent).toContain('Beta')
+    expect(screen.getByTestId('player-2').textContent).toContain('Gamma')
+    expect(screen.getByTestId('vp-0').textContent).toBe('0 of 10')
+    expect(screen.getByTestId('seat-tabs-left')).toBeTruthy()
+    expect(screen.getByTestId('seat-tabs-right')).toBeTruthy()
+
+    // Switch right panel to player 2
+    fireEvent.click(screen.getByTestId('tab-right-2'))
+    expect(screen.getByTestId('panel-2')).toBeTruthy()
+    expect(screen.getByTestId('vp-2').textContent).toBe('0 of 10')
   })
 })

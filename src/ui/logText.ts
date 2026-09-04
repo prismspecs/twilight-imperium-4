@@ -56,8 +56,9 @@ export function describeEntry(state: GameState, entry: LogEntry): { text: string
     return { text: `${ownerName(state, entry.owner)} rolls ${dice || 'no dice'} for ${entry.context}, ${hits} hits`, kind: 'roll' }
   }
   // engine notes name the seat; the log shows the player instead
-  const text = entry.text
-    .replace(/seat 0/g, state.players[0].name)
-    .replace(/seat 1/g, state.players[1].name)
+  let text = entry.text
+  for (const player of state.players) {
+    text = text.replaceAll(`seat ${player.seat}`, player.name)
+  }
   return { text, kind: 'info' }
 }

@@ -1,6 +1,7 @@
-import { SYSTEMS } from '../../data/map'
 import { Tile } from './Tile'
 import { TradePosts } from './TradePosts'
+import { TRADE_POSTS } from '../../data/map'
+import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
 import type { GameState } from '../../engine/types'
 
 export interface BoardMapProps {
@@ -13,16 +14,32 @@ export interface BoardMapProps {
 }
 
 export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], onSelect }: BoardMapProps) {
+  const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
+  const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
+
   return (
-    <div className="map" data-testid="board-map">
-      {SYSTEMS.map(def => (
+    <div
+      className="map"
+      data-testid="board-map"
+      style={{
+        width: `${mapSize.width}px`,
+        height: `${mapSize.height}px`,
+        ['--map-w' as string]: `${mapSize.width}px`,
+        ['--map-h' as string]: `${mapSize.height}px`,
+      }}
+    >
+      {Object.values(state.systems).map(system => (
         <Tile
-          key={def.id} state={state} system={state.systems[def.id]}
-          active={activeSystemId === def.id} selectable={selectable.includes(def.id)}
-          outOfReach={outOfReach.includes(def.id)} onSelect={onSelect}
+          key={system.id}
+          state={state}
+          system={system}
+          active={activeSystemId === system.id}
+          selectable={selectable.includes(system.id)}
+          outOfReach={outOfReach.includes(system.id)}
+          onSelect={onSelect}
         />
       ))}
-      <TradePosts state={state} seat={state.active} />
+      {isDuel && <TradePosts state={state} seat={state.active} />}
     </div>
   )
 }

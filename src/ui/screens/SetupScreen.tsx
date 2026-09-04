@@ -5,7 +5,7 @@ import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
 import { deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
-import { spriteUrl, techIconUrl } from '../art'
+import { MISC, spriteUrl, techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
 import { MODEL_STYLES, useModelStyle } from '../modelStyle'
 import type { ModelStyle } from '../modelStyle'
@@ -33,7 +33,17 @@ const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> 
   orange: { accent: '#e8842a', tint: '#f2ac6f', glow: 'rgba(232,132,42,.16)' },
   pink: { accent: '#e067b0', tint: '#f3a3d0', glow: 'rgba(224,103,176,.16)' },
 }
-const POSITION: [string, string] = ['North', 'South']
+const POSITIONS: Record<number, string[]> = {
+  2: ['North', 'South'],
+  3: ['East', 'North-West', 'South-West'],
+  4: ['East', 'North-East', 'West', 'South-West'],
+  5: ['East', 'North-East', 'North-West', 'West', 'South-West'],
+  6: ['East', 'North-East', 'North-West', 'West', 'South-West', 'South-East'],
+}
+const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6']
+const DEFAULT_FACTIONS: FactionId[] = ['l1z1x', 'letnev', 'sol', 'hacan', 'jolnar', 'xxcha']
+const DEFAULT_COLOURS: Color[] = ['blue', 'red', 'green', 'yellow', 'purple', 'black']
+const DEFAULT_TYPES: PlayerType[] = ['human', 'human', 'human', 'human', 'human', 'human']
 
 // Display order for the fleet row; only the types a starting fleet can actually contain matter here.
 const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
@@ -110,29 +120,75 @@ export function SetupScreen() {
   const fit = useFitScale()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
-  const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2'])
-  const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
-  const [colours, setColours] = useState<[Color, Color]>(['blue', 'red'])
-  const [playerTypes, setPlayerTypes] = useState<[PlayerType, PlayerType]>(['human', 'human'])
+  const [playerCount, setPlayerCount] = useState<number>(2)
+  const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
+  const [factions, setFactions] = useState<FactionId[]>(DEFAULT_FACTIONS)
+  const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
+  const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
   const [minutes, setMinutes] = useState(15)
   const seatConfigRef = useRef<HTMLDivElement | null>(null)
 
-  function setName(seat: Seat, value: string) {
-    setNames(seat === 0 ? [value, names[1]] : [names[0], value])
+  function setName(seat: number, value: string) {
+    setNames(prev => {
+      const next = [...prev]
+      next[seat] = value
+      return next
+    })
   }
-  function setColour(seat: Seat, value: Color) {
-    setColours(seat === 0 ? [value, colours[1]] : [colours[0], value])
+  function setColour(seat: number, value: Color) {
+    setColours(prev => {
+      const next = [...prev]
+      next[seat] = value
+      return next
+    })
   }
-  function setPlayerType(seat: Seat, value: PlayerType) {
-    setPlayerTypes(seat === 0 ? [value, playerTypes[1]] : [playerTypes[0], value])
+  function setPlayerType(seat: number, value: PlayerType) {
+    setPlayerTypes(prev => {
+      const next = [...prev]
+      next[seat] = value
+      return next
+    })
+  }
+  function setFaction(seat: number, value: FactionId) {
+    setFactions(prev => {
+      const next = [...prev]
+      next[seat] = value
+      return next
+    })
+  }
+  function handleSetPlayerCount(newCount: number) {
+    setPlayerCount(newCount)
+    setFactions(prev => {
+      const next = [...prev]
+      const allFactionIds = Object.keys(FACTIONS) as FactionId[]
+      for (let s = 0; s < newCount; s++) {
+        if (next.slice(0, s).includes(next[s])) {
+          const available = allFactionIds.find(f => !next.slice(0, s).includes(f))
+          if (available) next[s] = available
+        }
+      }
+      return next
+    })
+    setColours(prev => {
+      const next = [...prev]
+      for (let s = 0; s < newCount; s++) {
+        if (next.slice(0, s).includes(next[s])) {
+          const available = COLOURS.find(c => !next.slice(0, s).includes(c))
+          if (available) next[s] = available
+        }
+      }
+      return next
+    })
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
     start({
-      players: [
-        { faction: factions[0], color: colours[0], name: names[0].trim() || 'Player 1', playerType: playerTypes[0] },
-        { faction: factions[1], color: colours[1], name: names[1].trim() || 'Player 2', playerType: playerTypes[1] },
-      ],
+      players: Array.from({ length: playerCount }, (_, seat) => ({
+        faction: factions[seat],
+        color: colours[seat],
+        name: names[seat].trim() || `Player ${seat + 1}`,
+        playerType: playerTypes[seat],
+      })),
       speaker: 0,
     }, seed, minutes)
   }
@@ -167,7 +223,11 @@ export function SetupScreen() {
               {saved.games.map(game => (
                 <div className="gamerow" key={game.code} data-testid={`saved-game-${game.code}`}>
                   <span className="gcode">{game.code}</span>
-                  <span className="gwho">{game.names[0]}<i className="vs">vs</i>{game.names[1]}</span>
+                  <span className="gwho">
+                    {game.names.length <= 2
+                      ? <>{game.names[0]}<i className="vs">vs</i>{game.names[1]}</>
+                      : game.names.join(' · ')}
+                  </span>
                   <span className="gmeta">
                     Round {game.round}<span className="sep" />{relativeTime(game.updatedAt, saved.now)}
                   </span>
@@ -250,23 +310,49 @@ export function SetupScreen() {
         <div className="frame panel">
           <div className="lobby-head">
             <div className="mode">
+              <span className="lbl">Players</span>
+              <div className="segtoggle player-count-picker" data-testid="player-count-picker">
+                {[2, 3, 4, 5, 6].map(count => (
+                  <button
+                    key={count}
+                    type="button"
+                    className={playerCount === count ? 'on' : ''}
+                    data-testid={`player-count-${count}`}
+                    aria-pressed={playerCount === count}
+                    onClick={() => handleSetPlayerCount(count)}
+                  >
+                    {count}P
+                  </button>
+                ))}
+              </div>
               <span className="lbl">Mode</span>
-              <div className="linkbox"><span>This device{playerTypes.some(pt => pt === 'ai') ? ', AI turns play themselves' : ', pass it between turns'}</span></div>
-              <button type="button" className="btn ghost sm" data-testid="btn-swap-factions" onClick={() => setFactions([factions[1], factions[0]])}>
+              <div className="linkbox"><span>This device{playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? ', AI turns play themselves' : ', pass it between turns'}</span></div>
+              <button
+                type="button"
+                className="btn ghost sm"
+                data-testid="btn-swap-factions"
+                onClick={() => setFactions(prev => {
+                  const next = [...prev]
+                  const tmp = next[0]
+                  next[0] = next[1]
+                  next[1] = tmp
+                  return next
+                })}
+              >
                 Swap factions
               </button>
             </div>
             <div className="status" data-testid="lobby-status">
-              {playerTypes.every(pt => pt === 'ai')
+              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai')
                 ? <>AI versus AI<span className="sep" />watch or jump in later</>
-                : playerTypes.some(pt => pt === 'ai')
-                  ? <>Human versus AI<span className="sep" />2 of 2 seats taken</>
-                  : <><i className="pulse" />Both seats on this device<span className="sep" />2 of 2 seats taken</>}
+                : playerTypes.slice(0, playerCount).some(pt => pt === 'ai')
+                  ? <>Human versus AI<span className="sep" />{playerCount} of {playerCount} seats taken</>
+                  : <><i className="pulse" />{playerCount === 2 ? 'Both' : `All ${playerCount}`} seats on this device<span className="sep" />{playerCount} of {playerCount} seats taken</>}
             </div>
           </div>
 
           <div className="seats" id="seat-config" ref={seatConfigRef}>
-            {([0, 1] as Seat[]).map(seat => {
+            {Array.from({ length: playerCount }, (_, i) => i as Seat).map(seat => {
               const factionId = factions[seat]
               const faction = FACTIONS[factionId]
               const ink = COLOUR_INK[colours[seat]]
@@ -286,7 +372,7 @@ export function SetupScreen() {
                   <div className="seat-body">
                     <div className="seat-top">
                       <span className="lbl">Seat {seat + 1}</span>
-                      <span className="chip pos" data-testid={`seat-position-${seat}`}>{POSITION[seat]}</span>
+                      <span className="chip pos" data-testid={`seat-position-${seat}`}>{POSITIONS[playerCount]?.[seat] ?? `Seat ${seat + 1}`}</span>
                       <span className="chip ok">Faction chosen</span>
                     </div>
                     <div className="row controller">
@@ -319,7 +405,25 @@ export function SetupScreen() {
                       className="namefield" data-testid={`seat-name-${seat}`} value={names[seat]}
                       aria-label={`Name of seat ${seat + 1}`} onChange={e => setName(seat, e.target.value)}
                     />
-                    <div className="faction goldtext" data-testid={`seat-faction-${seat}`}>{factionTitle(faction.name)}</div>
+                    <div className="faction-row">
+                      <div className="faction goldtext" data-testid={`seat-faction-${seat}`}>{factionTitle(faction.name)}</div>
+                      <select
+                        className="faction-select"
+                        data-testid={`select-faction-${seat}`}
+                        aria-label={`Faction for seat ${seat + 1}`}
+                        value={factionId}
+                        onChange={e => setFaction(seat, e.target.value as FactionId)}
+                      >
+                        {Object.values(FACTIONS).map(f => {
+                          const isTaken = factions.slice(0, playerCount).some((fid, s) => s !== seat && fid === f.id)
+                          return (
+                            <option key={f.id} value={f.id} disabled={isTaken}>
+                              {f.name}{isTaken ? ' (chosen)' : ''}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
 
                     <div className="row colour">
                       <span className="lbl">Colour</span>
@@ -331,7 +435,7 @@ export function SetupScreen() {
                             data-testid={`colour-${seat}-${colour}`}
                             title={COLOUR_NAMES[colour]}
                             aria-label={COLOUR_NAMES[colour]}
-                            disabled={colours[seat === 0 ? 1 : 0] === colour}
+                            disabled={colours.slice(0, playerCount).some((c, s) => s !== seat && c === colour)}
                             onClick={() => setColour(seat, colour)}
                           />
                         ))}
@@ -368,6 +472,14 @@ export function SetupScreen() {
                         ))}
                       </span>
                     </div>
+
+                    <div className="row commodities">
+                      <span className="lbl">Commodities</span>
+                      <span className="val comm-val" data-testid={`seat-${seat}-commodities`}>
+                        <img src={MISC.commodity} alt="" width={16} height={16} />
+                        <b>{faction.commodityValue}</b>
+                      </span>
+                    </div>
                   </div>
 
                   <img className="sigil" src={`/assets/factions/${factionId}.png`} alt="" />
@@ -378,15 +490,25 @@ export function SetupScreen() {
 
           <div className="settings">
             <div className="cell" data-testid="setup-map">
-              <div className="minimap" aria-hidden="true">
-                {MINIMAP.map(({ id, left, top }) => (
-                  <img key={id} className={id === 'mecatol' ? 'mr' : undefined} src={`/assets/tiles/${systemDef(id).tile}.png`} style={{ left, top }} alt="" />
-                ))}
-              </div>
+              {playerCount === 2 ? (
+                <div className="minimap" aria-hidden="true">
+                  {MINIMAP.map(({ id, left, top }) => (
+                    <img key={id} className={id === 'mecatol' ? 'mr' : undefined} src={`/assets/tiles/${systemDef(id).tile}.png`} style={{ left, top }} alt="" />
+                  ))}
+                </div>
+              ) : (
+                <div className="minimap galaxy-mini" aria-hidden="true">
+                  <img src="/assets/tiles/18_MR.png" className="mr" alt="" style={{ position: 'relative', width: 40, height: 35, margin: '20px auto 0', display: 'block' }} />
+                </div>
+              )}
               <div>
                 <div className="lbl"><i className="dia" />Map</div>
-                <div className="val">{MAP_NAME}</div>
-                <div className="sub">{SYSTEMS.length} systems, Mecatol Rex in the centre, home systems north and south</div>
+                <div className="val">{playerCount === 2 ? MAP_NAME : `Generated Galaxy (${playerCount === 3 ? 34 : 37} systems)`}</div>
+                <div className="sub">
+                  {playerCount === 2
+                    ? `${SYSTEMS.length} systems, Mecatol Rex in the centre, home systems north and south`
+                    : `${playerCount} home systems on outer rim, Mecatol Rex in centre, balanced galaxy tiles`}
+                </div>
               </div>
             </div>
             <div className="cell" data-testid="setup-clock">
@@ -425,8 +547,8 @@ export function SetupScreen() {
             <div className="cell" data-testid="setup-target">
               <div>
                 <div className="lbl"><i className="dia" />Target</div>
-                <div className="val">7 victory points or 6 rounds</div>
-                <div className="sub">Most points after round 6 wins the duel</div>
+                <div className="val">{playerCount === 2 ? '7 victory points or 6 rounds' : '10 victory points or 8 rounds'}</div>
+                <div className="sub">{playerCount === 2 ? 'Most points after round 6 wins the duel' : 'First to 10 points claims the galactic throne'}</div>
               </div>
             </div>
             <div className="cell" data-testid="setup-rules">
@@ -439,11 +561,11 @@ export function SetupScreen() {
               </div>
             </div>
             <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>
-              {playerTypes.every(pt => pt === 'ai') ? 'Watch AI duel' : playerTypes.some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
+              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? (playerCount === 2 ? 'Watch AI duel' : 'Watch AI game') : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
             </button>
           </div>
         </div>
-        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; {playerTypes.every(pt => pt === 'ai') ? 'AI vs AI' : playerTypes.some(pt => pt === 'ai') ? 'vs AI' : 'Hot-seat'}</div>
+        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? 'AI vs AI' : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'vs AI' : 'Hot-seat'}</div>
       </section>
 
       <p className="legal" data-testid="setup-legal">

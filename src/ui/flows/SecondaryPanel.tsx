@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { homeSystemId } from '../../data/map'
-import { cardOwner, productionLimit, secondaryTokenCost } from '../../engine'
+import { cardOwner, homeSystemOf, productionLimit, secondaryTokenCost } from '../../engine'
 import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, systemLabel, techLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
@@ -52,7 +51,7 @@ export function SecondaryPanel() {
 
   // R6 warfare secondary: the space dock in the home system produces up to its full limit, so the responder
   // picks the units and pays for them exactly like a tactical production, not a fixed single infantry.
-  const home = homeSystemId(seat)
+  const home = homeSystemOf(state, seat)
   const warfareLimit = productionLimit(state, seat, home)
   const warfareCount = unitTotal(units)
   const warfareCost = costOf(state, seat, units)

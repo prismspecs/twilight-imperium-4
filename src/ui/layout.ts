@@ -2,6 +2,19 @@ export const TILE_W = 232
 export const TILE_H = 201
 export interface Point { left: number; top: number }
 
+export const FLOWER_ORIGIN: Point = { left: 354, top: 248 }
+export const FLOWER_MAP_SIZE = { width: 940, height: 698 }
+export const GALAXY_ORIGIN: Point = { left: 522, top: 603 }
+export const GALAXY_MAP_SIZE = { width: 1276, height: 1407 }
+
+/** Converts axial hex coordinates (q, r) to pixel offset relative to origin. */
+export function hexToPixel(q: number, r: number, origin: Point = GALAXY_ORIGIN): Point {
+  return {
+    left: Math.round(origin.left + 174 * q),
+    top: Math.round(origin.top + 100.5 * q + 201 * r),
+  }
+}
+
 /** Flower positions inside the 940x698 map box, taken from the approved mockup. */
 export const TILE_POS: Record<string, Point> = {
   'home-n': { left: 354, top: 47 },
@@ -57,6 +70,39 @@ export const PLANET_SPOTS: Record<string, PlanetSpot> = {
   // banner along the top of their disc
   'arc-prime': { art: { left: 45, top: 16, width: 86, height: 86 }, plate: { left: 56, top: 10 } },
   'wren-terra': { art: { left: 108, top: 95, width: 86, height: 86 }, plate: { left: 107, top: 88 } },
+}
+
+export function fallbackPlanetSpot(index: number, count: number): PlanetSpot {
+  if (count <= 1) {
+    return { art: { left: 72, top: 45, width: 86, height: 86 }, plate: { left: 75, top: 98 } }
+  }
+  if (count === 2) {
+    if (index === 0) {
+      return { art: { left: 52, top: 20, width: 82, height: 82 }, plate: { left: 52, top: 14 } }
+    }
+    return { art: { left: 95, top: 97, width: 86, height: 86 }, plate: { left: 146, top: 152, flip: true } }
+  }
+  // 3 planets
+  if (index === 0) {
+    return { art: { left: 86, top: 15, width: 60, height: 60 }, plate: { left: 86, top: 10 } }
+  }
+  if (index === 1) {
+    return { art: { left: 45, top: 95, width: 60, height: 60 }, plate: { left: 45, top: 90 } }
+  }
+  return { art: { left: 125, top: 95, width: 60, height: 60 }, plate: { left: 140, top: 145, flip: true } }
+}
+
+export function getPlanetSpot(planetId: string, index = 0, count = 1): PlanetSpot {
+  return PLANET_SPOTS[planetId] ?? fallbackPlanetSpot(index, count)
+}
+
+export function getPlanetCentre(planetId: string, spot: PlanetSpot): Point {
+  const existing = PLANET_CENTRE[planetId]
+  if (existing) return existing
+  return {
+    left: spot.art.left + spot.art.width / 2,
+    top: spot.art.top + spot.art.height / 2,
+  }
 }
 
 /** The middle of a planet's disc: what the control token and the landed ground forces centre on. */
@@ -156,6 +202,17 @@ export const WORMHOLE_SPOTS: Record<string, Point> = {
   sakulag: { left: 36, top: 40 },
   quann: { left: 170, top: 134 },
   starpoint: { left: 194, top: 88 },
+}
+
+export function getSpaceBox(systemId: string, planetCount = 1): { left: number; top: number; width: number; height: number } {
+  if (SPACE_BOX[systemId]) return SPACE_BOX[systemId]
+  if (planetCount === 0) return { left: 58, top: 35, width: 116, height: 130 }
+  if (planetCount === 1) return { left: 61, top: 131, width: 110, height: 63 }
+  return { left: 77, top: 69, width: 114, height: 74 }
+}
+
+export function getWormholeSpot(systemId: string): Point {
+  return WORMHOLE_SPOTS[systemId] ?? { left: 170, top: 40 }
 }
 
 /**
