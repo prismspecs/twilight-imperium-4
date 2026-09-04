@@ -279,8 +279,8 @@ export function SetupScreen() {
         <div className="box primary" data-testid="landing-online">
           <div className="frame panel">
             <div className="lead">
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#c9a24d" strokeWidth="1.2" aria-hidden="true">
-                <circle cx="15" cy="15" r="3" fill="#c9a24d" stroke="none" />
+              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#3b82f6" strokeWidth="1.2" aria-hidden="true">
+                <circle cx="15" cy="15" r="3" fill="#3b82f6" stroke="none" />
                 <circle cx="15" cy="15" r="8" /><circle cx="15" cy="15" r="13" strokeOpacity=".55" />
                 <path d="M3 15h5M22 15h5M15 3v5M15 22v5" strokeOpacity=".8" />
               </svg>
