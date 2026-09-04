@@ -137,7 +137,7 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
         }
         : undefined}
     >
-      <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
+      <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} draggable={false} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
       {tileNumberLabel(system.q, system.r) ? (
         <span className="tile-number" data-testid={`tile-number-${system.id}`}

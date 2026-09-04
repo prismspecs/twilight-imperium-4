@@ -419,6 +419,13 @@ button { font-family: inherit; }
 
 /* ---- Map ------------------------------------------------------------- */
 .map-viewport { user-select: none; touch-action: none; }
+/* An <img> is natively draggable by default. A real mouse click that drifts even a couple of pixels over
+ * one of the many images stacked on a tile (hex art, planet art, sprites, badges, tokens, sigils) can start
+ * the browser's native drag-ghost instead of firing a plain click - silently, with no error, and only ever
+ * with real hardware input, never a scripted click. That is a click-vs-drag bug this project already fixed
+ * once (Tile.tsx's own pointerdown-to-click distance check) without ever seeing this one, because it is a
+ * completely different mechanism triggering the same symptom. */
+.map-viewport img { -webkit-user-drag: none; user-drag: none; }
 .map-controls {
   position: absolute;
   right: 18px; bottom: 18px;
