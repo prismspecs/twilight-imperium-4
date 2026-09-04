@@ -247,3 +247,30 @@ A 3-6 player game now CONSTRUCTS end-to-end. The duel (2p) is unchanged.
 Next iteration: verify a 3-player game can be PLAYED through a full round (strategy draft → action phase
 → status) with N-player bots, not just constructed. Then minimal N-player board/UI. Then full-game content
 (action cards, agendas, 8 strategy cards, secrets, promissory notes).
+
+## Iteration 9 — N-player games PLAY (commit cebc938)
+
+Delivered this iteration:
+- Lifted the remaining static-map couplings so a generated galaxy plays, not just constructs:
+  - System.home added; homeSystemOf(state, seat) replaces static homeSystemId() (Warfare, revive, foothold)
+  - activatableSystems/diplomacySystems/warfareTokenSystems enumerate state.systems, not static SYSTEM_IDS
+  - objectives control_4_outside_home reads system.home from state
+  - trade-post lookups tolerate absent post systems (duel-only mechanic, not offered in a galaxy)
+- New nplayer.test.ts: a 3-player generated-galaxy game completes a full round with no internal errors;
+  3-seat snake draft verified. 477 tests total.
+
+MILESTONE: N-player games (3-6) now CONSTRUCT and PLAY through a full round at the engine level.
+The 2-player duel is byte-identical.
+
+Ruling: trade posts are a duel rules module, not base TI4; full game needs a content-set split so N-player
+games don't set up posts. Deferred (guards suffice for now).
+
+Next iteration: N-player board/UI (render the generated hex galaxy, faction picker for up to 6 players),
+OR start the full-game content (8 strategy cards incl. Politics/Construction). The engine vertical slice
+is playable; UI makes it visible.
+
+## Final verification command (monitor-rerunnable)
+
+Run from /home/grayson/workbench/mecatol-duel in a fresh shell:
+    npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint
+Expected: 477+ tests passing, tsc no output, lint 0 errors (only pre-existing fast-refresh warnings).

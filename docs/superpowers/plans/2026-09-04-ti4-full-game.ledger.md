@@ -204,3 +204,24 @@ createGame now chooses its map by player count: 2 players keep the duel flower; 
 the catalogue. New setup tests cover 34-tile 3p and 37-tile 6p construction, per-faction starting units on
 canonical home planets, and determinism. 475 tests total. A 3-6 player game now CONSTRUCTS; playing one
 through end-to-end (full round loop, N-player bots) is the next verification.
+
+## Iteration 9 (Ralph iter 7) — N-player games PLAY, static-map couplings lifted (commit cebc938, pushed)
+
+Driving a 3-player generated-galaxy game through a full round exposed the remaining places that read the
+fixed duel map instead of game state. All now state-driven:
+- System gains home: Seat | null (populated by createGame); new homeSystemOf(state, seat) replaces static
+  homeSystemId() in Warfare production, reviveInfantry, the Warfare secondary window, and foothold.
+- objectives control_4_outside_home reads system.home from state, not systemDef().
+- activatableSystems / diplomacySystems / warfareTokenSystems enumerate Object.keys(state.systems), not
+  the static SYSTEM_IDS.
+- Trade-post lookups tolerate absent post systems, so the duel-only trade-post mechanic is not offered in a
+  galaxy. (Ruling: trade posts are a DUEL rules module, not base TI4; the full game will need a proper
+  content-set split so N-player games do not set up posts at all. Deferred — the guards suffice for now.)
+
+The duel (2p) is byte-identical (477 tests green). A 3-player game now completes a full round (strategy
+draft -> action -> status -> round 2) with no internal errors. New nplayer.test.ts proves the full-round
+smoke and the 3-seat snake draft.
+
+N-player status: CONSTRUCT and PLAY both work at the engine level for 3-6 players with the 6 duel strategy
+cards and duel objectives. Next: N-player board/UI, then the full-game content (8 strategy cards, action
+cards, agendas, secrets, promissory notes).
