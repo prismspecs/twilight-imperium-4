@@ -143,3 +143,18 @@ faction picker + map expansion land; defer to the art pass.
 
 Next iteration: the big coupled item — full map import (all home systems + the rest of the base
 galaxy), which unblocks both N-player setup and placing the 15 new factions.
+
+## Iteration 5 — map-import foundation: full tile catalogue (commits 172fbad, d94e241)
+
+Delivered this iteration:
+- Reconciled the 15 new factions' starting planet ids to the canonical tiles.json ids (saar/mentak/nekro/xxcha)
+- src/data/tiles.ts: all 51 base-game tiles (16 home + Creuss Gate + off-board Creuss + Mecatol + 20 blue + 12 red),
+  planets with resources/influence/trait/tech-skip/home faction, wormholes, anomalies. Fully typed, generated from
+  the verified reference JSON. Helpers: tileByNumber, HOME_TILES, homeTileFor, CREUSS_GATE, MECATOL_TILE, GALAXY_TILES.
+- src/data/tiles.test.ts: catalogue validation (463 tests total)
+
+Ruling: planet-id scheme — tiles.json concatenated ids are canonical; active map keeps its tested ids for now;
+new factions re-pointed to canonical ids.
+
+Next iteration: galaxy generator — lay out N home systems on a hex grid, fill the ring from GALAXY_TILES,
+compute adjacency, then swap the active map onto it and enable N-player setup.

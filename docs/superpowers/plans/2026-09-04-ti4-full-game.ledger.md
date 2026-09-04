@@ -136,3 +136,23 @@ faction portraits/sigils/tile art (and any extra data). Asset convention confirm
 already holds l1z1x.png / leader_l1z1x_commander.png, matching the per-faction paths added in art.ts.
 Low priority — the 15 new factions are not selectable yet so their images are never loaded. Defer to the
 art/faction-picker pass once the map supports more home systems.
+
+## Iteration 5 (Ralph iter 3) — map-import foundation: tile catalogue (commits 172fbad, d94e241, pushed)
+
+Ruling — planet-id scheme: the verified reference tiles.json uses concatenated planet ids
+(arcprime, lisisii, mollprimus, mordaiii, archonren, ...) and faction id 'ghost' for the Ghosts of
+Creuss. The codebase's active 2-player map and l1z1x/letnev factions keep their existing tested ids
+('000', 'arc-prime', 'wren-terra') for now; the 15 unplaced factions were re-pointed at the canonical
+tiles.json ids so the generated map needs no translation layer. When the active map is generated from
+the catalogue, l1z1x/letnev will be migrated to canonical ids and their tests updated.
+
+Delivered:
+- src/data/tiles.ts — all 51 base-game tiles (16 home + Creuss Gate + off-board Creuss + Mecatol +
+  20 blue planet + 12 red anomaly/empty), planets with resources/influence/trait/tech-skip/home
+  faction, wormholes, anomalies. Generated from the verified JSON; fully typed; helpers tileByNumber,
+  HOME_TILES, homeTileFor, CREUSS_GATE, MECATOL_TILE, GALAXY_TILES.
+- src/data/tiles.test.ts — validates the catalogue (category/back mix, one home per faction,
+  wormhole/anomaly totals, galaxy deck). 463 tests total.
+
+Still ahead for the map: a galaxy generator that lays out N home systems + fills the ring from
+GALAXY_TILES and computes hex adjacency; then swap the active map onto it; then N-player setup.
