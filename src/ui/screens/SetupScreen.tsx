@@ -126,6 +126,7 @@ export function SetupScreen() {
   const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
   const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
   const [minutes, setMinutes] = useState(15)
+  const [useMiltyDraft, setUseMiltyDraft] = useState(false)
   const seatConfigRef = useRef<HTMLDivElement | null>(null)
 
   function setName(seat: number, value: string) {
@@ -179,12 +180,28 @@ export function SetupScreen() {
       }
       return next
     })
+    // Reset draft mode when player count changes
+    if (useMiltyDraft) {
+      setUseMiltyDraft(false)
+    }
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
+    const playerFactions = useMiltyDraft
+      ? (() => {
+          const allFactionIds = Object.keys(FACTIONS) as FactionId[]
+          // Fisher-Yates shuffle: pick playerCount distinct factions from the full pool
+          const shuffled = [...allFactionIds]
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+            ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+          }
+          return shuffled.slice(0, playerCount)
+        })()
+      : factions
     start({
       players: Array.from({ length: playerCount }, (_, seat) => ({
-        faction: factions[seat],
+        faction: playerFactions[seat],
         color: colours[seat],
         name: names[seat].trim() || `Player ${seat + 1}`,
         playerType: playerTypes[seat],
@@ -508,6 +525,36 @@ export function SetupScreen() {
                   {playerCount === 2
                     ? `${SYSTEMS.length} systems, Mecatol Rex in the centre, home systems north and south`
                     : `${playerCount} home systems on outer rim, Mecatol Rex in centre, balanced galaxy tiles`}
+                </div>
+              </div>
+            </div>
+            <div className="cell" data-testid="setup-mode">
+              <div>
+                <div className="lbl"><i className="dia" />Draft</div>
+                <div className="segtoggle" data-testid="draft-mode-picker">
+                  <button
+                    type="button"
+                    className={!useMiltyDraft ? 'on' : ''}
+                    data-testid="btn-quick-start"
+                    aria-pressed={!useMiltyDraft}
+                    onClick={() => setUseMiltyDraft(false)}
+                  >
+                    Quick start
+                  </button>
+                  <button
+                    type="button"
+                    className={useMiltyDraft ? 'on' : ''}
+                    data-testid="btn-milty-draft"
+                    aria-pressed={useMiltyDraft}
+                    onClick={() => setUseMiltyDraft(true)}
+                  >
+                    Milty draft
+                  </button>
+                </div>
+                <div className="sub">
+                  {useMiltyDraft
+                    ? "Two-player draft with randomized balanced factions"
+                    : "Standard setup with predefined factions"}
                 </div>
               </div>
             </div>
