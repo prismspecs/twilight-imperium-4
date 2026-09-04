@@ -225,3 +225,21 @@ smoke and the 3-seat snake draft.
 N-player status: CONSTRUCT and PLAY both work at the engine level for 3-6 players with the 6 duel strategy
 cards and duel objectives. Next: N-player board/UI, then the full-game content (8 strategy cards, action
 cards, agendas, secrets, promissory notes).
+
+## Iteration 10 (Ralph iter 8) — faction combat modifiers; card-data sourcing blocker noted (commit 73ffa74, pushed)
+
+Wired the first always-on faction abilities beyond the pre-existing hardcoded Letnev/L1Z1X ones:
+- board.combatBonus(state, owner) sums an ability->modifier map (unrelenting +1, fragile -1) read off
+  FACTIONS[faction].abilities, so adding an ability id to a faction enables its modifier (data-driven).
+- Applied to every combat roll: space combat (combatRolls, via the existing bonus hook) and ground combat
+  (groundRolls). Per LRR 66 only combat rolls, not bombardment/AFB/space cannon.
+- factionAbilities.test.ts proves the thresholds (Sardakk cruiser 6+, Jol-Nar 8+, others printed 7+),
+  attacker and defender. 482 tests. This is the pattern for wiring the rest of the 17 factions.
+
+BLOCKER recorded — base/pok content filtering: the /tmp/ti4-rules card decks (action_cards, agendas,
+objectives, promissory_notes) have content_sets "per_card_set: false", i.e. NO per-card base/PoK/Codex
+label. The objective Type field (Stage 1/2/Secret) is present and the base Stage I/II lists appear to be
+the first 10 of each (names match the known base set), but action cards/agendas have no usable set marker.
+To import base-only card content I need a verified base-card list (the Fandom wiki the user flagged, or
+AsyncTI4 set annotations). Until then, content that depends on it (Politics' action cards, the agenda
+phase, secrets, promissory notes) is blocked. Ruling to make: source the base card lists before importing.

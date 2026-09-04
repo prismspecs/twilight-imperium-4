@@ -274,3 +274,24 @@ is playable; UI makes it visible.
 Run from /home/grayson/workbench/mecatol-duel in a fresh shell:
     npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint
 Expected: 477+ tests passing, tsc no output, lint 0 errors (only pre-existing fast-refresh warnings).
+
+## Iteration 10 — faction combat modifiers; card-data blocker noted (commit 73ffa74)
+
+Delivered this iteration:
+- Data-driven faction combat-roll modifiers: board.combatBonus() sums ability->modifier (unrelenting +1,
+  fragile -1) from FACTIONS[faction].abilities, applied to space + ground combat rolls
+- factionAbilities.test.ts: Sardakk cruiser hits 6+, Jol-Nar 8+, others printed 7+, attacker and defender
+  (482 tests total)
+- This is the pattern for wiring the rest of the 17 factions' abilities
+
+BLOCKER noted: the /tmp/ti4-rules card decks (action_cards, agendas, objectives, promissory_notes) have NO
+per-card base/PoK/Codex label (content_sets per_card_set: false). Objective Type (Stage1/2/Secret) exists and
+the base Stage I/II lists look like the first 10 of each (names match), but action cards/agendas have no set
+marker. Need a verified base-card list (Fandom wiki / AsyncTI4) before importing base-only card content.
+
+Next iteration options:
+(a) Source the base card lists (web research on Fandom wiki) then import objectives/action cards/agendas
+(b) Wire more faction abilities (bounded, unblocked, high-value) — e.g. movement/production/combat abilities
+(c) N-player UI (setup screen + hex board) — large but makes the slice human-playable
+
+Faction abilities are the clearest unblocked mechanics path; card content needs the base-list sourcing first.
