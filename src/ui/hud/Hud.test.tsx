@@ -97,7 +97,6 @@ describe('the HUD', () => {
     fireEvent.click(screen.getByTestId('btn-menu'))
     expect(screen.getByTestId('game-menu')).toBeTruthy()
     expect(screen.getByTestId('btn-menu-lobby')).toBeTruthy()
-    expect(screen.getByTestId('btn-menu-rules')).toBeTruthy()
     fireEvent.click(screen.getByTestId('btn-menu-close'))
     expect(screen.queryByTestId('game-menu')).toBeNull()
   })

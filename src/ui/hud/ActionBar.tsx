@@ -42,8 +42,6 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
                 <span className="lbl dim">Game {session.code}</span>
                 <button type="button" className="btn quiet" data-testid="btn-menu-lobby"
                   onClick={() => { navigate('#/') }}>Back to the lobby</button>
-                <button type="button" className="btn quiet" data-testid="btn-menu-rules"
-                  onClick={() => { navigate('#/rules') }}>Rules</button>
                 <MusicButton className="btn quiet" />
                 <button type="button" className="btn quiet" data-testid="btn-menu-close"
                   onClick={() => { setMenu(false) }}>Close</button>

@@ -6,7 +6,7 @@ import { deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
 import { MISC, spriteUrl, techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
-import { MODEL_STYLES, useModelStyle } from '../modelStyle'
+import { useModelStyle } from '../modelStyle'
 import type { ModelStyle } from '../modelStyle'
 import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
@@ -102,7 +102,7 @@ function factionTitle(name: string): (string | ReactElement)[] {
 
 export function SetupScreen() {
   const { start } = useGame()
-  const { style: modelStyle, setStyle: setModelStyle } = useModelStyle()
+  const { style: modelStyle } = useModelStyle()
   const route = useHashRoute()
   // the page is drawn for a 1440x900 frame; scale it until it fills the viewport (credits line at the foot)
   const fit = useFitScale()
@@ -549,23 +549,9 @@ export function SetupScreen() {
                 <div className="sub">Chess clock, runs whenever it is your turn to decide</div>
               </div>
             </div>
-            <div className="cell" data-testid="setup-models">
+            <div className="cell" data-testid="setup-music">
               <div>
-                <div className="lbl"><i className="dia" />Models</div>
-                <div className="stylepick">
-                  {MODEL_STYLES.map(option => (
-                    <button
-                      key={option.id} type="button" title={option.note}
-                      className={`styleopt${option.id === modelStyle ? ' on' : ''}`}
-                      data-testid={`style-${option.id}`} aria-pressed={option.id === modelStyle}
-                      onClick={() => { setModelStyle(option.id) }}
-                    >
-                      <img src={spriteUrl(colours[0], 'dreadnought', option.id)} alt="" height={30} />
-                      <span>{option.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="sub">Your own view, this browser only. Online, each player picks their own.</div>
+                <div className="lbl"><i className="dia" />Music</div>
                 <div className="stylepick"><MusicButton className="btn ghost sm" /></div>
               </div>
             </div>
@@ -574,15 +560,6 @@ export function SetupScreen() {
                 <div className="lbl"><i className="dia" />Target</div>
                 <div className="val">10 victory points or 8 rounds</div>
                 <div className="sub">First to 10 points claims the galactic throne</div>
-              </div>
-            </div>
-            <div className="cell" data-testid="setup-rules">
-              <div>
-                <div className="lbl"><i className="dia" />Rules</div>
-                <button type="button" className="btn ghost rules" data-testid="btn-rules" onClick={() => navigate('#/rules')}>
-                  What&apos;s different from Twilight Imperium
-                </button>
-                <div className="sub">Six strategy cards, open objectives, Custodians on Mecatol Rex</div>
               </div>
             </div>
             <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>

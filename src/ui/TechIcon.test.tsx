@@ -21,6 +21,6 @@ describe('the technology symbol', () => {
   })
   it('shows the unit model in the player colour for a unit upgrade', () => {
     render(<TechIcon techId="dreadnought_ii" colour="red" />)
-    expect(screen.getByAltText('Dreadnought II').getAttribute('src')).toBe('/assets/sprites/red_dreadnought.png')
+    expect(screen.getByAltText('Dreadnought II').getAttribute('src')).toBe('/assets/sprites/counters/red_dreadnought.png')
   })
 })

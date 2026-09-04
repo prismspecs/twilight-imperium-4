@@ -4,12 +4,10 @@ import { latestGameCode, loadGame } from './persist'
 import { codeFromRoute, gamePath, navigate, playRedirect, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
-import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
-import { ModelStyleProvider } from './modelStyle'
 import { MusicProvider } from './music'
 
 // Manual/visual QA only (e.g. a headless screenshot of the board): `?demo=1` skips setup and starts
@@ -132,8 +130,6 @@ function Screens() {
     const target = playRedirect(route, latestGameCode())
     if (target !== null) navigate(target)
   }, [route])
-  // a document, not a game screen: readable from the lobby and straight from the URL, running game or not
-  if (route.startsWith('#/rules')) return <RulesScreen />
   const code = codeFromRoute(route)
   if (code !== null) return <GameRoute code={code} />
   return <SetupScreen />
@@ -142,11 +138,9 @@ function Screens() {
 export default function App({ ticking = true }: { ticking?: boolean }) {
   return (
     <MusicProvider>
-      <ModelStyleProvider>
-        <GameProvider ticking={ticking}>
-          <Screens />
-        </GameProvider>
-      </ModelStyleProvider>
+      <GameProvider ticking={ticking}>
+        <Screens />
+      </GameProvider>
     </MusicProvider>
   )
 }
