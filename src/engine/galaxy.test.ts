@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { generateGalaxy, generatedHomeId, type GalaxyHome, type GeneratedSystem } from './galaxy'
-import { GALAXY_TILES } from '../data/tiles'
+import { GALAXY_TILES, TILES } from '../data/tiles'
 import type { FactionId, Seat } from './types'
+
+const CATALOGUE_PLANET = new Map(TILES.flatMap(t => t.planets.map(p => [p.id, p] as const)))
 
 const SIX: FactionId[] = ['l1z1x', 'letnev', 'sol', 'saar', 'hacan', 'mentak']
 
@@ -54,7 +56,7 @@ describe('generateGalaxy', () => {
     const map = byId(galaxy)
     const sol = map.get(generatedHomeId(2))
     expect(sol?.home).toBe(2)
-    expect(sol?.planets).toEqual([{ id: 'jord', name: 'Jord', resources: 4, influence: 2 }])
+    expect(sol?.planets).toEqual([{ id: 'jord', name: 'Jord', resources: 4, influence: 2, trait: null, techSkip: null }])
     // every home sits on a ring-3 corner (hex distance 3 from the centre)
     for (const h of homes(galaxy)) {
       const dist = (Math.abs(h.q) + Math.abs(h.r) + Math.abs(h.q + h.r)) / 2
@@ -99,6 +101,21 @@ describe('generateGalaxy', () => {
     // home placement is seed-independent, but the dealt galaxy tiles differ
     expect(galaxyTiles(a).map(s => s.id)).not.toEqual(galaxyTiles(b).map(s => s.id))
     expect(homes(a).map(s => s.id).sort()).toEqual(homes(b).map(s => s.id).sort())
+  })
+
+  it('carries each planet trait and tech skip from the tile catalogue into the galaxy', () => {
+    const galaxy = generateGalaxy(homesFor(SIX), 3)
+    const planets = galaxy.flatMap(s => s.planets)
+    expect(planets.length).toBeGreaterThan(30)
+    for (const p of planets) {
+      const ref = CATALOGUE_PLANET.get(p.id)
+      expect(ref, `planet ${p.id} exists in the catalogue`).toBeDefined()
+      expect(p.trait).toBe(ref?.trait ?? null)
+      expect(p.techSkip).toBe(ref?.techSkip ?? null)
+    }
+    // sanity: the catalogue's mix is present (traits and at least one tech skip)
+    expect(planets.some(p => p.trait === 'hazardous')).toBe(true)
+    expect(planets.some(p => p.techSkip !== null)).toBe(true)
   })
 
   it('wormhole tiles keep their wormhole type for runtime linking', () => {

@@ -9,6 +9,11 @@ export type Owner = Seat | 'guardian'
 export type FactionId =
   | 'arborec' | 'letnev' | 'saar' | 'muaat' | 'hacan' | 'sol' | 'creuss' | 'l1z1x'
   | 'mentak' | 'naalu' | 'nekro' | 'sardakk' | 'jolnar' | 'winnu' | 'xxcha' | 'yin' | 'yssaril'
+
+/** A planet's trait (drives several objectives and exploration), or null when it has none. */
+export type PlanetTrait = 'industrial' | 'hazardous' | 'cultural'
+/** A planet's technology specialty colour (lets a research skip one prerequisite), or null when it has none. */
+export type TechSkip = 'red' | 'blue' | 'green' | 'yellow'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
 export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock'
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
@@ -19,6 +24,8 @@ export type PlayerType = 'human' | 'ai'
 export interface Unit { id: number; type: UnitType; owner: Owner; damaged: boolean }
 export interface Planet {
   id: string; name: string; resources: number; influence: number
+  trait: PlanetTrait | null        // null when the planet has no trait (e.g. home planets, Mecatol Rex)
+  techSkip: TechSkip | null        // null when the planet has no technology specialty
   owner: Seat | null; exhausted: boolean
   ground: Unit[]        // infantry
   structures: Unit[]    // spacedock, pds

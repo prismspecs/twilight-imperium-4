@@ -62,7 +62,7 @@ function allCells(radius: number): [number, number][] {
 function tileToSystem(id: string, tile: TileDef, home: Seat | null, q: number, r: number): GeneratedSystem {
   return {
     id, name: tile.name, tile: String(tile.tile),
-    planets: tile.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence })),
+    planets: tile.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, trait: p.trait, techSkip: p.techSkip })),
     wormhole: tile.wormholes[0] ?? null,
     neighbours: [],
     home, q, r,

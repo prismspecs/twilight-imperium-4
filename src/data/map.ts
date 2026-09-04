@@ -1,6 +1,6 @@
-import type { Seat } from '../engine/types'
+import type { PlanetTrait, Seat, TechSkip } from '../engine/types'
 
-export interface PlanetDef { id: string; name: string; resources: number; influence: number }
+export interface PlanetDef { id: string; name: string; resources: number; influence: number; trait?: PlanetTrait | null; techSkip?: TechSkip | null }
 export interface SystemDef {
   id: string; name: string; tile: string
   planets: PlanetDef[]
@@ -12,11 +12,11 @@ export interface SystemDef {
 // Flower layout: mecatol in the centre; ring order clockwise from the top: home-n, bereg, quann, home-s, starpoint, sakulag.
 export const SYSTEMS: SystemDef[] = [
   { id: 'home-n', name: '[0.0.0]', tile: '06_000', planets: [{ id: '000', name: '[0.0.0]', resources: 5, influence: 0 }], wormhole: null, neighbours: ['mecatol', 'bereg', 'sakulag'], home: 0 },
-  { id: 'bereg', name: 'Bereg', tile: '35_Bereg', planets: [{ id: 'bereg', name: 'Bereg', resources: 3, influence: 1 }, { id: 'lirta-iv', name: 'Lirta IV', resources: 2, influence: 3 }], wormhole: 'alpha', neighbours: ['mecatol', 'home-n', 'quann'], home: null },
-  { id: 'quann', name: 'Quann', tile: '00_blue', planets: [{ id: 'quann', name: 'Quann', resources: 2, influence: 1 }], wormhole: 'beta', neighbours: ['mecatol', 'bereg', 'home-s'], home: null },
+  { id: 'bereg', name: 'Bereg', tile: '35_Bereg', planets: [{ id: 'bereg', name: 'Bereg', resources: 3, influence: 1, trait: 'hazardous' }, { id: 'lirta-iv', name: 'Lirta IV', resources: 2, influence: 3, trait: 'hazardous' }], wormhole: 'alpha', neighbours: ['mecatol', 'home-n', 'quann'], home: null },
+  { id: 'quann', name: 'Quann', tile: '00_blue', planets: [{ id: 'quann', name: 'Quann', resources: 2, influence: 1, trait: 'cultural' }], wormhole: 'beta', neighbours: ['mecatol', 'bereg', 'home-s'], home: null },
   { id: 'home-s', name: 'Arc Prime', tile: '10_ArcPime', planets: [{ id: 'arc-prime', name: 'Arc Prime', resources: 4, influence: 0 }, { id: 'wren-terra', name: 'Wren Terra', resources: 2, influence: 1 }], wormhole: null, neighbours: ['mecatol', 'quann', 'starpoint'], home: 1 },
-  { id: 'starpoint', name: 'Starpoint', tile: '00_blue', planets: [{ id: 'starpoint', name: 'Starpoint', resources: 3, influence: 1 }, { id: 'centauri', name: 'Centauri', resources: 2, influence: 3 }], wormhole: 'alpha', neighbours: ['mecatol', 'home-s', 'sakulag'], home: null },
-  { id: 'sakulag', name: 'Sakulag', tile: '00_blue', planets: [{ id: 'sakulag', name: 'Sakulag', resources: 2, influence: 1 }], wormhole: 'beta', neighbours: ['mecatol', 'starpoint', 'home-n'], home: null },
+  { id: 'starpoint', name: 'Starpoint', tile: '00_blue', planets: [{ id: 'starpoint', name: 'Starpoint', resources: 3, influence: 1, trait: 'hazardous' }, { id: 'centauri', name: 'Centauri', resources: 2, influence: 3, trait: 'cultural' }], wormhole: 'alpha', neighbours: ['mecatol', 'home-s', 'sakulag'], home: null },
+  { id: 'sakulag', name: 'Sakulag', tile: '00_blue', planets: [{ id: 'sakulag', name: 'Sakulag', resources: 2, influence: 1, trait: 'hazardous' }], wormhole: 'beta', neighbours: ['mecatol', 'starpoint', 'home-n'], home: null },
   { id: 'mecatol', name: 'Mecatol Rex', tile: '18_MR', planets: [{ id: 'mecatol-rex', name: 'Mecatol Rex', resources: 1, influence: 6 }], wormhole: null, neighbours: ['home-n', 'bereg', 'quann', 'home-s', 'starpoint', 'sakulag'], home: null },
 ]
 
