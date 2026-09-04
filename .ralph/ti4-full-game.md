@@ -158,3 +158,24 @@ new factions re-pointed to canonical ids.
 
 Next iteration: galaxy generator — lay out N home systems on a hex grid, fill the ring from GALAXY_TILES,
 compute adjacency, then swap the active map onto it and enable N-player setup.
+
+## Iteration 6 — galaxy generator (commits 233c945, 70d5625)
+
+Delivered this iteration:
+- Widened SystemDef/System wormhole to include 'delta'
+- src/engine/galaxy.ts: generateGalaxy(homes, seed) builds a 3-6 player galaxy on a radius-3 axial hex —
+  Mecatol center, faction homes on evenly spaced corners, ring filled from seeded-shuffled GALAXY_TILES,
+  hex adjacency computed. Output is SystemDef[] + axial q/r coords for rendering.
+- src/engine/galaxy.test.ts: 9 tests (472 total)
+
+Ruling: layout is balanced/deterministic (official per-count diagrams aren't machine-readable). 3p drops
+the 3 non-home corners so the 32-tile deck suffices.
+
+Next iteration: make adjacency state-driven (read state.systems) and wire createGame to a generated galaxy
+for N-player configs (keeping the 2-player flower default). Then N-player setup.
+
+## Final verification command (monitor-rerunnable)
+
+Run from /home/grayson/workbench/mecatol-duel in a fresh shell:
+    npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint
+Expected: 472+ tests passing, tsc no output, lint 0 errors (only pre-existing fast-refresh warnings).

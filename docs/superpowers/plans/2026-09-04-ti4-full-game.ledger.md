@@ -156,3 +156,24 @@ Delivered:
 
 Still ahead for the map: a galaxy generator that lays out N home systems + fills the ring from
 GALAXY_TILES and computes hex adjacency; then swap the active map onto it; then N-player setup.
+
+## Iteration 6 (Ralph iter 4) — galaxy generator (commits 233c945, 70d5625, pushed)
+
+Ruling — map layout: the official per-player-count map diagrams are images, not machine-readable, so the
+generator lays out a radius-3 axial hex (37 cells) and records these choices:
+- Mecatol Rex (tile 18) at the centre (0,0).
+- Homes on evenly spaced outer corners: 6p all six; 5p leaves one corner to the deck; 4p two adjacent
+  pairs (E/NE and W/SW); 3p the three alternating corners.
+- 3p drops the three non-home corner cells: a full ring would need 33 galaxy tiles but the box holds 32;
+  dropping them uses 30 and stays 120-symmetric.
+- Adjacency is computed from hex coordinates; wormholes link at runtime via adjacency.ts (now widened to
+  include delta). This is a balanced, deterministic layout, not a pixel-copy of the printed diagrams.
+
+Delivered:
+- src/engine/galaxy.ts — generateGalaxy(homes, seed): 3-6 player galaxy as SystemDef[] + axial q/r.
+- src/engine/galaxy.test.ts — 9 tests (board size per player count, home corner placement + planets,
+  adjacency symmetry, one-use-per-tile, determinism, wormholes, player-count validation).
+- Widened SystemDef.wormhole / System.wormhole to include 'delta'. 472 tests total.
+
+Next: make adjacency state-driven (read state.systems, not the static SYSTEMS) and wire createGame to use
+a generated galaxy for N-player configs, keeping the 2-player flower as the default. Then N-player setup.
