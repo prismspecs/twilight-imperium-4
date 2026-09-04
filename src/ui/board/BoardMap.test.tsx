@@ -39,13 +39,15 @@ describe('the board', () => {
     expect(screen.queryByTestId('control-sakulag')).toBeNull()
   })
 
-  it('R4.2: the guardian fleet is grey and carries two infantry on Mecatol Rex', () => {
+  it('renders Custodians token badge on Mecatol Rex and map pan/zoom controls', () => {
     render(<BoardMap state={state} />)
-    expect(screen.getByTestId('guardian-label').textContent).toBe('Guardian fleet, worth 8')
-    expect(screen.getByTestId('ground-mecatol-rex-guardian-infantry').textContent).toBe('2')
-    const ships = screen.getAllByTestId(/^sprite-mecatol-guardian-/)
-    expect(ships.length).toBeGreaterThan(0)
-    for (const ship of ships) expect(ship.getAttribute('src')).toContain('/grey_')
+    expect(screen.getByTestId('custodians-token')).toBeTruthy()
+    expect(screen.getByTestId('custodians-token').getAttribute('src')).toBe('/assets/tokens/token_custodian.png')
+    expect(screen.queryByTestId('guardian-label')).toBeNull()
+    expect(screen.getByTestId('map-controls')).toBeTruthy()
+    expect(screen.getByTestId('zoom-in')).toBeTruthy()
+    expect(screen.getByTestId('zoom-out')).toBeTruthy()
+    expect(screen.getByTestId('zoom-reset')).toBeTruthy()
   })
 
   it('R1: every planet carries its own nameplate, and wormholes show their glyph', () => {

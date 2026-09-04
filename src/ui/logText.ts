@@ -41,8 +41,8 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'research': return `${name} researches ${techLabel(move.techId)} with Inheritance Systems`
     case 'shipyard': return `${name} builds an emergency shipyard on ${planetLabel(state, move.planetId)}`
     case 'tradePost': return `${name} sells ${move.commodities} commodities at the ${move.post} trade post`
-    // R8: which ability that is depends on the post in play, which the engine's own info entry names next
     case 'postAbility': return `${name} uses the ${move.post} trade post's ability`
+    case 'removeCustodians': return `${name} spends 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)`
     case 'pass': return `${name} passes`
     case 'status': return `${name} distributes command tokens`
   }

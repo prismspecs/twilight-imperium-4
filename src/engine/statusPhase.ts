@@ -1,13 +1,10 @@
 import { objectiveDef } from '../data/objectives'
 import { distributeTokens } from './economy'
-import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
+import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
-import { ALL_STRATEGY_CARDS, postRollEntry, rollGuardianFleet, rollPosts } from './setup'
+import { ALL_STRATEGY_CARDS, postRollEntry, rollPosts } from './setup'
 import { snakeOrder } from './strategyPhase'
 import type { GameState, Result, Seat, StatusParams, System } from './types'
-
-// R3.3 step 5 / R4.2: seed salt for the status-phase guardian reroll, kept distinct from other seeded rolls
-const GUARDIAN_REROLL_SALT = 91
 /**
  * R8: the trade posts turn over every round, so the status phase rolls a new pair in the same step. The salt
  * carries the round that is starting (2 to 6, so the salts are 102 to 106) and is therefore disjoint both
@@ -20,11 +17,10 @@ export function tokensGained(state: GameState, seat: Seat): number {
   return state.players[seat].techs.includes('hyper_metabolism') ? 3 : 2
 }
 
-/** R3.3 step 1: every objective the seat may score, plus 1 VP for Mecatol Rex. */
+/** R3.3 step 1: every objective the seat may score. */
 export function scoreAll(state: GameState, seat: Seat): GameState {
   let next = state
   for (const id of scoreable(state, seat)) next = scoreObjective(next, seat, id)
-  if (controlsMecatol(next, seat)) next = addVp(next, seat, 1, 'Mecatol Rex')
   return next
 }
 
@@ -52,10 +48,10 @@ function seatAfter(state: GameState, seat: Seat): number {
   return (seat - state.speaker + state.players.length) % state.players.length
 }
 
-/** R7: the check fires at 7 VP (10 VP for 3-6p) and unconditionally after round 6 (round 8 for 3-6p). */
+/** In base game TI4, the check fires at 10 VP and unconditionally after round 8. */
 export function victoryCheck(state: GameState): Seat | null {
-  const targetVp = state.players.length <= 2 ? 7 : 10
-  const maxRounds = state.players.length <= 2 ? 6 : 8
+  const targetVp = 10
+  const maxRounds = 8
   if (state.players.every(p => p.vp < targetVp) && state.round < maxRounds) return null
   return decideWinner(state)
 }
@@ -63,10 +59,10 @@ export function victoryCheck(state: GameState): Seat | null {
 /** R3.3 steps 2 and 4 to 6, run once both players have submitted their status move. */
 export function finishStatusPhase(state: GameState, seed: number): GameState {
   let next = state
-  // R7: one objective off the shuffled pool per round; the pool runs out before round 6 does
+  // One objective off the shuffled pool per round
   const nextId = state.objectiveOrder[state.round]
   const revealed = nextId === undefined ? undefined : objectiveDef(nextId)
-  if (state.round < 6 && revealed && !next.publicObjectives.includes(revealed.id)) {
+  if (state.round < 8 && revealed && !next.publicObjectives.includes(revealed.id)) {
     next = {
       ...next,
       publicObjectives: [...next.publicObjectives, revealed.id],
@@ -87,8 +83,6 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
   next = { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
-  // R3.3 step 5 / R4.2: a fresh guardian fleet as long as nobody controls Mecatol Rex
-  if (state.players.every((_, i) => !controlsMecatol(next, i))) next = rollGuardianFleet(next, deriveSeed(seed, GUARDIAN_REROLL_SALT))
   const winner = victoryCheck(next)
   if (winner !== null) {
     return { ...next, phase: 'ended', winner, draft: [], log: [...next.log, { t: 'info', text: `seat ${winner} wins with ${next.players[winner].vp} VP` }] }

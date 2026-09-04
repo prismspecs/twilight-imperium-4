@@ -97,17 +97,32 @@ describe('R4.3 invasion', () => {
     expect(after.players[0].reinforcements.spacedock).toBe(s.players[0].reinforcements.spacedock - 1)
     expect(after.players[1].reinforcements.spacedock).toBe(s.players[1].reinforcements.spacedock + 1)
   })
-  it('R4.2: guardian infantry on Mecatol Rex defend normally', () => {
+  it('Mecatol Rex: landing is blocked while Custodians token remains; removeCustodians unlocks it', () => {
     const base = invasion('mecatol', ['carrier'], 3)
-    let s = apply(base, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(base, 'mecatol', 0) })
-    expect(groundOf(s, 'mecatol', 'mecatol-rex', 'guardian')).toHaveLength(2)
+    expect(landablePlanets(base)).toEqual([])
+    expect(applyMove(base, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(base, 'mecatol', 0) }, 5).ok).toBe(false)
+    const withTg: GameState = { ...base, players: [{ ...base.players[0], tradeGoods: 6 }, base.players[1]] }
+    const removed = apply(withTg, { type: 'removeCustodians', tradeGoods: 6 })
+    expect(removed.custodiansToken).toBe(false)
+    expect(removed.players[0].vp).toBe(base.players[0].vp + 1)
+    expect(removed.players[0].tradeGoods).toBe(0)
+    expect(landablePlanets(removed).map(p => p.planetId)).toEqual(['mecatol-rex'])
+    const landed = apply(removed, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(removed, 'mecatol', 0) })
+    expect(planet(landed, 'mecatol', 'mecatol-rex').owner).toBe(0)
+  })
+  it('ground combat on Mecatol Rex resolves normally when defending forces are present', () => {
+    const base = invasion('mecatol', ['carrier'], 3)
+    const open: GameState = { ...base, custodiansToken: false }
+    const defended = withUnits(open, 'mecatol', 1, ['infantry', 'infantry'], 'mecatol-rex')
+    let s = apply(defended, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(defended, 'mecatol', 0) })
+    expect(groundOf(s, 'mecatol', 'mecatol-rex', 1)).toHaveLength(2)
     for (let i = 0; i < 30; i++) {
       const ground = planet(s, 'mecatol', 'mecatol-rex').ground
-      if (!ground.some(u => u.owner === 0) || !ground.some(u => u.owner === 'guardian')) break
+      if (!ground.some(u => u.owner === 0) || !ground.some(u => u.owner === 1)) break
       s = apply(s, { type: 'groundCombatRound' }, 40 + i)
     }
     const mine = groundOf(s, 'mecatol', 'mecatol-rex', 0)
-    expect(planet(s, 'mecatol', 'mecatol-rex').owner).toBe(mine.length ? 0 : null)
+    expect(planet(s, 'mecatol', 'mecatol-rex').owner).toBe(mine.length ? 0 : 1)
   })
   it('HARROW: L1Z1X bombards again after each ground combat round', () => {
     const base = withUnits(invasion('bereg', ['carrier', 'dreadnought'], 2), 'bereg', 1, ['infantry', 'infantry', 'infantry', 'infantry'], 'bereg')
@@ -246,5 +261,12 @@ describe('R4.3: the invasion step only opens when there is something to invade',
   })
   it('goes to production when the system has a space dock of yours', () => {
     expect(step(activate(toActionPhase(), 'home-n'))).toBe('production')
+  })
+  it('opens invasion step on Mecatol Rex when Custodians token remains and player arrives with ships', () => {
+    const s = activate(toActionPhase(), 'mecatol')
+    const dread = shipId(s, 'home-n', 'dreadnought')
+    const r = applyMove(s, { type: 'moveShips', moves: [{ unitId: dread, from: 'home-n', carrying: [] }] }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(step(r.value)).toBe('invasion')
   })
 })

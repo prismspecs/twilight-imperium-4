@@ -19,7 +19,7 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   const units = [...unitsOf(state, 0), ...unitsOf(state, 1), ...unitsOf(state, 'guardian')]
   expect(new Set(units.map(u => u.id)).size).toBe(units.length)
   for (const u of units) expect(u.id).toBeLessThan(state.nextUnitId)
-  expect(state.round).toBeLessThanOrEqual(6)
+  expect(state.round).toBeLessThanOrEqual(8)
   // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the pool of five
   // runs out before round 6 does, and nothing is revealed after that
   expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, PUBLIC_OBJECTIVES.length))
@@ -237,7 +237,7 @@ const UNREACHABLE: readonly Move['type'][] = ['research', 'shipyard']
 /** Log events whose code paths the smoke run must have taken at least once across the seeds. */
 const COUNTERS: readonly [string, RegExp][] = [
   ['commodities sold at a post', /sells \d+ commodities at the (west|east) post/],
-  ['guardian fleet rolled', /^Guardian fleet:/],
+  ['custodians token started', /^Game started with Custodians token/],
   ['technology researched', /^seat \d researches /],
   ['trade posts rolled', /^Trade posts: /],
   ['a post ability used', /^seat \d uses .+ at the (west|east) post/],
@@ -248,13 +248,13 @@ describe('R3.1 to R3.3 full game', () => {
   // (see SEEDS above) push it close to the default 5s timeout under parallel load, so it gets its own.
   it('plays every seeded game to the end and keeps every invariant', { timeout: 30000 }, () => {
     let byPoints = 0
-    let byRound6 = 0
+    let byRound8 = 0
     for (const seed of SEEDS) {
       const { state, moves, attempts, rejectedTemplate, rejectedConcrete } = runGame(seed)
       expect(state.phase).toBe('ended')
       // proves the turn-closing bias past MAX_MOVES / 2 never actually has to engage
       expect(moves).toBeLessThan(MAX_MOVES / 2)
-      expect(state.round).toBeLessThanOrEqual(6)
+      expect(state.round).toBeLessThanOrEqual(8)
       // a concrete move is offered already playable, so the handler that offered it may never refuse it
       expect(rejectedConcrete).toBe(0)
       expect(rejectedTemplate).toBeLessThanOrEqual(Math.ceil(attempts * 0.05))
@@ -262,15 +262,15 @@ describe('R3.1 to R3.3 full game', () => {
       const winner = state.winner
       expect(winner).not.toBeNull()
       if (winner === null) continue
-      // R7: a game ends either because someone reached 7 VP or because the round 6 status phase decided it
-      if (state.players[winner].vp >= 7) byPoints++
+      // A game ends either because someone reached 10 VP or because the round 8 status phase decided it
+      if (state.players[winner].vp >= 10) byPoints++
       else {
-        expect(state.round).toBe(6)
+        expect(state.round).toBe(8)
         expect(state.players[winner].vp).toBeGreaterThanOrEqual(state.players[otherSeat(winner)].vp)
-        byRound6++
+        byRound8++
       }
     }
-    expect(byPoints + byRound6).toBe(SEEDS.length)
+    expect(byPoints + byRound8).toBe(SEEDS.length)
   })
   it('the seeds exercise every reachable move kind, every card and the log events behind them', () => {
     const union = new Set<string>()

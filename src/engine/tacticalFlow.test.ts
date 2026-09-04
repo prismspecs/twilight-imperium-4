@@ -98,7 +98,7 @@ function fill(state: GameState, move: Move, rng: () => number): Move {
 
 describe('tactical legal moves', () => {
   it('enumerates every tactical step', () => {
-    const base = toActionPhase(3)
+    const base = withUnits(toActionPhase(3), 'mecatol', 1, ['destroyer'])
     const start = applyMove(base, { type: 'startTactical', systemId: 'mecatol' }, 1)
     if (!start.ok) throw new Error(start.error)
     const rng = () => 0.5
@@ -156,7 +156,7 @@ describe('tactical legal moves', () => {
     const mecatol = base.systems.mecatol
     const landed = deepFreeze({
       ...base,
-      systems: { ...base.systems, mecatol: { ...mecatol, planets: mecatol.planets.map(p => ({ ...p, ground: [...p.ground, { id: 900, type: 'infantry' as const, owner: 0 as Seat, damaged: false }] })) } },
+      systems: { ...base.systems, mecatol: { ...mecatol, planets: mecatol.planets.map(p => ({ ...p, ground: [{ id: 899, type: 'infantry' as const, owner: 1 as Seat, damaged: false }, { id: 900, type: 'infantry' as const, owner: 0 as Seat, damaged: false }] })) } },
       tactical: { systemId: 'mecatol', step: 'invasion' as const, invasion: { planetId: 'mecatol-rex', landed: [900], bombarded: [], round: 0 } },
     })
     const moves = legalMoves(landed)

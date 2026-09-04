@@ -44,20 +44,20 @@ describe('R3.3 status phase', () => {
     s = withPlayer(s, 0, { spaceCombatWins: 1 })
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].vp).toBe(3)                               // the objective, First Strike, Mecatol Rex
+    expect(done.players[0].vp).toBe(2)                               // the objective, First Strike (no passive Mecatol VP in base game)
     expect(done.players[0].scoredObjectives).toEqual(['win_space_combat'])
     expect(done.players[0].scoredMandates).toEqual(['first_strike'])
     expect(done.players[1].vp).toBe(0)
     const second = bothSubmit(toStatusPhase({ ...done, phase: 'action' }))
-    expect(second.players[0].vp).toBe(4)                             // only Mecatol Rex again
+    expect(second.players[0].vp).toBe(2)                             // neither scores again
   })
   it('R3.3 step 2: the next objective off the shuffled pool is revealed, none once it runs out', () => {
     const start = toActionPhase()
     const done = bothSubmit(toStatusPhase(start))
     expect(done.publicObjectives).toEqual([start.objectiveOrder[0], start.objectiveOrder[1]])
     expect(done.round).toBe(2)
-    const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 6, publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f'] }))
-    expect(late.publicObjectives).toHaveLength(6)
+    const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 8, publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }))
+    expect(late.publicObjectives).toHaveLength(8)
     expect(late.phase).toBe('ended')
   })
   it('R3.3 step 4/R3.1: planets and cards ready, played cards return at 0, unpicked keep their bonus', () => {
@@ -88,35 +88,25 @@ describe('R3.3 status phase', () => {
     if (!picked.ok) throw new Error(picked.error)
     expect(picked.value.players[1].tradeGoods).toBe(done.players[1].tradeGoods + 1)
   })
-  it('R3.3 step 5 / R4.2: a new guardian fleet only while Mecatol Rex is uncontrolled', () => {
+  it('R3.3 step 5: no guardian fleets are rolled in status phase in base game', () => {
     const s = toStatusPhase(toActionPhase())
-    expect(bothSubmit(s).guardianRolls).toBe(2)
+    expect(bothSubmit(s).guardianRolls).toBe(0)
     const owned = toStatusPhase(withPlanetOwner(toActionPhase(), 'mecatol', 'mecatol-rex', 1))
     const done = bothSubmit(owned)
-    expect(done.guardianRolls).toBe(1)
-    expect(done.nextUnitId).toBe(owned.nextUnitId)              // no new guardian units were made
+    expect(done.guardianRolls).toBe(0)
   })
-  it('R4.2: the guardian reroll is deterministic, same seed gives the same fleet', () => {
-    const composition = (state: GameState) =>
-      state.systems.mecatol.space.filter(u => u.owner === 'guardian').map(u => u.type).sort()
-    const runOnce = () => bothSubmit(toStatusPhase(toActionPhase()), 42)
-    const a = runOnce()
-    const b = runOnce()
-    expect(composition(a)).toEqual(composition(b))
-    expect(a.guardianRolls).toBe(b.guardianRolls)
-  })
-  it('R3.3 step 6 / R7: 7 victory points end the game, round 6 ends it in any case', () => {
-    const rich = withPlayer(toActionPhase(), 1, { vp: 7 })
+  it('R3.3 step 6 / R7: 10 victory points end the game, round 8 ends it in any case', () => {
+    const rich = withPlayer(toActionPhase(), 1, { vp: 10 })
     const done = bothSubmit(toStatusPhase(rich))
     expect(done.phase).toBe('ended')
     expect(done.winner).toBe(1)
-    const open = bothSubmit(toStatusPhase(withPlayer(toActionPhase(), 1, { vp: 6 })))
+    const open = bothSubmit(toStatusPhase(withPlayer(toActionPhase(), 1, { vp: 9 })))
     expect(open.phase).toBe('strategy')
     expect(open.winner).toBeNull()
-    const last = bothSubmit(toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 6 }))
+    const last = bothSubmit(toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 8 }))
     expect(last.phase).toBe('ended')
     expect(last.winner).toBe(0)
-    expect(last.round).toBe(6)
+    expect(last.round).toBe(8)
   })
   it('R7: the tie-break chain is Mecatol Rex, then planets, then the speaker\'s opponent', () => {
     const tied = withPlayer(withPlayer(toActionPhase(), 0, { vp: 4 }), 1, { vp: 4 })
@@ -128,15 +118,16 @@ describe('R3.3 status phase', () => {
     expect(decideWinner(even)).toBe(1)                                                  // the speaker's opponent
     expect(decideWinner({ ...even, speaker: 1 })).toBe(0)
   })
-  it('R7: both players reach 7 VP in the same status phase through real submissions, tie-break decides', () => {
-    let s = withPlayer(toActionPhase(), 0, { vp: 6 })
-    s = { ...withPlayer(s, 1, { vp: 6 }), mecatolCombatWinner: 1 }
-    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // player 0's own scoreAll() call scores this
+  it('R7: both players reach 10 VP in the same status phase through real submissions, tie-break decides', () => {
+    let s = withPlayer(toActionPhase(), 0, { vp: 9, spaceCombatWins: 1 })
+    s = { ...withPlayer(s, 1, { vp: 9 }), mecatolCombatWinner: 1 }
+    s = { ...s, publicObjectives: ['win_space_combat'], objectiveOrder: ['win_space_combat'] }
+    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // tie-break will favor Mecatol Rex controller
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].vp).toBe(7)                                // 6 + 1 for Mecatol Rex
-    expect(done.players[1].vp).toBe(7)                                // 6 + 1 for First Strike
+    expect(done.players[0].vp).toBe(10)                               // 9 + 1 for win_space_combat
+    expect(done.players[1].vp).toBe(10)                               // 9 + 1 for First Strike
     expect(done.phase).toBe('ended')
-    expect(done.winner).toBe(0)                                       // tied at 7, decided by the Mecatol Rex controller
+    expect(done.winner).toBe(0)                                       // tied at 10, decided by the Mecatol Rex controller
   })
   it('R3.1/R3.3 step 6: the speaker changes and the next round starts with a fresh draft', () => {
     const done = bothSubmit(toStatusPhase(toActionPhase()))

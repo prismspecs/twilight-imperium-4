@@ -10,7 +10,9 @@ import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
 import { homeSystemOf } from './board'
+import { isShip } from '../data/units'
 import { diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
+import { MECATOL_ID } from '../data/map'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
 
@@ -45,6 +47,13 @@ function tacticalMoves(state: GameState): Move[] {
     case 'invasion': {
       const out: Move[] = []
       for (const planetId of bombardablePlanets(state)) out.push({ type: 'bombard', planetId })
+      if ((tac.systemId === MECATOL_ID || tac.systemId === 'mecatol') && state.custodiansToken) {
+        const hasShips = state.systems[tac.systemId]?.space.some(u => u.owner === seat && (isShip(u.type) || u.type === 'infantry'))
+        const canPay = readyInfluence(state, seat) + state.players[seat].tradeGoods >= 6
+        if (hasShips && canPay) {
+          out.push({ type: 'removeCustodians' })
+        }
+      }
       for (const { planetId, infantryIds } of landablePlanets(state)) out.push({ type: 'land', planetId, infantryIds })
       if (groundCombatPending(state)) out.push({ type: 'groundCombatRound' })
       else out.push({ type: 'endInvasion' })
@@ -221,6 +230,8 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'retreat' && candidate.to === move.to
     case 'bombard':
       return candidate.type === 'bombard' && candidate.planetId === move.planetId
+    case 'removeCustodians':
+      return candidate.type === 'removeCustodians'
     case 'land':
       return candidate.type === 'land' && candidate.planetId === move.planetId
     case 'strategic':

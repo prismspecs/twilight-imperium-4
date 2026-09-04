@@ -128,10 +128,13 @@ export function createGame(config: GameConfig, seed: number): GameState {
     players: config.players.map((cfg, seat) => makePlayer(seat, cfg)),
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     posts, postAbilityUsed: { west: false, east: false },
-    nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null,
-    log: [{ t: 'info', text: postRollEntry(posts) }],
+    nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, winner: null,
+    log: [
+      { t: 'info', text: 'Game started with Custodians token on Mecatol Rex' },
+      { t: 'info', text: postRollEntry(posts) },
+    ],
   }
-  return rollGuardianFleet(state, seed)
+  return state
 }
 
 export function rollGuardianFleet(state: GameState, seed: number): GameState {

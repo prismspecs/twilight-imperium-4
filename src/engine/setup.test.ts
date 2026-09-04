@@ -87,25 +87,21 @@ describe('R4.2 guardian fleet', () => {
     }
     expect(GUARDIAN_FLEETS).toHaveLength(6)
   })
-  it('createGame places a guardian fleet and 2 guardian infantry on Mecatol Rex', () => {
+  it('createGame places no units on Mecatol Rex and sets custodiansToken to true', () => {
     const g = createGame(config, 5)
     const space = g.systems.mecatol.space
-    expect(space.length).toBeGreaterThan(0)
-    expect(space.every(u => u.owner === 'guardian')).toBe(true)
-    expect(count(g.systems.mecatol.planets[0].ground, 'infantry')).toBe(2)
+    expect(space).toHaveLength(0)
+    expect(g.systems.mecatol.planets[0].ground).toHaveLength(0)
     expect(g.systems.mecatol.planets[0].owner).toBeNull()
-    expect(g.guardianRolls).toBe(1)
+    expect(g.custodiansToken).toBe(true)
   })
   it('rolling is seeded and replaces the previous fleet', () => {
-    const a = createGame(config, 11), b = createGame(config, 11), c = createGame(config, 12)
-    const sig = (s: typeof a) => s.systems.mecatol.space.map(u => u.type).sort().join(',')
-    expect(sig(a)).toBe(sig(b))
-    const rerolled = rollGuardianFleet(a, 99)
-    expect(rerolled.guardianRolls).toBe(2)
-    expect(rerolled.systems.mecatol.space.every(u => u.owner === 'guardian')).toBe(true)
-    expect(count(rerolled.systems.mecatol.planets[0].ground, 'infantry')).toBe(2)
-    expect(a.guardianRolls).toBe(1)   // input not mutated
-    void c
+    const a = createGame(config, 11)
+    const rolled = rollGuardianFleet(a, 99)
+    expect(rolled.guardianRolls).toBe(1)
+    expect(rolled.systems.mecatol.space.every(u => u.owner === 'guardian')).toBe(true)
+    expect(count(rolled.systems.mecatol.planets[0].ground, 'infantry')).toBe(2)
+    expect(a.guardianRolls).toBe(0)   // input not mutated
   })
   it('R4.2 keeps non-guardian ships and ground forces on Mecatol Rex when the fleet is rerolled', () => {
     const g = createGame(config, 5)

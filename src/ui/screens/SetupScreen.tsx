@@ -1,6 +1,5 @@
 import { Fragment, useRef, useState } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { SYSTEMS, systemDef } from '../../data/map'
 import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
 import { deleteGame, listGames } from '../persist'
@@ -75,18 +74,6 @@ const SAVED_ROW_H = 52
 /** `.glist` stops at three and a half rows and scrolls; the page never grows past that */
 const SAVED_LIST_H = 182
 
-const MAP_NAME = 'Bereg Standoff'
-/** The flower layout of src/data/map.ts, drawn as a 76x80 hex preview: home north, Mecatol in the middle. */
-const MINIMAP: { id: string; left: number; top: number }[] = [
-  { id: 'home-n', left: 23, top: 0 },
-  { id: 'sakulag', left: 0, top: 13 },
-  { id: 'bereg', left: 46, top: 13 },
-  { id: 'mecatol', left: 23, top: 26 },
-  { id: 'starpoint', left: 0, top: 39 },
-  { id: 'quann', left: 46, top: 39 },
-  { id: 'home-s', left: 23, top: 52 },
-]
-
 function fleetUnits(factionId: FactionId): { type: UnitType; count: number }[] {
   const totals = new Map<UnitType, number>()
   for (const su of FACTIONS[factionId].startingUnits) totals.set(su.type, (totals.get(su.type) ?? 0) + su.count)
@@ -120,7 +107,7 @@ export function SetupScreen() {
   const fit = useFitScale()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
-  const [playerCount, setPlayerCount] = useState<number>(2)
+  const [playerCount, setPlayerCount] = useState<number>(3)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
   const [factions, setFactions] = useState<FactionId[]>(DEFAULT_FACTIONS)
   const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
@@ -228,9 +215,9 @@ export function SetupScreen() {
       <SpaceBackdrop />
 
       <header className="hero">
-        <h1 className="title goldtext">Mecatol Duel</h1>
+        <h1 className="title goldtext">Twilight Imperium IV</h1>
         <div className="rule"><span /><i className="dia" /><span /></div>
-        <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
+        <p className="tagline">The board game of galactic conquest, diplomacy, and trade</p>
       </header>
 
       {saved.games.length > 0 ? (
@@ -329,7 +316,7 @@ export function SetupScreen() {
             <div className="mode">
               <span className="lbl">Players</span>
               <div className="segtoggle player-count-picker" data-testid="player-count-picker">
-                {[2, 3, 4, 5, 6].map(count => (
+                {[3, 4, 5, 6].map(count => (
                   <button
                     key={count}
                     type="button"
@@ -507,24 +494,14 @@ export function SetupScreen() {
 
           <div className="settings">
             <div className="cell" data-testid="setup-map">
-              {playerCount === 2 ? (
-                <div className="minimap" aria-hidden="true">
-                  {MINIMAP.map(({ id, left, top }) => (
-                    <img key={id} className={id === 'mecatol' ? 'mr' : undefined} src={`/assets/tiles/${systemDef(id).tile}.png`} style={{ left, top }} alt="" />
-                  ))}
-                </div>
-              ) : (
-                <div className="minimap galaxy-mini" aria-hidden="true">
-                  <img src="/assets/tiles/18_MR.png" className="mr" alt="" style={{ position: 'relative', width: 40, height: 35, margin: '20px auto 0', display: 'block' }} />
-                </div>
-              )}
+              <div className="minimap galaxy-mini" aria-hidden="true">
+                <img src="/assets/tiles/18_MR.png" className="mr" alt="" style={{ position: 'relative', width: 40, height: 35, margin: '20px auto 0', display: 'block' }} />
+              </div>
               <div>
                 <div className="lbl"><i className="dia" />Map</div>
-                <div className="val">{playerCount === 2 ? MAP_NAME : `Generated Galaxy (${playerCount === 3 ? 34 : 37} systems)`}</div>
+                <div className="val">{`Generated Galaxy (${playerCount === 3 ? 34 : 37} systems)`}</div>
                 <div className="sub">
-                  {playerCount === 2
-                    ? `${SYSTEMS.length} systems, Mecatol Rex in the centre, home systems north and south`
-                    : `${playerCount} home systems on outer rim, Mecatol Rex in centre, balanced galaxy tiles`}
+                  {`${playerCount} home systems on outer rim, Mecatol Rex in centre, balanced galaxy tiles`}
                 </div>
               </div>
             </div>
@@ -553,7 +530,7 @@ export function SetupScreen() {
                 </div>
                 <div className="sub">
                   {useMiltyDraft
-                    ? "Two-player draft with randomized balanced factions"
+                    ? "Multi-player draft with randomized balanced factions"
                     : "Standard setup with predefined factions"}
                 </div>
               </div>
@@ -594,8 +571,8 @@ export function SetupScreen() {
             <div className="cell" data-testid="setup-target">
               <div>
                 <div className="lbl"><i className="dia" />Target</div>
-                <div className="val">{playerCount === 2 ? '7 victory points or 6 rounds' : '10 victory points or 8 rounds'}</div>
-                <div className="sub">{playerCount === 2 ? 'Most points after round 6 wins the duel' : 'First to 10 points claims the galactic throne'}</div>
+                <div className="val">10 victory points or 8 rounds</div>
+                <div className="sub">First to 10 points claims the galactic throne</div>
               </div>
             </div>
             <div className="cell" data-testid="setup-rules">
@@ -604,11 +581,11 @@ export function SetupScreen() {
                 <button type="button" className="btn ghost rules" data-testid="btn-rules" onClick={() => navigate('#/rules')}>
                   What&apos;s different from Twilight Imperium
                 </button>
-                <div className="sub">Six strategy cards, no agenda phase, open objectives</div>
+                <div className="sub">Six strategy cards, open objectives, Custodians on Mecatol Rex</div>
               </div>
             </div>
             <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>
-              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? (playerCount === 2 ? 'Watch AI duel' : 'Watch AI game') : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
+              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? 'Watch AI game' : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
             </button>
           </div>
         </div>

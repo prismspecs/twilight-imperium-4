@@ -139,6 +139,25 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
         <img className="sigil" src={SIGIL[state.players[system.home].faction]} alt="" data-testid={`sigil-${system.id}`}
           style={{ left: SIGIL_SPOT.left, top: SIGIL_SPOT.top }} width={SIGIL_SIZE} height={SIGIL_SIZE} />
       ) : null}
+      {state.custodiansToken && (system.id === 'mecatol' || system.planets.some(p => p.id === 'mecatol-rex' || p.id === 'mecatolrex')) ? (
+        <img
+          className="custodians-token"
+          src="/assets/tokens/token_custodian.png"
+          alt="Custodians Token"
+          data-testid="custodians-token"
+          style={{
+            position: 'absolute',
+            left: '148px',
+            top: '120px',
+            width: '48px',
+            height: '48px',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 6,
+            filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.85))',
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
       {selectable && outOfReach ? (
         <span className="noreach" data-testid={`noreach-${system.id}`}>No ship in range</span>

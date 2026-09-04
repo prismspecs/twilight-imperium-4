@@ -73,11 +73,11 @@ describe('R3.2 movement', () => {
     const s = activate(withUnits(toActionPhase(), 'bereg', 0, ['carrier']), 0, 'starpoint')
     expect(move(s, shipId(s, 'bereg', 'carrier'), 'bereg').ok).toBe(true)
   })
-  it('R3.2 step 2: ships may not move through a system that contains enemy or guardian ships', () => {
+  it('R3.2 step 2: ships may not move through a system that contains enemy ships', () => {
     const open = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'quann')
     expect(move(open, shipId(open, 'home-n', 'destroyer'), 'home-n').ok).toBe(true)   // via bereg
-    // both two-step routes have to be closed: quann sits behind bereg, behind sakulag and behind the guardians
-    const fleets = withUnits(withUnits(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 'bereg', 1, ['destroyer']), 'sakulag', 1, ['destroyer'])
+    // all two-step routes have to be closed: quann sits behind bereg, sakulag and mecatol
+    const fleets = withUnits(withUnits(withUnits(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 'bereg', 1, ['destroyer']), 'sakulag', 1, ['destroyer']), 'mecatol', 1, ['destroyer'])
     const blocked = activate(fleets, 0, 'quann')
     expect(move(blocked, shipId(blocked, 'home-n', 'destroyer'), 'home-n').ok).toBe(false)
   })
@@ -111,13 +111,14 @@ describe('R3.2 movement', () => {
     if (!r.ok) throw new Error(r.error)
     // R4.3: nothing moved in, so there is neither an invasion nor a production to hold the turn open
     expect(r.value.tactical?.step).toBe('done')
-    const mecatol = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'mecatol')
-    const moved = move(mecatol, shipId(mecatol, 'home-n', 'destroyer'), 'home-n')
+    const withEnemy = withUnits(toActionPhase(), 'bereg', 1, ['destroyer'])
+    const bereg = activate(withUnits(withEnemy, 'home-n', 0, ['destroyer']), 0, 'bereg')
+    const moved = move(bereg, shipId(bereg, 'home-n', 'destroyer'), 'home-n')
     if (!moved.ok) throw new Error(moved.error)
     const combat = applyMove(moved.value, { type: 'endMovement' }, 0)
     if (!combat.ok) throw new Error(combat.error)
     expect(combat.value.tactical?.step).toBe('spaceCombat')
-    expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 'guardian', retreating: null, retreatTo: null, lastRolls: [], pending: [] })
+    expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] })
   })
   it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')

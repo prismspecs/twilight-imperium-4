@@ -66,6 +66,7 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'bombard': return scoreBombard(view, seat, w)
     case 'land': return scoreLand(view, seat, w)
     case 'groundCombatRound': return w.military
+    case 'removeCustodians': return vpValue(w)
     case 'endInvasion': return w.military
     case 'produce': return scoreProduce(view, move, seat, w)
     case 'endTactical': return w.military

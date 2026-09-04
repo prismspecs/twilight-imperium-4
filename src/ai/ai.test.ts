@@ -26,7 +26,7 @@ function playAiGame(seed: number): { state: GameState; moves: number } {
 }
 
 function invariants(state: GameState): void {
-  expect(state.round).toBeLessThanOrEqual(6)
+  expect(state.round).toBeLessThanOrEqual(8)
   expect(state.phase === 'ended').toBe(state.winner !== null)
   for (const seat of [0, 1] as Seat[]) {
     const p = state.players[seat]
@@ -97,7 +97,7 @@ describe('AI opponent', () => {
       const r = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.balanced, PERSONALITIES.balanced])
       expect(r.failed).toBeNull()
       expect(r.rounds).toBeGreaterThan(0)
-      expect(r.rounds).toBeLessThanOrEqual(6)
+      expect(r.rounds).toBeLessThanOrEqual(8)
       expect(r.vp[0]).toBeGreaterThanOrEqual(0)
       expect(r.vp[1]).toBeGreaterThanOrEqual(0)
       expect(r.winner).not.toBeNull()

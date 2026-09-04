@@ -4,6 +4,14 @@ import { defineConfig } from 'vitest/config'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5173,
+  },
   // the sprite renderers under tools/render are standalone pages that import three from a CDN; without this
   // the dev server's dependency scan follows them, fails to resolve three and serves a broken page
   optimizeDeps: { entries: ['index.html'] },

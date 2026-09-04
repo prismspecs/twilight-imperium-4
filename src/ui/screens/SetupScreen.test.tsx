@@ -26,12 +26,12 @@ function savedGame(code: string, north: string, south: string) {
 }
 
 describe('the setup screen', () => {
-  it('offers two seats with the v1 factions and the eight TI colours', () => {
+  it('offers seats with the factions and the eight TI colours', () => {
     renderApp()
     expect(screen.getByTestId('seat-faction-0').textContent).toBe('L1Z1X Mindnet')
     expect(screen.getByTestId('seat-faction-1').textContent).toBe('Barony of Letnev')
-    expect(screen.getByTestId('seat-position-0').textContent).toBe('North')
-    expect(screen.getByTestId('seat-position-1').textContent).toBe('South')
+    expect(screen.getByTestId('seat-position-0').textContent).toBe('East')
+    expect(screen.getByTestId('seat-position-1').textContent).toBe('North-West')
     expect(screen.getAllByTestId(/^colour-0-/)).toHaveLength(8)
   })
 
@@ -42,12 +42,13 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('seat-faction-1').textContent).toBe('L1Z1X Mindnet')
   })
 
-  it('R2: keeps the two colours distinct', () => {
+  it('R2: keeps the colours distinct across seats', () => {
     renderApp()
     expect(screen.getByTestId('colour-1-blue').hasAttribute('disabled')).toBe(true)
-    fireEvent.click(screen.getByTestId('colour-1-green'))
-    expect(screen.getByTestId('chosen-colour-1').textContent).toBe('Green')
-    expect(screen.getByTestId('colour-0-green').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('colour-1-green').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('colour-1-yellow'))
+    expect(screen.getByTestId('chosen-colour-1').textContent).toBe('Yellow')
+    expect(screen.getByTestId('colour-0-yellow').hasAttribute('disabled')).toBe(true)
   })
 
   it('starts the game and shows the board', () => {
@@ -56,7 +57,7 @@ describe('the setup screen', () => {
     fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
     fireEvent.click(screen.getByTestId('btn-start'))
     expect(screen.getByTestId('board-screen')).toBeTruthy()
-    expect(screen.getByTestId('round').textContent).toBe('Round 1 of 6, strategy phase')
+    expect(screen.getByTestId('round').textContent).toBe('Round 1 of 8, strategy phase')
   })
 
   it('offers hot-seat play now and disables the two online panels until they ship', () => {
@@ -80,10 +81,10 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('seat-1-fleet-infantry-count').textContent).toBe('3') // 2 on Arc Prime, 1 on Wren Terra
   })
 
-  it('presents the lobby as a hot-seat lobby with both seats taken', () => {
+  it('presents the lobby as a hot-seat lobby with all seats taken', () => {
     renderApp()
     expect(screen.getByTestId('lobby-tab').textContent).toContain('Hot-seat')
-    expect(screen.getByTestId('lobby-status').textContent).toContain('2 of 2 seats taken')
+    expect(screen.getByTestId('lobby-status').textContent).toContain('3 of 3 seats taken')
   })
 
   it('shows a leader portrait and a faction symbol for each seat', () => {
@@ -112,10 +113,9 @@ describe('the setup screen', () => {
 
   it('names the map, the clock and the target below the seats', () => {
     renderApp()
-    expect(screen.getByTestId('setup-map').textContent).toContain('Bereg Standoff')
-    expect(screen.getByTestId('setup-map').textContent).toContain('7 systems, Mecatol Rex in the centre, home systems north and south')
+    expect(screen.getByTestId('setup-map').textContent).toContain('Generated Galaxy')
     expect(screen.getByTestId('setup-clock').textContent).toContain('minutes per player')
-    expect(screen.getByTestId('setup-target').textContent).toContain('7 victory points or 6 rounds')
+    expect(screen.getByTestId('setup-target').textContent).toContain('10 victory points or 8 rounds')
     expect(screen.getByTestId('minutes').getAttribute('value')).toBe('15')
   })
 

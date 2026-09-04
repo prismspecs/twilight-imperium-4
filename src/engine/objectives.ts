@@ -175,7 +175,11 @@ export function scoreable(state: GameState, seat: Seat): string[] {
 export function addVp(state: GameState, seat: Seat, points: number, reason: string): GameState {
   const players = [...state.players] as GameState['players']
   players[seat] = { ...players[seat], vp: players[seat].vp + points }
-  return { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} scores ${points} VP: ${reason}` }] }
+  const next: GameState = { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} scores ${points} VP: ${reason}` }] }
+  if (state.phase !== 'status' && players[seat].vp >= 10 && next.winner === null) {
+    return { ...next, phase: 'ended', winner: seat }
+  }
+  return next
 }
 
 /** R7: records the objective (or the mandate) and adds its victory points. Fulfilment is checked by the caller. */

@@ -64,7 +64,7 @@ export function BoardScreen() {
   // R3.2: with the action spent the bar has only two things left to say, whichever panel happens to be open
   const hint = drafting ? HINTS.strategy
     : state.phase === 'status' ? HINTS.status
-      : state.turnDone ? HINTS.spent
+      : state.turnDone ? (isGalaxy ? 'Your action is spent. End your turn.' : HINTS.spent)
         : HINTS[mode ?? 'idle']
   // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
   // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would

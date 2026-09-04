@@ -71,7 +71,7 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
         {error === null
           ? <div className="h" data-testid="hint">{hint}</div>
           : <div className="h err" role="alert" data-testid="engine-error">{error}</div>}
-        <div className="r" data-testid="round">Round {state.round} of {state.players.length <= 2 ? 6 : 8}, {state.phase} phase</div>
+        <div className="r" data-testid="round">Round {state.round} of 8, {state.phase} phase</div>
       </div>
     </div>
   )

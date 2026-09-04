@@ -1,7 +1,7 @@
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { research, shipyard, tradePost } from './componentActions'
-import { bombard, endInvasion, groundCombatRound, land } from './invasion'
+import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
 import { endMovement, moveShips } from './movement'
 import { postAbility } from './postAbilities'
 import { produce } from './production'
@@ -30,6 +30,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'assignHits': return assignHits(logged, move.destroy, move.sustain, seed)
       case 'retreat': return retreat(logged, move.to)
       case 'bombard': return bombard(logged, move.planetId, seed)
+      case 'removeCustodians': return removeCustodians(logged, move.planets, move.tradeGoods)
       case 'land': return land(logged, move.planetId, move.infantryIds, seed)
       case 'groundCombatRound': return groundCombatRound(logged, seed)
       case 'endInvasion': return endInvasion(logged)
@@ -64,7 +65,7 @@ export { homeSystemOf } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
 export { canInheritance, canShipyard, inheritanceTechs, postDef, postLinked, shipyardPlanets, tradePostOptions } from './componentActions'
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
-export { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
+export { bombardablePlanets, groundCombatPending, landablePlanets, removeCustodians } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
 export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady } from './postAbilities'
 export type { MovementObstacle } from './movement'

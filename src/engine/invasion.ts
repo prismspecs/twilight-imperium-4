@@ -1,5 +1,8 @@
+import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
+import { cheapestInfluencePlanets, payInfluence } from './economy'
+import { addVp } from './objectives'
 import { deriveSeed, mulberry32, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
 
@@ -113,7 +116,46 @@ export function landablePlanets(state: GameState): { planetId: string; infantryI
   if (groundCombatPending(state)) return []   // R4.3 step 4: the running ground combat is fought out first
   return state.systems[tac.systemId].planets
     .filter(p => p.id !== inv.planetId)       // R4.3 step 3: one landing per planet per invasion
+    .filter(p => !(state.custodiansToken && (p.id === 'mecatol-rex' || p.id === 'mecatolrex' || p.name === 'Mecatol Rex')))
     .map(p => ({ planetId: p.id, infantryIds }))
+}
+
+/**
+ * LRR 28.3: Before committing ground forces to Mecatol Rex, the active player may spend 6 influence
+ * to remove the Custodians token from Mecatol Rex and gain 1 victory point.
+ */
+export function removeCustodians(state: GameState, planets?: string[], tradeGoods?: number): Result<GameState> {
+  const tac = state.tactical
+  if (!tac || tac.step !== 'invasion') return { ok: false, error: 'not in the invasion step' }
+  if (tac.systemId !== MECATOL_ID && tac.systemId !== 'mecatol') return { ok: false, error: 'not in the Mecatol Rex system' }
+  if (!state.custodiansToken) return { ok: false, error: 'the Custodians token has already been removed' }
+  const seat = state.active
+  const hasShips = state.systems[tac.systemId]?.space.some(u => u.owner === seat && (isShip(u.type) || u.type === 'infantry'))
+  if (!hasShips) return { ok: false, error: 'must have ships in space to remove Custodians' }
+
+  let payState: GameState
+  if (planets === undefined) {
+    const cheap = cheapestInfluencePlanets(state, seat, 6)
+    if (!cheap) return { ok: false, error: 'cannot afford 6 influence to remove Custodians' }
+    const paid = payInfluence(state, seat, 6, cheap.planets, cheap.tradeGoods)
+    if (!paid.ok) return paid
+    payState = paid.value
+  } else {
+    const paid = payInfluence(state, seat, 6, planets, tradeGoods ?? 0)
+    if (!paid.ok) return paid
+    payState = paid.value
+  }
+
+  let next = addVp(payState, seat, 1, 'Custodians Token')
+  next = {
+    ...next,
+    custodiansToken: false,
+    log: [
+      ...next.log,
+      { t: 'info', text: `${next.players[seat].name} spent 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)` },
+    ],
+  }
+  return { ok: true, value: next }
 }
 
 /** R4.3 step 5: the attacker takes the planet when it has ground forces there and no defender is left. */
@@ -176,6 +218,9 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
   const sys = state.systems[tac.systemId]
   const planet = planetOf(state, tac.systemId, planetId)
   if (!planet) return { ok: false, error: `planet ${planetId} is not in the active system` }
+  if (state.custodiansToken && (planetId === 'mecatol-rex' || planetId === 'mecatolrex' || planet.name === 'Mecatol Rex')) {
+    return { ok: false, error: 'cannot land on Mecatol Rex while the Custodians token remains' }
+  }
   if (!infantryIds.length) return { ok: false, error: 'no infantry to land' }
   if (groundCombatPending(state)) return { ok: false, error: 'R4.3 step 4: finish the running ground combat first' }
   if (inv.planetId === planetId) return { ok: false, error: `R4.3 step 3: ${planetId} was already landed on this invasion` }
@@ -266,7 +311,12 @@ export function groundCombatRound(state: GameState, seed: number): Result<GameSt
 export function afterSpaceStep(state: GameState, systemId: string, seat: Seat): TacticalContext {
   const opened: TacticalContext = { systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } }
   const staged: GameState = { ...state, active: seat, tactical: opened }
-  const worth = landablePlanets(staged).length > 0 || bombardablePlanets(staged).length > 0 || groundCombatPending(staged)
+  const canRemoveCustodians = Boolean(
+    state.custodiansToken &&
+    (systemId === MECATOL_ID || systemId === 'mecatol') &&
+    state.systems[systemId]?.space.some(u => u.owner === seat && (isShip(u.type) || u.type === 'infantry'))
+  )
+  const worth = landablePlanets(staged).length > 0 || bombardablePlanets(staged).length > 0 || groundCombatPending(staged) || canRemoveCustodians
   if (worth) return opened
   const dock = state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
   return { systemId, step: dock ? 'production' : 'done' }

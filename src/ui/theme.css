@@ -131,6 +131,12 @@ button{font-family:inherit}
   display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:1}
 /* a grouping wrapper only; its dialogs position themselves against the stage */
 .stage>.flows-4b{display:contents}
+.map-viewport{user-select:none;touch-action:none}
+.map-controls{position:absolute;right:18px;bottom:18px;display:flex;flex-direction:column;gap:6px;z-index:20}
+.btn-map-control{width:36px;height:36px;background:rgba(10,16,32,.85);border:1px solid var(--gold);color:var(--gold-hi,#f0dfb2);font:700 18px/1 var(--display,sans-serif);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,transform .1s;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.btn-map-control:hover{background:rgba(26,38,68,.95);border-color:#fff;color:#fff;transform:scale(1.05)}
+.btn-map-control:active{transform:scale(.95)}
+.btn-map-control.reset{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
 .map{position:relative;width:var(--map-w, 940px);height:var(--map-h, 698px);zoom:var(--s);z-index:1}
 .actions{display:flex;gap:10px;margin:0 auto}
 /* the in-game menu: the way back to the lobby and the rules without abandoning the game */

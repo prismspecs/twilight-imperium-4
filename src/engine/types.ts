@@ -108,6 +108,7 @@ export interface GameState {
   postAbilityUsed: { west: boolean; east: boolean }
   nextUnitId: number
   guardianRolls: number
+  custodiansToken?: boolean
   winner: Seat | null
   log: LogEntry[]
 }
@@ -122,6 +123,7 @@ export type Move =
   | { type: 'assignHits'; destroy: number[]; sustain: number[] }   // unit ids of the assigning seat, in the activated system
   | { type: 'retreat'; to: string }
   | { type: 'bombard'; planetId: string }
+  | { type: 'removeCustodians'; planets?: string[]; tradeGoods?: number }
   | { type: 'land'; planetId: string; infantryIds: number[] }
   | { type: 'groundCombatRound' }
   | { type: 'endInvasion' }

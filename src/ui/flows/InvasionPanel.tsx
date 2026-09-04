@@ -55,6 +55,29 @@ export function InvasionPanel() {
             </button>
           ))}
         </div>
+        {legal.some(m => m.type === 'removeCustodians') ? (
+          <div className="rowline" data-testid="custodians-block" style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <span className="lbl" style={{ color: 'var(--gold)' }}>Custodians</span>
+            <span className="sub" style={{ flex: 1, margin: '0 12px' }}>
+              The Custodians of Mecatol Rex demand 6 influence before ground forces may land (+1 VP).
+            </span>
+            <button
+              type="button"
+              className="btn gold"
+              data-testid="btn-remove-custodians"
+              onClick={() => apply({ type: 'removeCustodians' })}
+            >
+              Remove Custodians (6 Influence · +1 VP)
+            </button>
+          </div>
+        ) : (state.custodiansToken && state.tactical?.systemId === 'mecatol' ? (
+          <div className="rowline" data-testid="custodians-notice" style={{ padding: '6px 0', color: 'var(--muted)' }}>
+            <span className="lbl">Custodians</span>
+            <span className="sub">
+              The Custodians token remains on Mecatol Rex. Ground forces cannot land without spending 6 influence.
+            </span>
+          </div>
+        ) : null)}
         {landings.map(({ planetId, infantryIds }, index) => {
           const count = countOf(planetId, index)
           return (

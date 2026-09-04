@@ -55,6 +55,52 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
   return { ok: true, value: { ...spent.value.state, players } }
 }
 
+export function payInfluence(state: GameState, seat: Seat, cost: number, planets: string[], tradeGoods: number): Result<GameState> {
+  const player = state.players[seat]
+  if (!Number.isInteger(tradeGoods)) return { ok: false, error: 'the trade good count must be a whole number' }
+  if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'not enough trade goods' }
+  const spent = exhaustPlanets(state, seat, planets)
+  if (!spent.ok) return spent
+  const paid = tradeGoods + spent.value.influence
+  if (paid < cost) return { ok: false, error: `paid ${paid} of ${cost} influence` }
+  const players = [...spent.value.state.players] as GameState['players']
+  const me = spent.value.state.players[seat]
+  const influencePaid = Math.max(0, cost - tradeGoods)
+  players[seat] = {
+    ...me, tradeGoods: me.tradeGoods - tradeGoods,
+    influenceSpentThisRound: me.influenceSpentThisRound + influencePaid,
+    tradeGoodsSpentThisRound: me.tradeGoodsSpentThisRound + tradeGoods,
+  }
+  return { ok: true, value: { ...spent.value.state, players } }
+}
+
+export function cheapestInfluencePlanets(state: GameState, seat: Seat, cost: number): { planets: string[]; tradeGoods: number } | null {
+  if (cost <= 0) return { planets: [], tradeGoods: 0 }
+  const ready: { id: string; influence: number }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat && !p.exhausted && p.influence > 0) ready.push({ id: p.id, influence: p.influence })
+  }
+  const tg = state.players[seat].tradeGoods
+  let best: { planets: string[]; tradeGoods: number; total: number } | null = null
+  for (let mask = 0; mask < (1 << ready.length); mask++) {
+    let infl = 0
+    const ids: string[] = []
+    for (let i = 0; i < ready.length; i++) {
+      if (mask & (1 << i)) {
+        infl += ready[i].influence
+        ids.push(ready[i].id)
+      }
+    }
+    const neededTg = Math.max(0, cost - infl)
+    if (neededTg > tg) continue
+    const total = infl + neededTg
+    if (!best || total < best.total || (total === best.total && (neededTg < best.tradeGoods || (neededTg === best.tradeGoods && ids.length < best.planets.length)))) {
+      best = { planets: ids, tradeGoods: neededTg, total }
+    }
+  }
+  return best ? { planets: best.planets, tradeGoods: best.tradeGoods } : null
+}
+
 const TOKEN_POOLS = ['tactic', 'fleet', 'strategy'] as const
 
 /**

@@ -37,7 +37,7 @@ export function RulesScreen() {
         <header className="hero">
           <h1 className="title goldtext">Rules</h1>
           <div className="rule"><span /><i className="dia" /><span /></div>
-          <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
+          <p className="tagline">Twilight Imperium IV, 3 to 6 players</p>
           <button type="button" className="btn ghost sm" data-testid="btn-back-to-lobby" onClick={() => navigate('#/')}>
             Back to the lobby
           </button>
@@ -45,36 +45,33 @@ export function RulesScreen() {
 
         <Section title="The short version">
           <p>
-            Two players, seven systems, Mecatol Rex in the middle. The first player to 7 victory points wins.
-            If nobody gets there, the higher score after round 6 wins.
+            Three to six players, generated hex galaxy, Mecatol Rex in the centre. The first player to 10 victory points wins.
+            If nobody gets there, the higher score after round 8 wins.
           </p>
           <p>
-            Each player has fifteen minutes on a chess clock, and you can set that number in the lobby before
+            Each player has a configurable chess clock, and you can set that number in the lobby before
             you start.
           </p>
           <p>
-            Mecatol Duel is a fan project built on the Twilight Imperium 4 base game. This page is not a
-            rulebook. It lists what the duel changes, where the victory points come from and how the clock
-            works. Everything it does not mention works as it does in the base game.
+            This web edition implements the full Twilight Imperium 4 base game rules: galaxy generation,
+            Custodians token on Mecatol Rex, strategy cards, tactical actions, and public objectives.
           </p>
         </Section>
 
         <Section title="What is different from Twilight Imperium">
           <Group label="Map and factions">
             <p>
-              Seven systems instead of a galaxy you build. The map is fixed, it is called Bereg Standoff, and
-              the home systems sit north and south. Version 1 has two factions, the L1Z1X Mindnet and the
-              Barony of Letnev, with their printed starting units, starting technologies, faction abilities,
-              flagships and faction technologies.
+              A balanced generated hex galaxy with Mecatol Rex at the centre, concentric rings of systems,
+              and home systems evenly spaced on the outer rim. Choose from all 17 base factions with their
+              printed starting units, starting technologies, faction abilities, flagships and faction technologies.
             </p>
           </Group>
 
           <Group label="Mecatol Rex">
             <p>
-              No Custodians token, so there are no 6 influence to pay. A neutral guardian fleet worth 8
-              resources plus 2 infantry holds the planet, and a fresh fleet is rolled in the status phase of
-              every round in which nobody controls Mecatol Rex. Holding Mecatol Rex scores 1 victory point in
-              every status phase, not once.
+              Per official rule LRR 28, Mecatol Rex starts with zero units and holds the Custodians token.
+              Before landing ground forces, an active player with ships in space can spend 6 influence (planets
+              and/or trade goods) to remove the Custodians token, scoring 1 victory point.
             </p>
           </Group>
 
@@ -173,17 +170,17 @@ export function RulesScreen() {
         </Section>
 
         <Section title="Victory points">
-          <p>Points come from four places.</p>
+          <p>Points come from:</p>
           <ul className="pts">
-            <li><span><b>Public objectives.</b> Six of them, 1 point each, scored once per player in a status phase.</span></li>
-            <li><span><b>The Mandate.</b> 1 point, once per player.</span></li>
-            <li><span><b>Mecatol Rex.</b> 1 point in every status phase in which you control the planet.</span></li>
-            <li><span><b>The Imperial primary.</b> 1 point at once if you control Mecatol Rex when you play it.</span></li>
+            <li><span><b>Public objectives.</b> Stage I (1 point) and Stage II (2 points) objectives scored in status phases.</span></li>
+            <li><span><b>Custodians token.</b> 1 point awarded immediately upon paying 6 influence to remove the token from Mecatol Rex.</span></li>
+            <li><span><b>The Imperial primary.</b> 1 point immediately if you control Mecatol Rex when you play it.</span></li>
+            <li><span><b>The Mandate.</b> 1 point, once per player (First Strike).</span></li>
           </ul>
           <p className="after">
-            The victory check runs at the end of every status phase, and 7 points wins it. If nobody has
-            reached 7 after the round 6 status phase, the higher score wins. A tie goes to whoever holds
-            Mecatol Rex, then to whoever controls more planets, then to the speaker{"'"}s opponent.
+            First player to 10 victory points wins immediately. If nobody has reached 10 after the round 8
+            status phase, the higher score wins. A tie goes to whoever holds Mecatol Rex, then to whoever controls
+            more planets, then to the speaker{"'"}s opponent.
           </p>
           <p>The public objectives. One is revealed per round, in an order the game shuffles at setup:</p>
           <ol className="objlist">
