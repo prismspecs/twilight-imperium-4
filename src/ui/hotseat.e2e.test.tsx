@@ -69,6 +69,8 @@ describe('a scripted hot-seat game', () => {
     for (let i = 0; i < 3; i++) click('token-tactic-plus')
     expect(text('token-tactic')).toBe('6')
     click('btn-strategic-confirm')
+    // the panel follows the active seat (the secondary resolver), so flip to seat 0 to see the primary's result
+    click('tab-side-0')
     expect(text('tokens-0-tactic')).toBe('6')
 
     // Secondary resolved for seat 1 and seat 2

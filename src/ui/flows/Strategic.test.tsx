@@ -30,6 +30,9 @@ describe('strategic actions', () => {
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByTestId('token-tactic-plus'))
     expect(screen.getByTestId('token-tactic').textContent).toBe('6')
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    // the panel follows the active seat, so the secondary resolver (seat 1) is showing; flip to seat 0 to
+    // verify the primary's result
+    fireEvent.click(screen.getByTestId('tab-side-0'))
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('6')
     expect(screen.getByTestId('secondary-panel')).toBeTruthy()
     fireEvent.click(screen.getByTestId('btn-secondary-decline'))
@@ -47,6 +50,7 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-card-assault_cannon').hasAttribute('disabled')).toBe(true)
     fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
     expect(screen.getByTestId('tech-0-sarween_tools').textContent).toBe('Sarween Tools')
   })
 
@@ -108,6 +112,7 @@ describe('strategic actions', () => {
     playCard('imperial')
     fireEvent.click(screen.getByTestId('objective-pick-erect_a_monument'))
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
     expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
     expect(screen.getByTestId('scored-erect_a_monument-0')).toBeTruthy()
   })
@@ -130,6 +135,7 @@ describe('strategic actions', () => {
     fireEvent.click(screen.getByTestId('token-tactic-plus'))
     fireEvent.click(screen.getByTestId('token-fleet-plus'))
     fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('4')
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')

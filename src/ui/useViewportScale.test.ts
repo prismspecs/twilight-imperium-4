@@ -14,30 +14,31 @@ function resizeTo(width: number, height: number) {
 afterEach(() => { resizeTo(1024, 768) })
 
 describe('viewportScale', () => {
-  it('is the identity at the 1440x900 design size', () => {
-    expect(viewportScale(1440, 900)).toEqual({ k: 1, s: 1 })
+  it('is near the identity at the 1440x900 design size', () => {
+    // the single gutter leaves a stage wider than the authored map, so the board scales up to fill it
+    expect(viewportScale(1440, 900)).toEqual({ k: 1, s: round3(Math.min((1440 - 280) / 940, (900 - 156) / 698)) })
   })
 
-  it('keeps the bars and columns at their designed size and shrinks only the board', () => {
+  it('keeps the bars and side panel at their designed size and shrinks only the board', () => {
     // the heads-up display is not what zooms out: the window is smaller, so the camera moves away from the map
     const { k, s } = viewportScale(1280, 720)
     expect(k).toBe(1)
-    expect(s).toBe(round3(Math.min((1280 - 500) / 940, (720 - 202) / 698)))
+    expect(s).toBe(round3(Math.min((1280 - 280) / 940, (720 - 156) / 698)))
     expect(s).toBeLessThan(1)
   })
 
   it('never grows the bars, only the board', () => {
     const { k, s } = viewportScale(2560, 1440)
     expect(k).toBe(1)
-    // min((2560-500)/940, (1440-202)/698) = min(2.191, 1.774)
-    expect(s).toBeCloseTo(1.774, 2)
+    // min((2560-280)/940, (1440-156)/698) = min(2.426, 1.839)
+    expect(s).toBeCloseTo(1.839, 2)
   })
 
   it('gives the chrome up only once the stage would fall below its minimum', () => {
-    // 1060x582 is the last size that still leaves a 560x380 stage at full size
-    expect(viewportScale(1060, 582).k).toBe(1)
-    expect(viewportScale(900, 582).k).toBeLessThan(1)
-    expect(viewportScale(1060, 480).k).toBeLessThan(1)
+    // 840x536 is the last size that still leaves a 560x380 stage at full size
+    expect(viewportScale(840, 536).k).toBe(1)
+    expect(viewportScale(600, 536).k).toBeLessThan(1)
+    expect(viewportScale(840, 420).k).toBeLessThan(1)
   })
 
   it('never shrinks the bars below 0.55', () => {
@@ -55,7 +56,7 @@ describe('useViewportScale', () => {
   it('reads the current viewport', () => {
     resizeTo(1440, 900)
     const { result } = renderHook(() => useViewportScale())
-    expect(result.current).toEqual({ k: 1, s: 1 })
+    expect(result.current).toEqual({ k: 1, s: round3(Math.min((1440 - 280) / 940, (900 - 156) / 698)) })
   })
 
   it('follows a resize', () => {

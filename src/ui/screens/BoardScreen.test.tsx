@@ -22,7 +22,8 @@ describe('the board screen layout', () => {
     // the docked regions are siblings of the stage, never children: they follow the viewport, not the board
     expect(stage.contains(screen.getByTestId('player-0'))).toBe(false)
     expect(stage.contains(screen.getByTestId('panel-0'))).toBe(false)
-    expect(stage.contains(screen.getByTestId('panel-1'))).toBe(false)
+    // a single side panel; the second player has no separate right-hand column
+    expect(stage.contains(screen.queryByTestId('panel-1'))).toBe(false)
     expect(stage.contains(screen.getByTestId('btn-tactical'))).toBe(false)
   })
 })

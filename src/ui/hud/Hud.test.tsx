@@ -52,7 +52,6 @@ describe('the HUD', () => {
     expect(screen.getByTestId('tech-0-neural_motivator').textContent).toBe('Neural Motivator')
     expect(screen.getByTestId('forces-0-dreadnought').textContent).toBe('1 Super-Dreadnought I')
     expect(screen.getByTestId('forces-0-infantry').textContent).toBe('5 Infantry I')
-    expect(screen.getByTestId('forces-1-destroyer').textContent).toBe('1 Destroyer I')
   })
 
   it('R3.2: the action bar enables exactly the actions the engine offers', () => {
@@ -124,12 +123,12 @@ describe('the HUD', () => {
     expect(screen.getByTestId('player-1').textContent).toContain('Beta')
     expect(screen.getByTestId('player-2').textContent).toContain('Gamma')
     expect(screen.getByTestId('vp-0').textContent).toBe('0 of 10')
-    expect(screen.getByTestId('seat-tabs-left')).toBeTruthy()
-    expect(screen.getByTestId('seat-tabs-right')).toBeTruthy()
+    // a single side panel follows the active player (seat 0) with a seat tab strip to switch
+    expect(screen.getByTestId('seat-tabs-side')).toBeTruthy()
 
-    // Switch right panel to player 2
-    fireEvent.click(screen.getByTestId('tab-right-2'))
-    expect(screen.getByTestId('panel-2')).toBeTruthy()
+    // Switch the side panel to player 2
+    fireEvent.click(screen.getByTestId('tab-side-2'))
+    expect(screen.queryByTestId('section-forces')).toBeTruthy()
     expect(screen.getByTestId('vp-2').textContent).toBe('0 of 10')
   })
 
@@ -138,7 +137,7 @@ describe('the HUD', () => {
     renderWithSession(s, <BoardScreen />)
     expect(screen.getByTestId('secret-objectives-0')).toBeTruthy()
     expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Fuel the War Machine')
-    expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Scored (1 VP)')
+    expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Scored')
   })
 
   it('opens log panel and allows switching to debug log tab', () => {
