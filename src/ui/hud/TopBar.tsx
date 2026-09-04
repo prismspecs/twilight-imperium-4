@@ -1,46 +1,44 @@
 import { FACTIONS } from '../../data/factions'
 import { MANDATES, objectiveDef } from '../../data/objectives'
 import { cardOwner } from '../../engine'
-import { MISC, PORTRAIT, SIGIL, strategyCardUrl, tokenUrl } from '../art'
+import { MISC, PORTRAIT, strategyCardUrl, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
 import type { GameState, Seat, StrategyCardId } from '../../engine/types'
 
 const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
-function PlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
+function CompactPlayer({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
   const player = state.players[seat]
   const active = state.active === seat && state.winner === null
   const running = active && clockRunning
   return (
-    <div className={`pblock${seat === 1 ? ' right' : ''}`} data-testid={`player-${seat}`}>
-      <div className="portrait">
+    <div className="player-strip" data-testid={`player-${seat}`}>
+      <div className="portrait mini">
         <div className="face" style={{ backgroundImage: `url(${PORTRAIT[player.faction]})` }} />
-        <div className="sym"><img src={SIGIL[player.faction]} alt="" /></div>
       </div>
       <div className="pinfo">
         <div className="namerow">
-          <span className="pname goldtext">{FACTIONS[player.faction].name}</span>
+          <span className="pname">{FACTIONS[player.faction].name}</span>
           {state.speaker === seat ? <img className="speaker" src={MISC.speaker} alt="Speaker" data-testid={`speaker-${seat}`} /> : null}
         </div>
-        <div className="pnick">{player.name}</div>
-        <div className="clock">
-          <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
-          <small>{running ? 'running' : 'paused'}</small>
-        </div>
-        <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
-        <div>
-          <span className={`chip ${seat === 0 ? 'blue' : 'red'}`} data-testid={`turn-${seat}`}>{active ? 'Your turn' : 'Waiting'}</span>
+        <div className="subrow">
+          <span className="pnick">{player.name}</span>
+          <span className="vp-chip">{player.vp} VP</span>
         </div>
       </div>
+      <div className="clock mini">
+        <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
+        <small>{running ? 'running' : 'paused'}</small>
+      </div>
+      <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
+      <span className={`chip ${player.color}`} data-testid={`turn-${seat}`}>{active ? 'Your turn' : 'Waiting'}</span>
     </div>
   )
 }
 
-function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: StrategyCardId) => void }) {
+function StrategyCards({ state, onPick }: { state: GameState; onPick?: (card: StrategyCardId) => void }) {
   return (
     <div className="strats">
-      {/* R3.1: the draft is the one moment nothing on the board tells the player what to do, so the strip
-          says it and the cards that can still be taken pulse until the last one is gone */}
       {onPick ? <div className="pickprompt" data-testid="pick-prompt">Pick a strategy card</div> : null}
       {ALL_CARDS.map(card => {
         const pool = state.strategyPool.find(c => c.id === card)
@@ -60,17 +58,15 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
             aria-label={`${CARD_NAME[card]}, ${label}`}
             onClick={pickable ? () => onPick(card) : undefined}
           >
-            {/* a played card is turned face down, exactly as it is on the table */}
             <span className="card">
               <img className="face" src={used ? MISC.strategyBack : strategyCardUrl(card)} alt={CARD_NAME[card]} />
-              {/* the trade goods ride on the card itself, as the tokens they are */}
               {bonus > 0 ? (
                 <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
-                  {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={16} height={16} />)}
+                  {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={14} height={14} />)}
                 </span>
               ) : null}
               {owner !== null ? (
-                <img className="held" src={tokenUrl(state.players[owner].faction, 'command')} alt="" width={20} />
+                <img className="held" src={tokenUrl(state.players[owner].faction, 'command')} alt="" width={16} />
               ) : null}
             </span>
             <span className="vis" data-testid={`strategy-state-${card}`}>{label}</span>
@@ -78,38 +74,6 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
           </button>
         )
       })}
-    </div>
-  )
-}
-
-function CompactPlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
-  const player = state.players[seat]
-  const active = state.active === seat && state.winner === null
-  const running = active && clockRunning
-  return (
-    <div className="pblock compact" data-testid={`player-${seat}`}>
-      <div className="portrait mini">
-        <div className="face" style={{ backgroundImage: `url(${PORTRAIT[player.faction]})` }} />
-        <div className="sym"><img src={SIGIL[player.faction]} alt="" /></div>
-      </div>
-      <div className="pinfo">
-        <div className="namerow">
-          <span className="pname goldtext">{FACTIONS[player.faction].name}</span>
-          {state.speaker === seat ? <img className="speaker" src={MISC.speaker} alt="Speaker" data-testid={`speaker-${seat}`} /> : null}
-        </div>
-        <div className="subrow">
-          <span className="pnick">{player.name}</span>
-          <span className="vp-chip">{player.vp} VP</span>
-        </div>
-        <div className="clock mini">
-          <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
-          <small>{running ? 'running' : 'paused'}</small>
-        </div>
-        <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
-        <div>
-          <span className={`chip ${player.color}`} data-testid={`turn-${seat}`}>{active ? 'Your turn' : 'Waiting'}</span>
-        </div>
-      </div>
     </div>
   )
 }
@@ -125,7 +89,7 @@ function Objectives({ state }: { state: GameState }) {
           return (
             <div className="obj" key={id} data-testid={`objective-${id}`} title={def.text}
               style={{ ['--bg' as string]: `url(${MISC.objectiveBack})` }}>
-              <div className="tier">Round {index + 1}</div>
+              <div className="tier">R{index + 1}</div>
               <div className="txt">{def.short}</div>
               {scoredBy(seat => state.players[seat].scoredObjectives.includes(id)).map(seat => (
                 <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored"
@@ -138,7 +102,7 @@ function Objectives({ state }: { state: GameState }) {
         {MANDATES.map(def => (
           <div className="obj mandate" key={def.id} data-testid={`mandate-${def.id}`} title={def.text}
             style={{ ['--bg' as string]: `url(${MISC.mandateBack})` }}>
-            <div className="tier">{def.id === 'first_strike' ? 'Race' : 'Secret'}</div>
+            <div className="tier">{def.id === 'first_strike' ? 'Race' : 'Sec'}</div>
             <div className="txt">{def.short}</div>
             {scoredBy(seat => state.players[seat].scoredMandates.includes(def.id)).map(seat => (
               <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored"
@@ -160,10 +124,10 @@ export function TopBar(
   if (state.players.length === 2) {
     return (
       <div className="topbar">
-        <PlayerBlock state={state} seat={0} clockMs={clockMs[0] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
-        <StrategyStrip state={state} onPick={onPick} />
+        <CompactPlayer state={state} seat={0} clockMs={clockMs[0] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+        <StrategyCards state={state} onPick={onPick} />
         <Objectives state={state} />
-        <PlayerBlock state={state} seat={1} clockMs={clockMs[1] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
+        <CompactPlayer state={state} seat={1} clockMs={clockMs[1] ?? 0} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
       </div>
     )
   }
@@ -177,7 +141,7 @@ export function TopBar(
     <div className="topbar multi">
       <div className="players-group left">
         {leftSeats.map(seat => (
-          <CompactPlayerBlock
+          <CompactPlayer
             key={seat}
             state={state}
             seat={seat}
@@ -187,11 +151,11 @@ export function TopBar(
           />
         ))}
       </div>
-      <StrategyStrip state={state} onPick={onPick} />
+      <StrategyCards state={state} onPick={onPick} />
       <Objectives state={state} />
       <div className="players-group right">
         {rightSeats.map(seat => (
-          <CompactPlayerBlock
+          <CompactPlayer
             key={seat}
             state={state}
             seat={seat}

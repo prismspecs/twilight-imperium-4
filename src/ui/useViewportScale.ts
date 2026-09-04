@@ -23,10 +23,10 @@ export interface ViewportScale {
 
 const MAP_W = 940
 const MAP_H = 698
-/** the two 250px gutters the side columns live in */
-const GUTTERS = 500
-/** the 118px top bar plus the 84px bottom bar */
-const BARS = 202
+/** the single 280px gutter the side panel lives in */
+const GUTTERS = 280
+/** the 100px top bar plus the 56px bottom bar */
+const BARS = 156
 
 const K_MIN = 0.55
 /**
