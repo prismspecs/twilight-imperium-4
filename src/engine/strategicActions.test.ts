@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { warfareTokenSystems } from './strategicActions'
-import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withUnits } from './testUtils'
-import type { GameState, Player, Result, StrategicParams, StrategyCardId } from './types'
+import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withThirdSeat, withUnits } from './testUtils'
+import type { GameState, Result, StrategicParams, StrategyCardId } from './types'
 
 const play = (state: GameState, card: StrategyCardId, params?: StrategicParams) =>
   applyMove(deepFreeze(state), { type: 'strategic', card, params }, 0)
@@ -14,17 +14,6 @@ const value = (r: Result<GameState>): GameState => {
 }
 
 /** A minimal third seat for exercising N-player plumbing on the two-player map. */
-function thirdSeat(): Player {
-  return {
-    seat: 2, faction: 'l1z1x', color: 'green', name: 'C', vp: 0,
-    tokens: { tactic: 3, fleet: 3, strategy: 2 }, tradeGoods: 0, commodities: 2, techs: [],
-    strategyCards: [], passed: false, scoredObjectives: [], scoredMandates: [],
-    resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
-    inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0,
-    reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 },
-  }
-}
-
 /** Seat 0 holds the card and is active, seat 1 answers; both keep the printed 3/3/2 command sheet. */
 function holder(card: StrategyCardId): GameState {
   return withCards(withCards(toActionPhase(), 1, []), 0, [card])
@@ -121,7 +110,7 @@ describe('R3.2 strategic actions', () => {
   })
   it('R6 Diplomacy primary at N players: every other seat places a command token in the chosen system', () => {
     const base = withExhausted(withCards(toActionPhase(), 1, []), ['000'])
-    const s = deepFreeze({ ...base, players: [...base.players, thirdSeat()], active: 0, pendingSecondary: null })
+    const s = deepFreeze({ ...withThirdSeat(base), active: 0, pendingSecondary: null })
     const played = value(play(withCards(s, 0, ['diplomacy']), 'diplomacy', { systemId: 'home-n', planets: ['000'] }))
     expect(played.systems['home-n'].activatedBy).toEqual([1, 2])   // both other seats place a token
     expect(played.systems['home-n'].planets[0].exhausted).toBe(false)   // and two of your planets ready
@@ -243,7 +232,7 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
   it('R3.2: with three players every other seat answers the secondary in order before the holder resumes', () => {
     // a minimal third seat bolted onto the two-player map so the strategic plumbing can be exercised at N=3
     const base = withCards(toActionPhase(), 1, [])
-    const s = deepFreeze({ ...base, players: [...base.players, thirdSeat()], active: 0, pendingSecondary: null })
+    const s = deepFreeze({ ...withThirdSeat(base), active: 0, pendingSecondary: null })
     const played = value(play(withCards(s, 0, ['trade']), 'trade'))
     expect(played.pendingSecondary?.card).toBe('trade')
     expect(played.pendingSecondary?.queue).toEqual([1, 2])

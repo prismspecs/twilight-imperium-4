@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { FIRST_STRIKE, FOOTHOLD, PUBLIC_OBJECTIVES } from '../data/objectives'
 import { createGame } from './setup'
 import { addVp, controlsMecatol, fulfils, scoreObjective, scoreable } from './objectives'
-import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
+import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withThirdSeat, withUnits } from './testUtils'
 import type { GameState } from './types'
 
 /** Gives seat 0 the four neutral ring planets used by the control objectives. */
@@ -57,6 +57,14 @@ describe('R7 objectives', () => {
     expect(fulfils(withPlanetOwner(s, 'home-s', 'wren-terra', 0), 0, FOOTHOLD.id)).toBe(true)
     expect(fulfils(withPlanetOwner(s, 'home-n', '000', 1), 1, FOOTHOLD.id)).toBe(true)
     expect(fulfils(s, 0, 'no_such_objective')).toBe(false)
+  })
+  it('R7: N-player objectives compare against any other seat, not a single opponent', () => {
+    // seat 0: 5 ships, seat 1: 4 ships, seat 2: none on this two-player map
+    const s = withThirdSeat(toActionPhase())
+    expect(fulfils(s, 0, 'more_ships')).toBe(true)            // 5 > seat 2's 0
+    expect(fulfils(s, 2, 'more_ships')).toBe(false)           // 0 beats nobody
+    // foothold: seat 0 taking seat 1's home system counts with a third seat present too
+    expect(fulfils(withPlanetOwner(s, 'home-s', 'wren-terra', 0), 0, FOOTHOLD.id)).toBe(true)
   })
   it('R7: the pool is shuffled per game and one objective is revealed at setup', () => {
     const ids = PUBLIC_OBJECTIVES.map(o => o.id).sort()

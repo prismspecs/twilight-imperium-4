@@ -1,7 +1,6 @@
 import { MECATOL_ID, homeSystemId, systemDef } from '../data/map'
 import { MANDATE_IDS, objectiveDef } from '../data/objectives'
 import { isShip } from '../data/units'
-import { otherSeat } from './actionPhase'
 import type { GameState, Seat } from './types'
 
 export function controlledPlanets(state: GameState, seat: Seat): { systemId: string; planetId: string }[] {
@@ -27,6 +26,8 @@ function shipCount(state: GameState, seat: Seat): number {
 /** R7: the public objectives and the two mandates. An unknown id is false, never a throw. */
 export function fulfils(state: GameState, seat: Seat, objectiveId: string): boolean {
   const player = state.players[seat]
+  const allOtherSeats = state.players.map((_, i) => i).filter(i => i !== seat)
+  
   switch (objectiveId) {
     case 'win_space_combat':
       return player.spaceCombatWins >= 1
@@ -37,11 +38,16 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'trade_three_times':
       return player.trades >= 3
     case 'more_ships':
-      return shipCount(state, seat) > shipCount(state, otherSeat(seat))
+      // N-player: seat has more ships than at least one other seat
+      const myShips = shipCount(state, seat)
+      return allOtherSeats.some(other => myShips > shipCount(state, other))
     case 'first_strike':
       return state.mecatolCombatWinner === seat
     case 'foothold':
-      return controlledPlanets(state, seat).some(p => p.systemId === homeSystemId(otherSeat(seat)))
+      // N-player: seat controls at least one other seat's home system
+      return allOtherSeats.some(other =>
+        controlledPlanets(state, seat).some(p => p.systemId === homeSystemId(other))
+      )
     default:
       return false
   }

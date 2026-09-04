@@ -71,6 +71,23 @@ export function withPlayer(state: GameState, seat: Seat, patch: Partial<Player>)
   return deepFreeze({ ...state, players })
 }
 
+/** A minimal third seat for exercising N-player plumbing on the two-player map. */
+export function thirdSeat(): Player {
+  return {
+    seat: 2, faction: 'l1z1x', color: 'green', name: 'C', vp: 0,
+    tokens: { tactic: 3, fleet: 3, strategy: 2 }, tradeGoods: 0, commodities: 2, techs: [],
+    strategyCards: [], passed: false, scoredObjectives: [], scoredMandates: [],
+    resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
+    inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0,
+    reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 },
+  }
+}
+
+/** Appends the minimal third seat to a two-player state for N-player plumbing tests. */
+export function withThirdSeat(state: GameState): GameState {
+  return deepFreeze({ ...state, players: [...state.players, thirdSeat()] })
+}
+
 export function withTactical(state: GameState, tactical: TacticalContext | null): GameState {
   return deepFreeze({ ...state, tactical })
 }
