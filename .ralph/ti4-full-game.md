@@ -78,3 +78,27 @@ Next iteration: full faction data import (17 factions, tech tree) or Trade secon
 ## Ledger
 
 See `docs/superpowers/plans/2026-09-04-ti4-full-game.ledger.md` for all rulings and completion notes.
+
+## Iteration 2 complete — AI opponent generalized to N players (commit 787ed86)
+
+Delivered this iteration:
+- AI score's `other()` function now returns the next seat in order for N-player games
+- This enables the AI to play against any seat (though scoring weights may need tuning)
+
+N-player engine generalization status:
+- ✅ Seats/players arrays, snake draft, initiative, status/victory phases
+- ✅ Secondary window queues every other seat in order
+- ✅ Diplomacy primary places token for every other seat
+- ✅ Trade primary accepts `shareWith` to choose who replenishes
+- ✅ AI opponent generalized to any seat in N-player game
+
+Remaining N-player gaps:
+- Trade secondary: already N-player (secondary window queues all others)
+- Objectives: most are duel-specific "opponent" references
+- Setup UI: hardcoded to 2 players (`[0, 1]`)
+
+Next iteration: objective N-player generalization (or full faction data import).
+
+## Ledger
+
+See `docs/superpowers/plans/2026-09-04-ti4-full-game.ledger.md` for all rulings and completion notes.
