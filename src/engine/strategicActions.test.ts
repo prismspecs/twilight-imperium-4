@@ -245,20 +245,16 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     const answered = value(answer(played, 'trade', true))
     expect(answered.players[1].tokens.strategy).toBe(2) // 0 tokens spent!
   })
-  it('Technology secondary allows card holder to research additional tech for 1 strategy token + 4 resources', () => {
+  it('R5/R6 Technology: the card holder never answers their own secondary', () => {
     const s = withCards(toActionPhase(), 0, ['technology'])
     const played = value(play(s, 'technology', { techId: 'sarween_tools' }))
-    // Queue contains player 1 then player 0 (card holder)
-    expect(played.pendingSecondary?.queue).toEqual([1, 0])
-    // Player 1 declines
+    // Queue holds only the other seat; the holder is never asked to answer their own card.
+    expect(played.pendingSecondary?.queue).toEqual([1])
+    expect(answer({ ...played, active: 0 }, 'technology', true, { techId: 'antimass_deflectors', planets: ['000'] }).ok).toBe(false)
     const after1 = value(answer(played, 'technology', false))
-    expect(after1.pendingSecondary?.queue).toEqual([0])
+    expect(after1.pendingSecondary).toBeNull()
     expect(after1.active).toBe(0)
-    // Player 0 answers with 4 resources (exhausting planets)
-    const after0 = value(answer(after1, 'technology', true, { techId: 'antimass_deflectors', planets: ['000'] }))
-    expect(after0.pendingSecondary).toBeNull()
-    expect(after0.players[0].techs).toContain('antimass_deflectors')
-    expect(after0.players[0].tokens.strategy).toBe(1) // 1 token spent
+    expect(after1.turnDone).toBe(true)
   })
   it('R3.2: with three players every other seat answers the secondary in order before the holder resumes', () => {
     // a minimal third seat bolted onto the two-player map so the strategic plumbing can be exercised at N=3

@@ -209,7 +209,9 @@ describe('legal moves in every phase', () => {
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
 // 203 came in with the 20 base public objectives: shuffling 10 base objectives reshuffled
 // the deterministic paths, and seed 203 exercises both `bombard` and `groundCombatRound`.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203]
+// 238 came in when Technology stopped offering the card holder a secondary on their own card: that extra
+// legal move had been nudging the RNG draw onto a path that reached `bombard`; none of the other seeds did.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

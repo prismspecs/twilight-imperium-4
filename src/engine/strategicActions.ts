@@ -299,9 +299,7 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   if (!played.ok) return played
   const players = [...played.value.players] as GameState['players']
   players[seat] = { ...players[seat], strategyCards: players[seat].strategyCards.map(c => c.id === card ? { ...c, used: true } : c) }
-  const queue = card === 'technology'
-    ? [...otherSeatsInOrder(state, seat), seat]
-    : otherSeatsInOrder(state, seat)
+  const queue = otherSeatsInOrder(state, seat)
   const freeSeats = card === 'trade'
     ? (params?.shareWith?.filter(s => s !== seat && s >= 0 && s < state.players.length) ?? [])
     : undefined
@@ -316,7 +314,7 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
   const pending = state.pendingSecondary
   if (pending === null || pending.card !== card) return { ok: false, error: `R3.2: no secondary window for ${card}` }
   const seat = state.active
-  if (pending.owner === seat && pending.card !== 'technology') {
+  if (pending.owner === seat) {
     return { ok: false, error: 'R3.2: the card holder does not answer their own card' }
   }
   if (pending.queue[0] !== seat) return { ok: false, error: 'R3.2: it is not your turn to answer this secondary' }
