@@ -10,16 +10,18 @@ export interface PanZoomState {
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void
-  onClickCapture: (e: React.MouseEvent<HTMLDivElement>) => void
   onWheel: (e: React.WheelEvent<HTMLDivElement>) => void
 }
 
 const MIN_ZOOM = 0.4
 const MAX_ZOOM = 3.0
-// R3.2: below this, an ordinary mouse or trackpad click reads as a few pixels of pointer drift and the
-// click-vs-pan disambiguation below would eat the click meant for a tile, with no on-screen feedback at
-// all - the tactical action button stays highlighted and nothing else happens.
-const DRAG_THRESHOLD = 12
+// How far the pointer must travel before a hold-and-move starts panning the map, rather than being read
+// as a click. Cancelling a tile's own click after a pan used to be this hook's job too (a shared "just
+// panned" flag plus a capture-phase listener), but that meant every click anywhere on the map raced a
+// 50ms window regardless of where it landed. Tile.tsx now makes that call itself, from its own pointerdown
+// origin (AsyncTI4/ti4_web_new's SystemHexTarget.tsx pattern) - this threshold is only about when panning
+// itself should start.
+const DRAG_THRESHOLD = 5
 
 export function useMapPanZoom(): PanZoomState {
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -33,7 +35,6 @@ export function useMapPanZoom(): PanZoomState {
     panY: number
     moved: boolean
   } | null>(null)
-  const justDraggedRef = useRef<boolean>(false)
 
   const activePointerIdRef = useRef<number | null>(null)
   const rafIdRef = useRef<number | null>(null)
@@ -105,21 +106,8 @@ export function useMapPanZoom(): PanZoomState {
       }
       activePointerIdRef.current = null
     }
-    if (dragStartRef.current?.moved) {
-      justDraggedRef.current = true
-      setTimeout(() => {
-        justDraggedRef.current = false
-      }, 50)
-    }
     dragStartRef.current = null
     setIsDragging(false)
-  }, [])
-
-  const onClickCapture = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (justDraggedRef.current) {
-      e.stopPropagation()
-      e.preventDefault()
-    }
   }, [])
 
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -132,12 +120,6 @@ export function useMapPanZoom(): PanZoomState {
   useEffect(() => {
     const handleGlobalUp = () => {
       activePointerIdRef.current = null
-      if (dragStartRef.current?.moved) {
-        justDraggedRef.current = true
-        setTimeout(() => {
-          justDraggedRef.current = false
-        }, 50)
-      }
       dragStartRef.current = null
       setIsDragging(false)
     }
@@ -158,7 +140,6 @@ export function useMapPanZoom(): PanZoomState {
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    onClickCapture,
     onWheel,
   }
 }

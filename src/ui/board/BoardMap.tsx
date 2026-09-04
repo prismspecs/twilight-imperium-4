@@ -27,7 +27,6 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
         onPointerDown={panZoom.onPointerDown}
         onPointerMove={panZoom.onPointerMove}
         onPointerUp={panZoom.onPointerUp}
-        onClickCapture={panZoom.onClickCapture}
         onWheel={panZoom.onWheel}
         style={{
           cursor: panZoom.isDragging ? 'grabbing' : 'grab',

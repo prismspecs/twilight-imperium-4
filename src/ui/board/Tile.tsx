@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileUrl, tokenUrl } from '../art'
 import {
   ACTIVATION_SIZE, ACTIVATION_SPOT, GALAXY_ORIGIN, PLATE_VALS_W, SIGIL_SIZE, SIGIL_SPOT,
@@ -9,6 +10,11 @@ import { diagnoseMovement } from '../debugLogger'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
 const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
+
+/** AsyncTI4/ti4_web_new's SystemHexTarget.tsx: a pan that ends over a tile still fires click, so the tile
+ * checks its own pointerdown-to-click travel rather than relying on a shared, timing-based "just panned"
+ * flag from the pan/zoom handler - the map's own drag threshold is for when panning itself should start. */
+const CLICK_DRAG_TOLERANCE = 6
 
 function colourOf(state: GameState, owner: Owner): Color | 'grey' {
   return owner === 'guardian' ? 'grey' : state.players[owner].color
@@ -95,6 +101,7 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
+  const pointerDown = useRef<{ x: number; y: number } | null>(null)
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
@@ -103,7 +110,15 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
       tabIndex={activate ? 0 : undefined}
       title={reachDiag}
       aria-label={activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : undefined}
-      onClick={activate}
+      onPointerDown={activate ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
+      onClick={activate
+        ? event => {
+          const down = pointerDown.current
+          pointerDown.current = null
+          if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > CLICK_DRAG_TOLERANCE) return
+          activate()
+        }
+        : undefined}
       onKeyDown={activate
         ? event => {
           if (event.key !== 'Enter' && event.key !== ' ') return
