@@ -25,7 +25,7 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
   let frontier = [from]
   for (let d = 1; d <= moveValue && frontier.length; d++) {
     const next: string[] = []
-    for (const id of frontier) for (const n of neighbours(id)) {
+    for (const id of frontier) for (const n of neighbours(state.systems, id)) {
       if (n === to) return d
       if (seen.has(n)) continue
       seen.add(n)

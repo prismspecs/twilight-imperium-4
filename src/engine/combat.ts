@@ -640,7 +640,7 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
 export function retreatTargets(state: GameState, seat: Seat): string[] {
   const tac = state.tactical
   if (!tac) return []
-  return neighbours(tac.systemId).filter(id => {
+  return neighbours(state.systems, tac.systemId).filter(id => {
     const sys = state.systems[id]
     if (sys.space.some(u => u.owner !== seat && isShip(u.type))) return false
     return sys.activatedBy.includes(seat)

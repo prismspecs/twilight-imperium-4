@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { SYSTEMS, TRADE_POSTS, systemDef } from '../data/map'
 import { adjacent, distance, neighbours } from './adjacency'
+import type { System } from './types'
+
+/** A systems map built from the static duel map, matching what createGame now stores (with neighbours). */
+const systems: Record<string, System> = Object.fromEntries(
+  SYSTEMS.map(def => [def.id, { id: def.id, name: def.name, planets: [], wormhole: def.wormhole, neighbours: def.neighbours, space: [], activatedBy: [] }]),
+)
 
 describe('R1 map Bereg Standoff', () => {
   it('has seven systems with the printed planet values', () => {
@@ -22,27 +28,27 @@ describe('R1 map Bereg Standoff', () => {
     expect(systemDef('home-s').home).toBe(1)
   })
   it('R1 adjacency: the centre touches all six ring systems', () => {
-    for (const id of ['home-n', 'bereg', 'sakulag', 'quann', 'starpoint', 'home-s']) expect(adjacent('mecatol', id)).toBe(true)
+    for (const id of ['home-n', 'bereg', 'sakulag', 'quann', 'starpoint', 'home-s']) expect(adjacent(systems, 'mecatol', id)).toBe(true)
   })
   it('R1 adjacency: ring neighbours and non-neighbours', () => {
-    expect(adjacent('home-n', 'bereg')).toBe(true)
-    expect(adjacent('home-n', 'sakulag')).toBe(true)
-    expect(adjacent('home-n', 'home-s')).toBe(false)
-    expect(adjacent('bereg', 'quann')).toBe(true)
-    expect(adjacent('quann', 'home-s')).toBe(true)
-    expect(adjacent('home-s', 'starpoint')).toBe(true)
-    expect(adjacent('starpoint', 'sakulag')).toBe(true)
-    expect(adjacent('bereg', 'sakulag')).toBe(false)
+    expect(adjacent(systems, 'home-n', 'bereg')).toBe(true)
+    expect(adjacent(systems, 'home-n', 'sakulag')).toBe(true)
+    expect(adjacent(systems, 'home-n', 'home-s')).toBe(false)
+    expect(adjacent(systems, 'bereg', 'quann')).toBe(true)
+    expect(adjacent(systems, 'quann', 'home-s')).toBe(true)
+    expect(adjacent(systems, 'home-s', 'starpoint')).toBe(true)
+    expect(adjacent(systems, 'starpoint', 'sakulag')).toBe(true)
+    expect(adjacent(systems, 'bereg', 'sakulag')).toBe(false)
   })
   it('R1 adjacency: alpha wormhole links bereg and starpoint, beta links sakulag and quann', () => {
-    expect(adjacent('bereg', 'starpoint')).toBe(true)
-    expect(adjacent('sakulag', 'quann')).toBe(true)
-    expect(neighbours('bereg').sort()).toEqual(['home-n', 'mecatol', 'quann', 'starpoint'])
+    expect(adjacent(systems, 'bereg', 'starpoint')).toBe(true)
+    expect(adjacent(systems, 'sakulag', 'quann')).toBe(true)
+    expect(neighbours(systems, 'bereg').sort()).toEqual(['home-n', 'mecatol', 'quann', 'starpoint'])
   })
   it('distance uses wormholes', () => {
-    expect(distance('home-n', 'home-s')).toBe(2)
-    expect(distance('bereg', 'starpoint')).toBe(1)
-    expect(distance('home-n', 'home-n')).toBe(0)
+    expect(distance(systems, 'home-n', 'home-s')).toBe(2)
+    expect(distance(systems, 'bereg', 'starpoint')).toBe(1)
+    expect(distance(systems, 'home-n', 'home-n')).toBe(0)
   })
   it('R8 trade posts link the flank systems', () => {
     expect(TRADE_POSTS).toEqual({ west: ['sakulag', 'starpoint'], east: ['bereg', 'quann'] })
