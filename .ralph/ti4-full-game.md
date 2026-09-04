@@ -52,3 +52,29 @@ Existing verified reference data in repo: `data/reference/factions.json`, `data/
 ## Iteration strategy
 
 Tackle ONE coherent, verifiable chunk per iteration. Keep tests green (or define the failing test for that chunk). Update the ledger with rulings. Commit and push each chunk. The goal is steady, verifiable progress toward the full game rather than a half-finished giant refactor left broken.
+
+## Iteration 1 complete — Trade primary N-player generalization (commit cbdbc38)
+
+Delivered this iteration:
+- Trade primary generalized to N players: `shareWith?: Seat[]` replaces `shareWithOpponent?: boolean`
+- Engine: strategicActions.ts iterates over chosen seats to replenish without token cost
+- LegalMoves: enumerates bare primary + one variant per other seat
+- UI: StrategicDialog renders per-other-player checkboxes
+- Tests: updated `shareWithOpponent: true` → `shareWith: [seat]` and added trade-count assertions
+
+N-player engine generalization status:
+- ✅ Seats/players arrays, snake draft, initiative, status/victory phases
+- ✅ Secondary window queues every other seat in order
+- ✅ Diplomacy primary places token for every other seat
+- ✅ Trade primary accepts `shareWith` to choose who replenishes
+
+Remaining N-player gaps:
+- Trade secondary: still 2-player (responder is single other seat)
+- Objectives: most are duel-specific "opponent" references
+- AI/fog/score: still assume a single foe
+
+Next iteration: full faction data import (17 factions, tech tree) or Trade secondary N-player.
+
+## Ledger
+
+See `docs/superpowers/plans/2026-09-04-ti4-full-game.ledger.md` for all rulings and completion notes.
