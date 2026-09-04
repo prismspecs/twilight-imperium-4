@@ -42,7 +42,8 @@ const POSITIONS: Record<number, string[]> = {
 const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6']
 const DEFAULT_FACTIONS: FactionId[] = ['l1z1x', 'letnev', 'sol', 'hacan', 'jolnar', 'xxcha']
 const DEFAULT_COLOURS: Color[] = ['blue', 'red', 'green', 'yellow', 'purple', 'black']
-const DEFAULT_TYPES: PlayerType[] = ['human', 'human', 'human', 'human', 'human', 'human']
+// All but the first seat default to AI: a new game starts as one human vs the rest of the table.
+const DEFAULT_TYPES: PlayerType[] = ['human', 'ai', 'ai', 'ai', 'ai', 'ai']
 
 // Display order for the fleet row; only the types a starting fleet can actually contain matter here.
 const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']

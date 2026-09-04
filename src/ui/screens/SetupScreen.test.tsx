@@ -81,10 +81,12 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('seat-1-fleet-infantry-count').textContent).toBe('3') // 2 on Arc Prime, 1 on Wren Terra
   })
 
-  it('presents the lobby as a hot-seat lobby with all seats taken', () => {
+  it('defaults to one human seat against AI opponents', () => {
     renderApp()
-    expect(screen.getByTestId('lobby-tab').textContent).toContain('Hot-seat')
-    expect(screen.getByTestId('lobby-status').textContent).toContain('3 of 3 seats taken')
+    // Seat 0 is human, the rest are AI by default
+    expect(screen.getByTestId('lobby-status').textContent).toContain('Human versus AI')
+    expect(screen.getByTestId('controller-0-human').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('controller-1-ai').getAttribute('aria-pressed')).toBe('true')
   })
 
   it('shows a leader portrait and a faction symbol for each seat', () => {

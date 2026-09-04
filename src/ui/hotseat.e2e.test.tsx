@@ -29,10 +29,12 @@ describe('a scripted hot-seat game', () => {
     window.location.hash = '#/?seed=7'
     render(<App ticking={false} />)
 
-    // setup
+    // setup (seat 0 is the human by default; seats 1 and 2 default to AI, so switch them back for this hot-seat script)
     fireEvent.change(screen.getByTestId('seat-name-0'), { target: { value: 'Despot' } })
     fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
     fireEvent.change(screen.getByTestId('seat-name-2'), { target: { value: 'Soran' } })
+    click('controller-1-human')
+    click('controller-2-human')
     click('btn-start')
     expect(text('round')).toBe('Round 1 of 8, strategy phase')
     expect(text('clock-0')).toBe('15:00')
