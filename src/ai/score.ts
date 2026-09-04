@@ -42,8 +42,10 @@ function vpValue(w: ScoreWeights): number {
   return w.objective + w.priority
 }
 
-function other(_view: GameStateView, seat: Seat): Seat {
-  return seat === 0 ? 1 : 0
+function other(view: GameStateView, seat: Seat): Seat {
+  // For N players, the "other" is the next seat in order (wrap around)
+  const n = view.players.length
+  return (seat + 1) % n
 }
 
 /**
