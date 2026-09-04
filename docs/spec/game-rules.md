@@ -56,7 +56,7 @@ Component actions available in v1: Inheritance Systems (L1Z1X), Emergency shipya
 ### 3.3 Status phase
 1. Score: each player may score each public objective they fulfil (once per objective per game), the Mandate if fulfilled and not yet scored, and 1 VP for controlling Mecatol Rex.
 2. Reveal the next public objective (rounds 1 to 5; round 6 has none).
-3. Each player gains two command tokens (Hyper Metabolism: three) and distributes them freely among pools.
+3. Each player gains two command tokens (Hyper Metabolism: three) and may redistribute their entire command sheet (the new tokens and every token they already held) freely among the three pools.
 4. Ready all cards and planets, return strategy cards, remove command tokens from the map.
 5. If Mecatol Rex is uncontrolled, roll a new guardian fleet.
 6. Check victory (section 7). Then the speaker passes to the other player and the round counter increases.

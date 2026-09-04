@@ -41,7 +41,7 @@ export function StatusDialog() {
             </span>
           ))}
         </div>
-        <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+        <TokenSheet current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />
       </div>
     </div>
   )

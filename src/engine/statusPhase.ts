@@ -110,7 +110,9 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   const seat = state.active
   if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
   const scored = scoreAll(state, seat)
-  const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat))
+  // R3.3/TI4 rule: after gaining the round's new tokens, a player may also redistribute every command
+  // token they already hold among the three pools, not just place the new ones.
+  const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat), true)
   if (!distributed.ok) return distributed
   const statusSubmitted = [...state.statusSubmitted, seat]
   const submitted: GameState = { ...distributed.value, statusSubmitted }

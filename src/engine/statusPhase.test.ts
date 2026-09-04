@@ -23,14 +23,14 @@ function bothSubmit(state: GameState, seed = 7): GameState {
 }
 
 describe('R3.3 status phase', () => {
-  it('R3.3 step 3: two command tokens, three with Hyper Metabolism, distributed but never moved', () => {
+  it('R3.3 step 3: two command tokens, three with Hyper Metabolism, and existing tokens may be redistributed too', () => {
     const s = toStatusPhase(toActionPhase())
     expect(s.players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })   // 8 on the sheet, 2 to come
     expect(submit(s, plain(5)).ok).toBe(true)                        // 5 + 3 + 2 = 10, both into the tactic pool
     expect(submit(s, plain(3, 4, 3)).ok).toBe(true)                  // 10, one into each of the other pools
     expect(submit(s, plain(4)).ok).toBe(false)                       // 9, one token unassigned
     expect(submit(s, plain(6)).ok).toBe(false)                       // 11, one token too many
-    expect(submit(s, plain(2, 5, 3)).ok).toBe(false)                 // 10, but the tactic pool shrinks
+    expect(submit(s, plain(2, 5, 3)).ok).toBe(true)                  // 10: the tactic pool may shrink too, redistributing what was already there
     const hyper = toStatusPhase(withTechs(toActionPhase(), 0, ['hyper_metabolism']))
     expect(submit(hyper, plain(6)).ok).toBe(true)                    // 11, three tokens
     expect(submit(hyper, plain(5)).ok).toBe(false)
