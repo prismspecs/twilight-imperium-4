@@ -144,7 +144,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     return initialSecret ? { ...p, secretObjectives: [initialSecret] } : p
   })
   const state: GameState = {
-    version: 3, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
+    version: 4, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft,
     publicObjectives: [order[0]],
@@ -156,6 +156,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     mecatolCombatWinner: null,
     players,
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
+    pendingReactions: [], effects: [],
     posts, postAbilityUsed: { west: false, east: false },
     nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, winner: null,
     log: [

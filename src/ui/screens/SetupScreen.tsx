@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
@@ -9,7 +9,6 @@ import { spriteSize } from '../sprites'
 import { useModelStyle } from '../modelStyle'
 import type { ModelStyle } from '../modelStyle'
 import { useGame } from '../store'
-import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
 import type { Color, FactionId, PlayerType, Seat, UnitType } from '../../engine/types'
@@ -21,7 +20,7 @@ const COLOUR_NAMES: Record<Color, string> = {
   red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow',
   purple: 'Purple', black: 'Black', orange: 'Orange', pink: 'Pink',
 }
-/** The swatch colours, the tint the seat's copy is set in, and the glow behind its unit sprites. */
+/** The swatch colours, the tint the seat's copy is set in, and the lamp on the galaxy plot. */
 const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> = {
   red: { accent: '#d63b3b', tint: '#f09a9a', glow: 'rgba(214,59,59,.16)' },
   blue: { accent: '#3d7be8', tint: '#8fb4ff', glow: 'rgba(61,123,232,.16)' },
@@ -56,24 +55,92 @@ const UNIT_PLURAL: Record<UnitType, string> = {
   destroyer: 'Destroyers', fighter: 'Fighters', infantry: 'Infantry', pds: 'PDS', spacedock: 'Space Docks',
 }
 // Fighters and infantry get a count badge instead of one sprite per unit; every other type is capped at one
-// in v1's two starting fleets, so a badge would just always read "1".
+// in the starting fleets, so a badge would just always read "1".
 const BADGE_TYPES: readonly UnitType[] = ['fighter', 'infantry']
 // The row's sprites are sized proportionally to the actual ships via src/ui/sprites.ts, the shared copy of
 // public/assets/sprites/manifest.json's world scale.
-const FLEET_SPRITE_SCALE = 14
+const FLEET_SPRITE_SCALE = 13
 
-/**
- * The lobby is drawn in a 1440x900 frame and `useFitScale` scales that frame to the viewport. The
- * saved-games block makes the page taller than the frame, so the page is scaled down by whatever it adds
- * and keeps fitting instead of growing a scrollbar. The three numbers mirror `.saved` in setup.css.
- */
-const PAGE_H = 900
-/** the block's top margin plus its panel padding */
-const SAVED_BLOCK_H = 68
-/** one `.gamerow` */
-const SAVED_ROW_H = 52
-/** `.glist` stops at three and a half rows and scrolls; the page never grows past that */
-const SAVED_LIST_H = 182
+/* ---------------------------------------------------------------------------
+ * The galaxy plot
+ *
+ * The lobby's signature: a schematic of the exact galaxy this table is about to
+ * generate, drawn from the same constants the generator uses (engine/galaxy.ts)
+ * and the same axial-to-pixel mapping the board uses (ui/layout.ts), so the
+ * home system a seat is promised sits where it will really sit. Mecatol Rex
+ * stays lit at the centre; every seat's home burns in that seat's own colour and
+ * follows its colour picker; the row under the pointer flares.
+ * ------------------------------------------------------------------------- */
+
+/** ui/layout.ts: flat-top hexes, 232 x 201, stepping 174 across and 100.5 / 201 down. */
+const HEX_DX = 174
+const HEX_DY = 201
+const HEX_HALF = HEX_DY / 2
+const HEX_W = 232
+const RADIUS = 3
+/** engine/galaxy.ts CORNERS: the six corner cells of the radius-3 hex, clockwise from due east. */
+const CORNERS: readonly (readonly [number, number])[] = [
+  [RADIUS, 0], [RADIUS, -RADIUS], [0, -RADIUS], [-RADIUS, 0], [-RADIUS, RADIUS], [0, RADIUS],
+]
+/** engine/galaxy.ts HOME_CORNERS: which corners the homes take at each player count. */
+const HOME_CORNERS: Record<number, readonly number[]> = {
+  3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5],
+}
+/** engine/galaxy.ts REMOVED_CORNERS: the 3-player galaxy leaves its three empty corners off the board. */
+const REMOVED_CORNERS: Record<number, readonly number[]> = { 3: [1, 3, 5] }
+
+interface PlotCell { key: string; cx: number; cy: number }
+
+function plotCells(): PlotCell[] {
+  const cells: PlotCell[] = []
+  for (let q = -RADIUS; q <= RADIUS; q++) {
+    const lo = Math.max(-RADIUS, -q - RADIUS)
+    const hi = Math.min(RADIUS, -q + RADIUS)
+    for (let r = lo; r <= hi; r++) cells.push({ key: `${String(q)},${String(r)}`, cx: HEX_DX * q, cy: HEX_HALF * q + HEX_DY * r })
+  }
+  return cells
+}
+const PLOT_CELLS = plotCells()
+
+/** A flat-top hexagon: the outline of one system, inset so neighbouring cells keep a visible seam. */
+function hexPoints(cx: number, cy: number, inset: number): string {
+  const w = HEX_W / 2 - inset
+  const h = HEX_HALF - inset * 0.87
+  const q = w / 2
+  return `${String(cx - w)},${String(cy)} ${String(cx - q)},${String(cy - h)} ${String(cx + q)},${String(cy - h)} ${String(cx + w)},${String(cy)} ${String(cx + q)},${String(cy + h)} ${String(cx - q)},${String(cy + h)}`
+}
+
+function GalaxyPlot({ playerCount, colours, lit }: { playerCount: number; colours: Color[]; lit: number | null }) {
+  const cornerIdx = HOME_CORNERS[playerCount] ?? HOME_CORNERS[6]
+  const homes = new Map<string, number>()
+  cornerIdx.forEach((corner, seat) => { homes.set(CORNERS[corner].join(','), seat) })
+  const removed = new Set((REMOVED_CORNERS[playerCount] ?? []).map(corner => CORNERS[corner].join(',')))
+
+  const halfW = RADIUS * HEX_DX + HEX_W / 2
+  const halfH = RADIUS * HEX_DY + HEX_HALF
+  return (
+    <svg
+      className="pf-plot-svg" aria-hidden="true" role="presentation"
+      viewBox={`${String(-halfW)} ${String(-halfH)} ${String(halfW * 2)} ${String(halfH * 2)}`}
+    >
+      {PLOT_CELLS.map(cell => {
+        if (removed.has(cell.key)) return null
+        const seat = homes.get(cell.key)
+        const mecatol = cell.key === '0,0'
+        if (seat === undefined) {
+          return <polygon key={cell.key} className={`pf-hex${mecatol ? ' rex' : ''}`} points={hexPoints(cell.cx, cell.cy, 8)} />
+        }
+        const ink = COLOUR_INK[colours[seat]]
+        return (
+          <g key={cell.key} className={`pf-home${lit === seat ? ' lit' : ''}`} style={{ '--accent': ink.accent } as CSSProperties}>
+            <polygon className="pf-hex home" points={hexPoints(cell.cx, cell.cy, 8)} />
+            <text className="pf-home-n" x={cell.cx} y={cell.cy}>{seat + 1}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
 
 function fleetUnits(factionId: FactionId): { type: UnitType; count: number }[] {
   const totals = new Map<UnitType, number>()
@@ -83,8 +150,8 @@ function fleetUnits(factionId: FactionId): { type: UnitType; count: number }[] {
 
 /** R5's naming, without a player: the L1Z1X start with the Super-Dreadnought instead of a dreadnought. */
 function unitName(factionId: FactionId, type: UnitType, count: number): string {
-  if (type === 'dreadnought' && factionId === 'l1z1x') return count > 1 ? `${count} Super-Dreadnoughts I` : 'Super-Dreadnought I'
-  return count > 1 ? `${count} ${UNIT_PLURAL[type]}` : UNIT_LABEL[type]
+  if (type === 'dreadnought' && factionId === 'l1z1x') return count > 1 ? `${String(count)} Super-Dreadnoughts I` : 'Super-Dreadnought I'
+  return count > 1 ? `${String(count)} ${UNIT_PLURAL[type]}` : UNIT_LABEL[type]
 }
 
 function fleetCaption(factionId: FactionId): string {
@@ -119,7 +186,7 @@ function FactionPortrait({ factionId, name }: { factionId: FactionId; name: stri
   }
   return (
     <div className={`crop ${factionId}`}>
-      <img src={`/assets/factions/leader_${factionId}_commander.png`} alt={`${name} portrait`} onError={() => setBroken(true)} />
+      <img src={`/assets/factions/leader_${factionId}_commander.png`} alt={`${name} portrait`} onError={() => { setBroken(true) }} />
     </div>
   )
 }
@@ -128,8 +195,6 @@ export function SetupScreen() {
   const { start } = useGame()
   const { style: modelStyle } = useModelStyle()
   const route = useHashRoute()
-  // the page is drawn for a 1440x900 frame; scale it until it fills the viewport (credits line at the foot)
-  const fit = useFitScale()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
   const [playerCount, setPlayerCount] = useState<number>(6)
@@ -139,7 +204,8 @@ export function SetupScreen() {
   const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
   const [minutes, setMinutes] = useState(15)
   const [useMiltyDraft, setUseMiltyDraft] = useState(false)
-  const seatConfigRef = useRef<HTMLDivElement | null>(null)
+  // the seat the pointer or the keyboard is in, so its home system flares on the plot
+  const [litSeat, setLitSeat] = useState<number | null>(null)
 
   function setName(seat: number, value: string) {
     setNames(prev => {
@@ -193,9 +259,7 @@ export function SetupScreen() {
       return next
     })
     // Reset draft mode when player count changes
-    if (useMiltyDraft) {
-      setUseMiltyDraft(false)
-    }
+    if (useMiltyDraft) setUseMiltyDraft(false)
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
@@ -215,7 +279,7 @@ export function SetupScreen() {
       players: Array.from({ length: playerCount }, (_, seat) => ({
         faction: playerFactions[seat],
         color: colours[seat],
-        name: names[seat].trim() || `Player ${seat + 1}`,
+        name: names[seat].trim() || `Player ${String(seat + 1)}`,
         playerType: playerTypes[seat],
       })),
       speaker: 0,
@@ -225,379 +289,336 @@ export function SetupScreen() {
     deleteGame(code)
     setSaved({ games: listGames(), now: Date.now() })
   }
-  function goToSeats() {
-    const node = seatConfigRef.current
-    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ behavior: 'smooth' })
-  }
 
-  const pageHeight = saved.games.length === 0
-    ? PAGE_H
-    : PAGE_H + SAVED_BLOCK_H + Math.min(SAVED_LIST_H, SAVED_ROW_H * saved.games.length)
-  const zoom = Math.round(fit * (PAGE_H / pageHeight) * 1000) / 1000
+  const live = playerTypes.slice(0, playerCount)
+  const allAi = live.every(pt => pt === 'ai')
+  const anyAi = live.some(pt => pt === 'ai')
+  const systems = playerCount === 3 ? 34 : 37
+  const startLabel = allAi ? 'Watch AI game' : anyAi ? 'Launch vs AI' : 'Launch hot-seat'
 
   return (
-    <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom }}>
+    <div className="preflight" data-testid="setup-screen">
       <SpaceBackdrop dim />
 
-      <header className="hero">
-        <h1 className="title goldtext">Twilight Imperium IV</h1>
-        <div className="rule"><span /><i className="dia" /><span /></div>
-        <p className="tagline">The board game of galactic conquest, diplomacy, and trade</p>
+      <header className="pf-rail">
+        <div className="pf-mark">
+          <h1 className="pf-title">Twilight Imperium <i>IV</i></h1>
+          <span className="pf-kicker">Pre-flight</span>
+        </div>
+        {/* A graduated rule, the same instrument chrome the board's decks carry, rather than empty band. */}
+        <i className="pf-rule" aria-hidden="true" />
+        <div className="pf-rail-set">
+          <span className="lbl">Seats at the table</span>
+          <div className="pf-seg pf-seg-lg player-count-picker" data-testid="player-count-picker">
+            {[3, 4, 5, 6].map(count => (
+              <button
+                key={count}
+                type="button"
+                className={playerCount === count ? 'on' : ''}
+                data-testid={`player-count-${count}`}
+                aria-pressed={playerCount === count}
+                onClick={() => { handleSetPlayerCount(count) }}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="pf-rail-end" data-testid="setup-music">
+          <MusicButton className="pf-btn quiet" />
+        </div>
       </header>
 
-      {saved.games.length > 0 ? (
-        <section className="box saved" aria-label="Saved games" data-testid="saved-games">
-          <div className="frame panel">
-            <div className="glist">
-              {saved.games.map(game => (
-                <div className="gamerow" key={game.code} data-testid={`saved-game-${game.code}`}>
-                  <span className="gcode">{game.code}</span>
-                  <span className="gwho">
-                    {game.names.length <= 2
-                      ? <>{game.names[0]}<i className="vs">vs</i>{game.names[1]}</>
-                      : game.names.join(' · ')}
-                  </span>
-                  <span className="gmeta">
-                    Round {game.round}<span className="sep" />{relativeTime(game.updatedAt, saved.now)}
-                  </span>
-                  <div className="gacts">
-                    <button
-                      type="button" className="btn ghost sm" data-testid={`btn-resume-${game.code}`}
-                      onClick={() => { navigate(gamePath(game.code)) }}
-                    >
-                      Resume
-                    </button>
-                    <button
-                      type="button" className="btn plain sm" data-testid={`btn-delete-${game.code}`}
-                      onClick={() => { forget(game.code) }}
-                    >
-                      Delete
-                    </button>
+      <main className="pf-body">
+        <aside className="pf-plan">
+          <section className="pf-plot-card" data-testid="setup-map">
+            <div className="pf-plot">
+              <i className="pf-bracket tl" /><i className="pf-bracket tr" />
+              <i className="pf-bracket bl" /><i className="pf-bracket br" />
+              <GalaxyPlot playerCount={playerCount} colours={colours} lit={litSeat} />
+            </div>
+            <dl className="pf-facts">
+              <div>
+                <dt className="lbl">Map</dt>
+                <dd>{`Generated Galaxy (${String(systems)} systems)`}</dd>
+              </div>
+              <div>
+                <dt className="lbl">Centre</dt>
+                <dd>Mecatol Rex, three rings out from every home</dd>
+              </div>
+              <div>
+                <dt className="lbl">Homes</dt>
+                <dd>{`${String(playerCount)} on the corners of the outer rim`}</dd>
+              </div>
+            </dl>
+          </section>
+
+          {saved.games.length > 0 ? (
+            <section className="pf-block" aria-label="Saved games" data-testid="saved-games">
+              <h2 className="lbl pf-block-head">In progress on this device</h2>
+              <div className="pf-saves">
+                {saved.games.map(game => (
+                  <div className="pf-save" key={game.code} data-testid={`saved-game-${game.code}`}>
+                    <span className="pf-save-code">{game.code}</span>
+                    <span className="pf-save-who">{game.names.join(' · ')}</span>
+                    <span className="pf-save-meta">
+                      {`Round ${String(game.round)}`}<i /> {relativeTime(game.updatedAt, saved.now)}
+                    </span>
+                    <span className="pf-save-acts">
+                      <button
+                        type="button" className="pf-btn sm" data-testid={`btn-resume-${game.code}`}
+                        onClick={() => { navigate(gamePath(game.code)) }}
+                      >
+                        Resume
+                      </button>
+                      <button
+                        type="button" className="pf-btn sm plain" data-testid={`btn-delete-${game.code}`}
+                        onClick={() => { forget(game.code) }}
+                      >
+                        Delete
+                      </button>
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="tab"><b>Saved games</b>&nbsp; On this device</div>
-        </section>
-      ) : null}
-
-      <section className="menu" aria-label="Game mode">
-        <div className="box primary" data-testid="landing-hotseat">
-          <div className="frame panel">
-            <div className="lead">
-              <div className="ico">
-                <img src="/assets/tokens/l1z1x_command.png" alt="" />
-                <img src="/assets/tokens/letnev_command.png" alt="" />
-              </div>
-              <p className="line"><span className="lbl">Hot-seat</span>Pass the tablet, chess clock {minutes} minutes each.</p>
-            </div>
-            <div className="foot">
-              <button type="button" className="btn gold big" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
-              <span className="note">No account, no network</span>
-            </div>
-          </div>
-          <div className="tab">Play on this device</div>
-        </div>
-
-        <div className="box quiet" data-testid="landing-online">
-          <div className="frame panel">
-            <div className="lead">
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-                <circle cx="15" cy="15" r="3" fill="currentColor" stroke="none" />
-                <circle cx="15" cy="15" r="8" /><circle cx="15" cy="15" r="13" strokeOpacity=".55" />
-                <path d="M3 15h5M22 15h5M15 3v5M15 22v5" strokeOpacity=".8" />
-              </svg>
-              <p className="line"><span className="lbl">Online</span>You get a six-character code and a link. Your opponent joins from any browser.</p>
-            </div>
-            <div className="foot">
-              <button type="button" className="btn ghost" data-testid="btn-create-online" disabled>Create lobby</button>
-              <span className="note">coming with online play</span>
-            </div>
-          </div>
-          <div className="tab">Create online lobby</div>
-        </div>
-
-        <div className="box quiet" data-testid="landing-join">
-          <div className="frame panel">
-            <div className="lead">
-              <p className="line"><span className="lbl">Code</span>Enter the six-character code your opponent shared.</p>
-            </div>
-            <div className="code">
-              <div className="codefield">
-                <input type="text" placeholder="K7X2QP" aria-label="Lobby code" disabled />
-              </div>
-              <button type="button" className="btn ghost" data-testid="btn-join-code" disabled>Join</button>
-            </div>
-            <span className="note">coming with online play</span>
-          </div>
-          <div className="tab">Join with a code</div>
-        </div>
-      </section>
-
-      <section className="box lobby">
-        <div className="frame panel">
-          <div className="lobby-head">
-            <div className="mode">
-              <span className="lbl">Players</span>
-              <div className="segtoggle player-count-picker" data-testid="player-count-picker">
-                {[3, 4, 5, 6].map(count => (
-                  <button
-                    key={count}
-                    type="button"
-                    className={playerCount === count ? 'on' : ''}
-                    data-testid={`player-count-${count}`}
-                    aria-pressed={playerCount === count}
-                    onClick={() => handleSetPlayerCount(count)}
-                  >
-                    {count}P
-                  </button>
                 ))}
               </div>
-              <span className="lbl">Mode</span>
-              <div className="linkbox"><span>This device{playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? ', AI turns play themselves' : ', pass it between turns'}</span></div>
-              <button
-                type="button"
-                className="btn ghost sm"
-                data-testid="btn-swap-factions"
-                onClick={() => setFactions(prev => {
-                  const next = [...prev]
-                  const tmp = next[0]
-                  next[0] = next[1]
-                  next[1] = tmp
-                  return next
-                })}
-              >
-                Swap factions
-              </button>
+            </section>
+          ) : null}
+
+          <section className="pf-block pf-soon">
+            <h2 className="lbl dim pf-block-head">Not on the network yet</h2>
+            <div className="pf-soon-row" data-testid="landing-online">
+              <p>Share a six-character code and a link; your opponents join from any browser.</p>
+              <button type="button" className="pf-btn sm" data-testid="btn-create-online" disabled>Create lobby</button>
+              <span className="pf-note">coming with online play</span>
             </div>
-            <div className="status" data-testid="lobby-status">
-              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai')
-                ? <>AI versus AI<span className="sep" />watch or jump in later</>
-                : playerTypes.slice(0, playerCount).some(pt => pt === 'ai')
-                  ? <>Human versus AI<span className="sep" />{playerCount} of {playerCount} seats taken</>
-                  : <><i className="pulse" />{playerCount === 2 ? 'Both' : `All ${playerCount}`} seats on this device<span className="sep" />{playerCount} of {playerCount} seats taken</>}
+            <div className="pf-soon-row" data-testid="landing-join">
+              <p>Enter the six-character code someone shared with you.</p>
+              <button type="button" className="pf-btn sm" data-testid="btn-join-code" disabled>Join</button>
+              <span className="pf-note">coming with online play</span>
             </div>
+          </section>
+        </aside>
+
+        <section className="pf-manifest">
+          <div className="pf-manifest-head">
+            <h2 className="pf-manifest-title">Seat manifest</h2>
+            <span className="pf-status" data-testid="lobby-status">
+              {allAi
+                ? <>AI versus AI<i /> watch or jump in later</>
+                : anyAi
+                  ? <>Human versus AI<i /> {playerCount} of {playerCount} seats taken</>
+                  : <><b className="pf-live" />All {playerCount} seats on this device<i /> {playerCount} of {playerCount} seats taken</>}
+            </span>
+            <button
+              type="button" className="pf-btn sm" data-testid="btn-swap-factions"
+              onClick={() => { setFactions(prev => { const next = [...prev]; [next[0], next[1]] = [next[1], next[0]]; return next }) }}
+            >
+              Swap seats 1 and 2
+            </button>
           </div>
 
-          <div className="seats" id="seat-config" ref={seatConfigRef}>
+          <div className="pf-cols" aria-hidden="true">
+            <span className="lbl">Seat</span>
+            <span className="lbl">Commander</span>
+            <span className="lbl">Faction</span>
+            <span className="lbl">Colour</span>
+            <span className="lbl">Control</span>
+            <span className="lbl">Starting fleet</span>
+            <span className="lbl">Starting techs</span>
+            <span className="lbl">Com</span>
+          </div>
+
+          <div className="pf-rows" id="seat-config">
             {Array.from({ length: playerCount }, (_, i) => i as Seat).map(seat => {
               const factionId = factions[seat]
               const faction = FACTIONS[factionId]
               const ink = COLOUR_INK[colours[seat]]
               const style = { '--accent': ink.accent, '--tint': ink.tint, '--glow': ink.glow } as CSSProperties
               return (
-                <div className="frame seat" key={seat} style={style}>
-                  <div className="pcol">
-                    <div className="portrait">
-                      <i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
+                <div
+                  className="pf-seat" key={seat} style={style}
+                  onMouseEnter={() => { setLitSeat(seat) }}
+                  onMouseLeave={() => { setLitSeat(null) }}
+                  onFocusCapture={() => { setLitSeat(seat) }}
+                >
+                  <div className="pf-id">
+                    <b className="pf-id-n">{seat + 1}</b>
+                    <span className="pf-id-pos" data-testid={`seat-position-${seat}`}>{POSITIONS[playerCount]?.[seat] ?? `Seat ${String(seat + 1)}`}</span>
+                  </div>
+
+                  <div className="pf-who">
+                    <div className="pf-portrait">
                       <FactionPortrait key={factionId} factionId={factionId} name={faction.name} />
                     </div>
+                    <div className="pf-who-text">
+                      <input
+                        className="pf-name" data-testid={`seat-name-${seat}`} value={names[seat]}
+                        aria-label={`Name of seat ${String(seat + 1)}`} onChange={e => { setName(seat, e.target.value) }}
+                      />
+                      <div className="pf-faction" data-testid={`seat-faction-${seat}`}>{factionTitle(faction.name)}</div>
+                    </div>
+                  </div>
+
+                  <div className="pf-cell">
                     <img
-                      className="fsym" src={`/assets/factions/${factionId}.png`} alt="" data-testid={`seat-symbol-${seat}`}
-                      onError={e => { e.currentTarget.style.display = 'none' }}
+                      className="pf-sigil" src={`/assets/factions/${factionId}.png`} alt="" data-testid={`seat-symbol-${seat}`}
+                      onError={e => { e.currentTarget.style.visibility = 'hidden' }}
                     />
+                    <select
+                      className="pf-select"
+                      data-testid={`select-faction-${seat}`}
+                      aria-label={`Faction for seat ${String(seat + 1)}`}
+                      value={factionId}
+                      onChange={e => { setFaction(seat, e.target.value as FactionId) }}
+                    >
+                      {Object.values(FACTIONS).map(f => {
+                        const isTaken = factions.slice(0, playerCount).some((fid, s) => s !== seat && fid === f.id)
+                        return (
+                          <option key={f.id} value={f.id} disabled={isTaken}>
+                            {f.name}{isTaken ? ' (chosen)' : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
                   </div>
 
-                  <div className="seat-body">
-                    <div className="seat-top">
-                      <span className="lbl">Seat {seat + 1}</span>
-                      <span className="chip pos" data-testid={`seat-position-${seat}`}>{POSITIONS[playerCount]?.[seat] ?? `Seat ${seat + 1}`}</span>
-                    </div>
-                    <div className="row controller">
-                      <span className="lbl">Controller</span>
-                      <div className="segtoggle" data-testid={`controller-${seat}`}>
+                  <div className="pf-cell pf-colour">
+                    <div className="pf-swatches">
+                      {COLOURS.map(colour => (
                         <button
-                          type="button"
-                          className={playerTypes[seat] === 'human' ? 'on' : ''}
-                          data-testid={`controller-${seat}-human`}
-                          aria-pressed={playerTypes[seat] === 'human'}
-                          onClick={() => setPlayerType(seat, 'human')}
-                        >
-                          Human
-                        </button>
-                        <button
-                          type="button"
-                          className={playerTypes[seat] === 'ai' ? 'on' : ''}
-                          data-testid={`controller-${seat}-ai`}
-                          aria-pressed={playerTypes[seat] === 'ai'}
-                          onClick={() => setPlayerType(seat, 'ai')}
-                        >
-                          AI
-                        </button>
-                      </div>
-                      <span className="chosen" data-testid={`controller-${seat}-label`}>
-                        {playerTypes[seat] === 'ai' ? 'Computer' : 'Local player'}
-                      </span>
+                          key={colour} type="button"
+                          className={`pf-sw ${colour}${colours[seat] === colour ? ' sel' : ''}`}
+                          data-testid={`colour-${seat}-${colour}`}
+                          title={COLOUR_NAMES[colour]}
+                          aria-label={COLOUR_NAMES[colour]}
+                          disabled={colours.slice(0, playerCount).some((c, s) => s !== seat && c === colour)}
+                          onClick={() => { setColour(seat, colour) }}
+                        />
+                      ))}
                     </div>
-                    <input
-                      className="namefield" data-testid={`seat-name-${seat}`} value={names[seat]}
-                      aria-label={`Name of seat ${seat + 1}`} onChange={e => setName(seat, e.target.value)}
-                    />
-                    <div className="faction-row">
-                      <div className="faction goldtext" data-testid={`seat-faction-${seat}`}>{factionTitle(faction.name)}</div>
-                      <select
-                        className="faction-select"
-                        data-testid={`select-faction-${seat}`}
-                        aria-label={`Faction for seat ${seat + 1}`}
-                        value={factionId}
-                        onChange={e => setFaction(seat, e.target.value as FactionId)}
+                    <span className="pf-chosen" data-testid={`chosen-colour-${seat}`}>{COLOUR_NAMES[colours[seat]]}</span>
+                  </div>
+
+                  <div className="pf-cell pf-control">
+                    <div className="pf-seg" data-testid={`controller-${seat}`}>
+                      <button
+                        type="button"
+                        className={playerTypes[seat] === 'human' ? 'on' : ''}
+                        data-testid={`controller-${seat}-human`}
+                        aria-pressed={playerTypes[seat] === 'human'}
+                        onClick={() => { setPlayerType(seat, 'human') }}
                       >
-                        {Object.values(FACTIONS).map(f => {
-                          const isTaken = factions.slice(0, playerCount).some((fid, s) => s !== seat && fid === f.id)
-                          return (
-                            <option key={f.id} value={f.id} disabled={isTaken}>
-                              {f.name}{isTaken ? ' (chosen)' : ''}
-                            </option>
-                          )
-                        })}
-                      </select>
+                        Human
+                      </button>
+                      <button
+                        type="button"
+                        className={playerTypes[seat] === 'ai' ? 'on' : ''}
+                        data-testid={`controller-${seat}-ai`}
+                        aria-pressed={playerTypes[seat] === 'ai'}
+                        onClick={() => { setPlayerType(seat, 'ai') }}
+                      >
+                        AI
+                      </button>
                     </div>
-
-                    <div className="row colour">
-                      <span className="lbl">Colour</span>
-                      <div className="swatches">
-                        {COLOURS.map(colour => (
-                          <button
-                            key={colour} type="button"
-                            className={`sw ${colour}${colours[seat] === colour ? ' sel' : ''}`}
-                            data-testid={`colour-${seat}-${colour}`}
-                            title={COLOUR_NAMES[colour]}
-                            aria-label={COLOUR_NAMES[colour]}
-                            disabled={colours.slice(0, playerCount).some((c, s) => s !== seat && c === colour)}
-                            onClick={() => setColour(seat, colour)}
-                          />
-                        ))}
-                      </div>
-                      <span className="chosen" data-testid={`chosen-colour-${seat}`}>{COLOUR_NAMES[colours[seat]]}</span>
-                    </div>
-
-                    <div className="row fleet">
-                      <span className="lbl">Starting fleet</span>
-                      <div className="units" data-testid={`seat-${seat}-fleet`}>
-                        {fleetUnits(factionId).map(({ type, count }) => (
-                          <div className="unit" key={type} data-testid={`seat-${seat}-fleet-${type}`} title={unitName(factionId, type, count)}>
-                            <img src={spriteUrl(colours[seat], type, modelStyle)} width={spriteWidth(type, modelStyle)} alt="" />
-                            {BADGE_TYPES.includes(type) && (
-                              <span className="cnt" data-testid={`seat-${seat}-fleet-${type}-count`}>{count}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="fleet-caption" data-testid={`seat-${seat}-fleet-caption`}>{fleetCaption(factionId)}</div>
-
-                    <div className="row techs">
-                      <span className="lbl">Starting techs</span>
-                      <span className="techlist" data-testid={`seat-${seat}-techs`}>
-                        {faction.startingTechs.map(techDef).map((tech, i) => (
-                          <Fragment key={tech.id}>
-                            {i > 0 ? <span className="sep">{', '}</span> : null}
-                            <span className="ti">
-                              <img src={techIconUrl(tech.colour ?? 'blue')} alt="" />
-                            </span>
-                            {tech.name}
-                          </Fragment>
-                        ))}
-                      </span>
-                    </div>
-
-                    <div className="row commodities">
-                      <span className="lbl">Commodities</span>
-                      <span className="val comm-val" data-testid={`seat-${seat}-commodities`}>
-                        <img src={MISC.commodity} alt="" width={16} height={16} />
-                        <b>{faction.commodityValue}</b>
-                      </span>
-                    </div>
+                    <span className="pf-chosen" data-testid={`controller-${seat}-label`}>
+                      {playerTypes[seat] === 'ai' ? 'Computer' : 'Local player'}
+                    </span>
                   </div>
 
-                  <img
-                    className="sigil" src={`/assets/factions/${factionId}.png`} alt=""
-                    onError={e => { e.currentTarget.style.display = 'none' }}
-                  />
+                  <div className="pf-cell pf-fleet">
+                    <div className="pf-units" data-testid={`seat-${seat}-fleet`}>
+                      {fleetUnits(factionId).map(({ type, count }) => (
+                        <div className="pf-unit" key={type} data-testid={`seat-${seat}-fleet-${type}`} title={unitName(factionId, type, count)}>
+                          <img src={spriteUrl(colours[seat], type, modelStyle)} width={spriteWidth(type, modelStyle)} alt="" />
+                          {BADGE_TYPES.includes(type) && (
+                            <span className="pf-cnt" data-testid={`seat-${seat}-fleet-${type}-count`}>{count}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <span className="pf-caption" data-testid={`seat-${seat}-fleet-caption`}>{fleetCaption(factionId)}</span>
+                  </div>
+
+                  <div className="pf-cell pf-techs" data-testid={`seat-${seat}-techs`}>
+                    {faction.startingTechs.map(techDef).map((tech, i) => (
+                      <Fragment key={tech.id}>
+                        {i > 0 ? <span className="sep">{', '}</span> : null}
+                        <span className="ti"><img src={techIconUrl(tech.colour ?? 'blue')} alt="" /></span>
+                        {tech.name}
+                      </Fragment>
+                    ))}
+                  </div>
+
+                  <div className="pf-cell pf-comm">
+                    <span className="pf-comm-v" data-testid={`seat-${seat}-commodities`}>
+                      <img src={MISC.commodity} alt="" width={15} height={15} />
+                      <b>{faction.commodityValue}</b>
+                    </span>
+                  </div>
                 </div>
               )
             })}
+            {/* Seats this table does not use are sealed sockets rather than absent rows: the rack keeps its
+                six bays, so changing the seat count reads as arming and sealing seats, not as the list
+                growing and shrinking. */}
+            {Array.from({ length: 6 - playerCount }, (_, i) => playerCount + i).map(seat => (
+              <div className="pf-seat sealed" key={`sealed-${String(seat)}`} aria-hidden="true">
+                <div className="pf-id">
+                  <b className="pf-id-n">{seat + 1}</b>
+                  <span className="pf-id-pos">Sealed</span>
+                </div>
+                <span className="pf-sealed-note">No seat at a {playerCount}-player table</span>
+              </div>
+            ))}
           </div>
+        </section>
+      </main>
 
-          <div className="settings">
-            <div className="cell" data-testid="setup-map">
-              <div className="minimap galaxy-mini" aria-hidden="true">
-                <img src="/assets/tiles/18_MR.png" className="mr" alt="" style={{ position: 'relative', width: 40, height: 35, margin: '20px auto 0', display: 'block' }} />
-              </div>
-              <div>
-                <div className="lbl"><i className="dia" />Map</div>
-                <div className="val">{`Generated Galaxy (${playerCount === 3 ? 34 : 37} systems)`}</div>
-                <div className="sub">
-                  {`${playerCount} home systems on outer rim, Mecatol Rex in centre, balanced galaxy tiles`}
-                </div>
-              </div>
-            </div>
-            <div className="cell" data-testid="setup-mode">
-              <div>
-                <div className="lbl"><i className="dia" />Draft</div>
-                <div className="segtoggle" data-testid="draft-mode-picker">
-                  <button
-                    type="button"
-                    className={!useMiltyDraft ? 'on' : ''}
-                    data-testid="btn-quick-start"
-                    aria-pressed={!useMiltyDraft}
-                    onClick={() => setUseMiltyDraft(false)}
-                  >
-                    Quick start
-                  </button>
-                  <button
-                    type="button"
-                    className={useMiltyDraft ? 'on' : ''}
-                    data-testid="btn-milty-draft"
-                    aria-pressed={useMiltyDraft}
-                    onClick={() => setUseMiltyDraft(true)}
-                  >
-                    Milty draft
-                  </button>
-                </div>
-                <div className="sub">
-                  {useMiltyDraft
-                    ? "Multi-player draft with randomized balanced factions"
-                    : "Standard setup with predefined factions"}
-                </div>
-              </div>
-            </div>
-            <div className="cell" data-testid="setup-clock">
-              <div>
-                <div className="lbl"><i className="dia" />Clock</div>
-                <label className="val clockfield">
-                  <input
-                    type="number" min={1} max={60} className="minfield" data-testid="minutes"
-                    value={minutes} onChange={e => setMinutes(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
-                  />
-                  minutes per player
-                </label>
-                <div className="sub">Chess clock, runs whenever it is your turn to decide</div>
-              </div>
-            </div>
-            <div className="cell" data-testid="setup-music">
-              <div>
-                <div className="lbl"><i className="dia" />Music</div>
-                <div className="stylepick"><MusicButton className="btn ghost sm" /></div>
-              </div>
-            </div>
-            <div className="cell" data-testid="setup-target">
-              <div>
-                <div className="lbl"><i className="dia" />Target</div>
-                <div className="val">10 victory points or 8 rounds</div>
-                <div className="sub">First to 10 points claims the galactic throne</div>
-              </div>
-            </div>
-            <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>
-              {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? 'Watch AI game' : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'Play vs AI' : 'Play hot-seat'}
+      <footer className="pf-launch">
+        <div className="pf-set" data-testid="setup-mode">
+          <span className="lbl">Draft</span>
+          <div className="pf-seg" data-testid="draft-mode-picker">
+            <button
+              type="button" className={useMiltyDraft ? '' : 'on'} data-testid="btn-quick-start"
+              aria-pressed={!useMiltyDraft} onClick={() => { setUseMiltyDraft(false) }}
+            >
+              Quick start
+            </button>
+            <button
+              type="button" className={useMiltyDraft ? 'on' : ''} data-testid="btn-milty-draft"
+              aria-pressed={useMiltyDraft} onClick={() => { setUseMiltyDraft(true) }}
+            >
+              Milty draft
             </button>
           </div>
+          <span className="pf-set-sub">{useMiltyDraft ? 'Randomised balanced factions' : 'The factions on the manifest'}</span>
         </div>
-        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; {playerTypes.slice(0, playerCount).every(pt => pt === 'ai') ? 'AI vs AI' : playerTypes.slice(0, playerCount).some(pt => pt === 'ai') ? 'vs AI' : 'Hot-seat'}</div>
-      </section>
 
-      <p className="legal" data-testid="setup-legal">
+        <div className="pf-set" data-testid="setup-clock">
+          <span className="lbl">Clock</span>
+          <label className="pf-clock">
+            <input
+              type="number" min={1} max={60} className="pf-min" data-testid="minutes"
+              value={minutes} onChange={e => { setMinutes(Math.max(1, Number.parseInt(e.target.value, 10) || 1)) }}
+            />
+            <span>minutes per player</span>
+          </label>
+          <span className="pf-set-sub">Runs whenever it is your turn to decide</span>
+        </div>
+
+        <div className="pf-set" data-testid="setup-target">
+          <span className="lbl">Target</span>
+          <strong className="pf-set-val">10 victory points or 8 rounds</strong>
+          <span className="pf-set-sub">First to 10 points claims the galactic throne</span>
+        </div>
+
+        <div className="pf-go" data-testid="landing-hotseat">
+          <button type="button" className="pf-launch-btn" data-testid="btn-start" onClick={onStart}>{startLabel}</button>
+          <span className="pf-set-sub">{`Hot-seat, pass the tablet, chess clock ${String(minutes)} minutes each.`}</span>
+        </div>
+      </footer>
+
+      <p className="pf-legal" data-testid="setup-legal">
         Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.
         {' '}Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons By Attribution 4.0.
       </p>

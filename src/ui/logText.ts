@@ -47,6 +47,7 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'removeCustodians': return `${name} spends 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)`
     case 'pass': return `${name} passes`
     case 'status': return `${name} distributes command tokens`
+    case 'declineReaction': return `${name} declines the reaction window`
   }
 }
 

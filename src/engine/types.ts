@@ -81,12 +81,19 @@ export interface CombatState {
   retreating: Seat | null; retreatTo: string | null
   lastRolls: DieRoll[]
   pending: PendingHits[]           // hits waiting to be assigned, head first; empty when the combat may continue
+  // R9: the highest combat round whose reaction window has already been offered; -1 (or absent) means none.
+  reacted?: number
 }
-export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
+export interface InvasionState {
+  planetId: string | null; landed: number[]; bombarded: string[]; round: number
+  // R9: the highest ground combat round whose reaction window has already been offered, so the window opens
+  // once per round rather than every time the state is looked at. -1 (or absent) means "none offered yet".
+  reacted?: number
+}
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
   /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
-  version: 3
+  version: 4
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
@@ -107,6 +114,11 @@ export interface GameState {
   // R3.2: the strategy-card secondary window. The card holder played a primary; every other seat answers,
   // one at a time in turn order (even seats that have passed), before the holder finishes their turn.
   pendingSecondary: SecondaryWindow | null
+  // R9: the open reaction windows, innermost last. While the stack is not empty the only legal moves are an
+  // answer to its last window: `playActionCard` for a card whose window matches, or `declineReaction`.
+  pendingReactions: ReactionWindow[]
+  // R9: the action card effects still running; see `ActiveEffect` for how each one expires
+  effects: ActiveEffect[]
   statusSubmitted: Seat[]      // seats whose status move is in; the phase closes once all are in
   // R8: the two posts in play this round, rolled at setup and again in every status phase from the four that
   // were not in play, and whether their special ability is spent — once per round for the whole table
@@ -138,7 +150,10 @@ export type Move =
   | { type: 'endTurn' }                                  // R3.2: the action is spent, hand the turn over
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }
   | { type: 'secondary'; card: StrategyCardId; accept: boolean; params?: StrategicParams }
-  | { type: 'playActionCard'; cardId: string; params?: ActionCardParams }   // R9: an "ACTION:" card, played as your whole action
+  // R9: an "ACTION:" card played as your whole action, or — while a reaction window is open — the card you
+  // interrupt with. Which of the two it is follows from the state, never from the move.
+  | { type: 'playActionCard'; cardId: string; params?: ActionCardParams }
+  | { type: 'declineReaction' }                          // R9: play nothing into the open reaction window
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
@@ -171,9 +186,52 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
  */
 export interface ActionCardParams {
   planetId?: string      // Frontline Deployment, Mining Initiative, Uprising, Unstable Planet, Cripple Defenses, Reactor Meltdown
-  systemId?: string      // War Effort, Ghost Ship, Unexpected Action
+  systemId?: string      // War Effort, Ghost Ship, Unexpected Action; In The Silence Of Space's chosen system
   techId?: string        // Focused Research
   seat?: Seat            // Insubordination: whose tactic pool loses a token
+}
+
+/**
+ * R9: the engine points at which a player may interrupt with an action card. Every kind names a moment the
+ * engine really stops at, and the window carries the context its cards need to name a target.
+ */
+export type ReactionKind = 'systemActivated' | 'spaceCombatRound' | 'groundCombatRound'
+
+/**
+ * R9: an open reaction window. It follows the shape `pendingSecondary` proved: a queue of seats answered in
+ * turn order, one answer each, and the window closes back onto whoever was on turn. Unlike a secondary these
+ * stack — Sabotage reacts to a card being played — so `GameState.pendingReactions` is a stack whose last
+ * entry is the innermost window, and only that one may be answered.
+ */
+export interface ReactionWindow {
+  kind: ReactionKind
+  /** the seat whose action opened the window (the active player, for every window built so far) */
+  source: Seat
+  /** the seats that may still answer, head first; the window closes when the queue empties */
+  queue: Seat[]
+  /** the seat that was on turn when the window opened; play resumes there */
+  resume: Seat
+  /** the system the window is about: the activated system, or the system the combat is being fought in */
+  systemId: string
+  /** the combat round (space or ground) the window opens at the start of */
+  round?: number
+}
+
+/**
+ * R9: an action card effect that outlives the instant it was played. Nothing sweeps these away: an effect
+ * simply stops matching once its scope is over, which is why each scope carries the round it was played
+ * into. The whole list is dropped when the tactical action that could have created any of them ends.
+ */
+export interface ActiveEffect {
+  /** the printed card with the copy number stripped, e.g. `morale_boost` */
+  effect: string
+  seat: Seat
+  /** `tactical` runs to the end of the tactical action; the round scopes only for that one round */
+  scope: 'tactical' | 'spaceRound' | 'groundRound'
+  /** the combat round the effect was played into, for the two round scopes */
+  round?: number
+  /** the system the card named (In The Silence Of Space chooses one) */
+  systemId?: string
 }
 
 /** R3.2: who has to answer the open strategy-card secondary, in what order, and who played it. */

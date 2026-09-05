@@ -547,6 +547,8 @@ function trimFleetPool(state: GameState, systemId: string, seat: Seat): GameStat
   return { ...next, log: [...next.log, { t: 'info', text: `${victims.length} ships beyond the fleet pool are destroyed in ${systemId}` }] }
 }
 
+export { trimFleetPool }
+
 /** R4.1 step 5: the announced retreat happens after the round has been fought. */
 function withdraw(state: GameState, ctx: Ctx, to: string): GameState {
   const tac = state.tactical

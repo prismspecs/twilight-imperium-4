@@ -134,3 +134,11 @@ export function actionCardDef(id: string): ActionCardDef {
   if (!card) throw new Error(`unknown action card ${id}`)
   return card
 }
+
+/**
+ * The printed card, with the copy number stripped: `focused_research_3` and its siblings share one effect,
+ * so every switch over what a card does switches over this rather than over the id of one printing.
+ */
+export function effectOf(cardId: string): string {
+  return cardId.replace(/_\d+$/, '')
+}

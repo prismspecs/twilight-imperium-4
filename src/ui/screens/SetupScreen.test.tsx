@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from '../App'
 import { FACTIONS } from '../../data/factions'
@@ -151,21 +151,6 @@ describe('the setup screen', () => {
     expect(window.location.hash).toBe('#/g/AAA222')
     expect(screen.getByTestId('board-screen')).toBeTruthy()
     expect(screen.getByTestId('player-0').textContent).toContain('Despot')
-  })
-
-  it('scales the page down by what the saved-games block adds, rather than scrolling', () => {
-    renderApp()
-    const bare = screen.getByTestId('setup-screen').style.zoom
-    cleanup()
-    savedGame('AAA222', 'Despot', 'Kael')
-    renderApp()
-    const withOne = screen.getByTestId('setup-screen').style.zoom
-    expect(Number(withOne)).toBeGreaterThan(0)
-    expect(Number(withOne)).toBeLessThan(Number(bare))
-    cleanup()
-    savedGame('BBB333', 'Ada', 'Bo')
-    renderApp()
-    expect(Number(screen.getByTestId('setup-screen').style.zoom)).toBeLessThan(Number(withOne))
   })
 
   it('deletes one saved game and leaves the others alone', () => {

@@ -78,7 +78,7 @@ describe('the saved games of one browser', () => {
     expect(loaded).not.toBeNull()
     expect(loaded?.state.posts.west).not.toBe(loaded?.state.posts.east)
     expect(loaded?.state.postAbilityUsed).toEqual({ west: false, east: false })
-    expect(loaded?.state.version).toBe(3)
+    expect(loaded?.state.version).toBe(4)
   })
 
   it('R3.2: a game saved before turnDone existed loads with the flag cleared, not rejected', () => {

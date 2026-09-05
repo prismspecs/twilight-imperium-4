@@ -46,9 +46,9 @@ function isLegacy(value: unknown): value is Legacy {
   return p.version === 1 && typeof p.seed === 'number' && typeof p.minutes === 'number'
     && Array.isArray(p.clockMs) && p.clockMs.length >= 2
     && Array.isArray(p.history)
-    // R7 changed the objectives and with them the shape of a player, so a game saved under version 1 is
-    // not readable any more and is dropped rather than crashed into
-    && typeof p.state === 'object' && p.state !== null && [2, 3].includes((p.state as { version: number }).version)
+    // R9 added pendingReactions and effects, so a game saved before version 4 is not readable any more
+    // and is dropped rather than crashed into. Version 3 is still supported for now.
+    && typeof p.state === 'object' && p.state !== null && [2, 3, 4].includes((p.state as { version: number }).version)
 }
 
 function isSummary(value: unknown): value is GameSummary {
@@ -99,7 +99,7 @@ function normalise(state: GameState, seed: number): GameState {
       })),
     }
   }
-  return next.version === 3 ? next : { ...next, version: 3 }
+  return next.version === 4 ? next : { ...next, version: 4 }
 }
 
 function isPayload(value: unknown): value is Payload {

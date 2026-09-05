@@ -1,6 +1,7 @@
 import { playActionCard } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
+import { declineReaction } from './reactions'
 import { research, shipyard, tradePost } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
 import { endMovement, moveShips } from './movement'
@@ -44,6 +45,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
       case 'postAbility': return postAbility(logged, move.post, move.params)
       case 'status': return status(logged, move.params, seed)
+      case 'declineReaction': return declineReaction(logged)
       default: {
         // every Move kind is dispatched above; this only runs for a malformed move from outside the type system
         const unknown: never = move
