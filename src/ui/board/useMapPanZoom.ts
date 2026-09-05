@@ -75,12 +75,11 @@ export function useMapPanZoom(): PanZoomState {
 
     if (e.button === 1) e.preventDefault()
     activePointerIdRef.current = e.pointerId
-    try {
-      e.currentTarget.setPointerCapture?.(e.pointerId)
-    } catch {
-      // ignore
-    }
-
+    // Deliberately NOT capturing the pointer here. Once a pointer is captured, the browser dispatches the
+    // subsequent `click` to the capture target (this viewport) instead of the element that was actually
+    // pressed, so a tile's own onClick never fires and clicking a tile does nothing at all - while Tab and
+    // Space still work, because keyboard activation never goes near pointer capture. Capture is taken in
+    // onPointerMove instead, once the gesture has actually become a drag; a plain click never captures.
     dragStartRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -97,6 +96,14 @@ export function useMapPanZoom(): PanZoomState {
     if (!dragStartRef.current.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
       dragStartRef.current.moved = true
       setIsDragging(true)
+      // now that this is a real drag and not a click, capture the pointer so the pan keeps following it even
+      // when it leaves the viewport. Capturing here rather than on pointerdown is what keeps a plain click's
+      // `click` event targeted at the tile instead of being retargeted to this viewport.
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } catch {
+        // ignore
+      }
     }
     if (dragStartRef.current.moved) {
       const nextX = dragStartRef.current.panX + dx
