@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { deriveSeed } from '../../engine'
+import { deriveSeed, readyInfluence } from '../../engine'
+import { MECATOL_ID } from '../../data/map'
 import { bombardTargets, landTargets } from '../moveOptions'
 import { planetLabel } from '../format'
 import { moveCount } from '../history'
@@ -32,6 +33,16 @@ export function InvasionPanel() {
   const pool = landings.length > 0 ? landings[0].infantryIds.length : 0
   const split = suggestedSplit(pool, landings.length, deriveSeed(session.seed, moveCount(state)))
   const countOf = (planetId: string, index: number) => counts[planetId] ?? split[index] ?? 0
+
+  const isMecatolSystem = state.tactical?.systemId === 'mecatol' || state.tactical?.systemId === MECATOL_ID
+  const seat = state.active
+  const readyInf = readyInfluence(state, seat)
+  const tradeGoods = state.players[seat]?.tradeGoods ?? 0
+  const totalInf = readyInf + tradeGoods
+  const canRemoveCustodians = legal.some(m => m.type === 'removeCustodians')
+  const exhaustedInfPlanets = Object.values(state.systems)
+    .flatMap(sys => sys.planets)
+    .filter(p => p.owner === seat && p.exhausted && p.influence > 0)
   return (
     <div className="drawer bottom" data-testid="invasion-panel">
       <div className="in">
@@ -55,29 +66,48 @@ export function InvasionPanel() {
             </button>
           ))}
         </div>
-        {legal.some(m => m.type === 'removeCustodians') ? (
-          <div className="rowline" data-testid="custodians-block" style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        {state.custodiansToken && isMecatolSystem ? (
+          <div
+            className="rowline"
+            data-testid="custodians-block"
+            style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px' }}
+          >
             <span className="lbl" style={{ color: 'var(--gold)' }}>Custodians</span>
-            <span className="sub" style={{ flex: 1, margin: '0 12px' }}>
-              The Custodians of Mecatol Rex demand 6 influence before ground forces may land (+1 VP).
-            </span>
-            <button
-              type="button"
-              className="btn gold"
-              data-testid="btn-remove-custodians"
-              onClick={() => apply({ type: 'removeCustodians' })}
-            >
-              Remove Custodians (6 Influence · +1 VP)
-            </button>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span className="sub">
+                The Custodians of Mecatol Rex demand 6 influence before ground forces may land (+1 VP).
+              </span>
+              <span className="sub" data-testid="custodians-breakdown" style={{ color: totalInf >= 6 ? 'var(--gold)' : 'var(--muted)' }}>
+                Influence available: <strong>{totalInf} / 6</strong> ({readyInf} ready + {tradeGoods} TG)
+                {exhaustedInfPlanets.length > 0 ? (
+                  <span style={{ marginLeft: 6, opacity: 0.8 }}>
+                    · Exhausted: {exhaustedInfPlanets.map(p => `${planetLabel(state, p.id)} (${p.influence}i)`).join(', ')}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+            {canRemoveCustodians ? (
+              <button
+                type="button"
+                className="btn gold"
+                data-testid="btn-remove-custodians"
+                onClick={() => apply({ type: 'removeCustodians' })}
+              >
+                Remove Custodians (6 Influence · +1 VP)
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn quiet"
+                data-testid="btn-remove-custodians-disabled"
+                disabled
+                title="Requires 6 influence from ready planets and/or trade goods"
+              >
+                Cannot Remove (Need 6 Influence)
+              </button>
+            )}
           </div>
-        ) : (state.custodiansToken && state.tactical?.systemId === 'mecatol' ? (
-          <div className="rowline" data-testid="custodians-notice" style={{ padding: '6px 0', color: 'var(--muted)' }}>
-            <span className="lbl">Custodians</span>
-            <span className="sub">
-              The Custodians token remains on Mecatol Rex. Ground forces cannot land without spending 6 influence.
-            </span>
-          </div>
-        ) : null)}
+        ) : null}
         {landings.map(({ planetId, infantryIds }, index) => {
           const count = countOf(planetId, index)
           return (

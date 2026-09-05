@@ -164,4 +164,29 @@ describe('the tactical action', () => {
     // the held dialog is gone because the queue cleared and the tactical advanced past the combat step
     expect(screen.queryByTestId('combat-dialog')).toBeNull()
   })
+
+  it('displays disabled Custodians option with influence breakdown when player cannot afford 6 influence', () => {
+    let s = withUnits(toActionPhase(), 'mecatol', 0, ['carrier', 'infantry'])
+    s = { ...s, custodiansToken: true }
+    s = withTactical(s, { systemId: 'mecatol', step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('custodians-block')).toBeTruthy()
+    expect(screen.getByTestId('custodians-breakdown').textContent).toContain('0 / 6')
+    expect(screen.getByTestId('btn-remove-custodians-disabled')).toBeTruthy()
+  })
+
+  it('displays enabled Custodians button when player can afford 6 influence with trade goods', () => {
+    let s = withUnits(toActionPhase(), 'mecatol', 0, ['carrier', 'infantry'])
+    s = {
+      ...s,
+      custodiansToken: true,
+      players: s.players.map((p, i) => i === 0 ? { ...p, tradeGoods: 6 } : p),
+    }
+    s = withTactical(s, { systemId: 'mecatol', step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('custodians-block')).toBeTruthy()
+    expect(screen.getByTestId('custodians-breakdown').textContent).toContain('6 / 6')
+    expect(screen.getByTestId('btn-remove-custodians')).toBeTruthy()
+  })
 })
+
