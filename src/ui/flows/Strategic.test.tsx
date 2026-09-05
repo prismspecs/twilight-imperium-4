@@ -153,4 +153,32 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
   })
+  it('R6 Politics: the primary hands the speaker token over, draws 2 action cards and reorders the agendas', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['politics']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('politics')
+    // no new speaker chosen yet, so the card cannot be played
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('speaker-pick-1'))
+    fireEvent.click(screen.getByTestId('agenda-swap'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    // seat 1 answers the secondary first; the bar follows the active seat, so the two drawn cards show
+    // once the window closes back onto the card holder
+    fireEvent.click(screen.getByTestId('btn-secondary-decline'))
+    expect(screen.getByTestId('speaker-1')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('tab-side-0'))
+    expect(screen.getByTestId('action-cards-0').textContent).toBe('2 of 7')
+  })
+
+  it('R6 Construction: the primary places a space dock and a PDS on planets you control', () => {
+    const s = withPlanetOwner(withCards(withCards(toActionPhase(), 0, ['construction']), 1, []), 'bereg', 'bereg', 0)
+    renderWithSession(s, <BoardScreen />)
+    playCard('construction')
+    fireEvent.click(screen.getByTestId('dock-bereg'))
+    fireEvent.click(screen.getByTestId('pds-bereg'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('secondary-panel')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-secondary-decline'))
+    expect(screen.queryByTestId('secondary-panel')).toBeNull()
+  })
 })

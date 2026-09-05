@@ -1,7 +1,7 @@
 import { FACTIONS } from '../../data/factions'
 import { objectiveDef } from '../../data/objectives'
 import { techDef } from '../../data/techs'
-import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
+import { HAND_LIMIT, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BADGE, MISC, spriteUrl, tokenUrl, unitCardUrl } from '../art'
@@ -105,6 +105,8 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
           <div className="econ-row">
             <span className="econ"><img src={MISC.tradeGood} alt="" /> <b data-testid={`economy-${seat}-tradegoods`}>{player.tradeGoods}</b></span>
             <span className="econ"><img src={MISC.commodity} alt="" /> <b data-testid={`economy-${seat}-commodities`}>{player.commodities} of {FACTIONS[player.faction].commodityValue}</b></span>
+            {/* R9: how many action cards a player holds is public; what they are is not */}
+            <span className="econ"><img src={MISC.mandateBack} alt="Action cards" /> <b data-testid={`action-cards-${seat}`}>{player.actionCards.length} of {HAND_LIMIT}</b></span>
           </div>
         </Section>
         <Section title="Technologies" id="tech">

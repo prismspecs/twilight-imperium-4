@@ -4,7 +4,7 @@ import { useGame } from '../store'
 import { useEscape } from '../useEscape'
 import { MusicButton } from '../music'
 
-export type ActionMode = 'tactical' | 'strategic' | 'component' | null
+export type ActionMode = 'tactical' | 'strategic' | 'component' | 'actionCard' | null
 
 export interface ActionBarProps {
   mode: ActionMode
@@ -23,6 +23,9 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
     tactical: legal.some(m => m.type === 'startTactical'),
     strategic: legal.some(m => m.type === 'strategic'),
     component: legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'tradePost'),
+    // R9: the hand is always worth opening when it holds something, even when nothing in it is playable:
+    // the panel is where the cards and the reasons they cannot be played are read
+    actionCard: state.players[state.active].actionCards.length > 0,
     pass: legal.some(m => m.type === 'pass'),
     // R3.2: only offered once the action is spent, so the bar shows plainly that the turn is the last thing left
     endTurn: legal.some(m => m.type === 'endTurn'),
@@ -57,6 +60,10 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
           disabled={!can.strategic} onClick={() => onMode(mode === 'strategic' ? null : 'strategic')}>Strategic action</button>
         <button type="button" className={`btn${mode === 'component' ? ' gold' : ''}`} data-testid="btn-component"
           disabled={!can.component} onClick={() => onMode(mode === 'component' ? null : 'component')}>Component action</button>
+        <button type="button" className={`btn${mode === 'actionCard' ? ' gold' : ''}`} data-testid="btn-action-card"
+          disabled={!can.actionCard} onClick={() => onMode(mode === 'actionCard' ? null : 'actionCard')}>
+          Action cards ({state.players[state.active].actionCards.length})
+        </button>
         <button type="button" className="btn" data-testid="btn-pass"
           disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
         {can.endTurn ? (

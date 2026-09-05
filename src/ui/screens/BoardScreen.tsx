@@ -19,6 +19,7 @@ import { InvasionPanel } from '../flows/InvasionPanel'
 import { MovementPanel } from '../flows/MovementPanel'
 import { ProduceDrawer } from '../flows/ProduceDrawer'
 // strategic, component and status flows (Task 4b)
+import { ActionCardPanel } from '../flows/ActionCardPanel'
 import { ComponentPanel } from '../flows/ComponentPanel'
 import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
@@ -166,6 +167,7 @@ export function BoardScreen() {
             ) : null}
             {!isAiTurn && mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
             {!isAiTurn && mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+            {!isAiTurn && mode === 'actionCard' ? <ActionCardPanel onClose={() => setMode(null)} /> : null}
             {!isAiTurn && state.pendingSecondary !== null ? <SecondaryPanel /> : null}
             {!isAiTurn && state.phase === 'status' ? <StatusDialog /> : null}
           </div>
