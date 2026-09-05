@@ -189,6 +189,7 @@ export interface ActionCardParams {
   systemId?: string      // War Effort, Ghost Ship, Unexpected Action; In The Silence Of Space's chosen system
   techId?: string        // Focused Research
   seat?: Seat            // Insubordination: whose tactic pool loses a token
+  unitId?: number        // Lucky Shot: which ship to destroy
 }
 
 /**

@@ -43,12 +43,6 @@ function vpValue(w: ScoreWeights): number {
   return w.objective + w.priority
 }
 
-function other(view: GameStateView, seat: Seat): Seat {
-  // For N players, the "other" is the next seat in order (wrap around)
-  const n = view.players.length
-  return (seat + 1) % n
-}
-
 /**
  * How good a move is for `seat` in `view`. Scoring reads only what the fog-of-war view exposes; the engine
  * still runs on the raw state. A higher number is better. Called with the concrete (filled) move and the
@@ -66,7 +60,7 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'bombard': return scoreBombard(view, seat, w)
     case 'land': return scoreLand(view, seat, w)
     case 'groundCombatRound': return w.military
-    case 'removeCustodians': return vpValue(w)
+    case 'removeCustodians': return vpValue(w) * 2
     case 'endInvasion': return w.military
     case 'produce': return scoreProduce(view, move, seat, w)
     case 'endTactical': return w.military
@@ -86,32 +80,123 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
   }
 }
 
+function leaderVp(view: GameStateView, seat: Seat): number {
+  let maxVp = 0
+  for (let i = 0; i < view.players.length; i++) {
+    if (i !== seat && view.players[i].vp > maxVp) {
+      maxVp = view.players[i].vp
+    }
+  }
+  return maxVp
+}
+
+function readyInfluenceInView(view: GameStateView, seat: Seat): number {
+  let sum = 0
+  for (const sys of Object.values(view.systems)) {
+    for (const p of sys.planets) {
+      if (p.owner === seat && !p.exhausted) sum += p.influence
+    }
+  }
+  return sum
+}
+
+function hasProductiveTacticalAction(view: GameStateView, seat: Seat): boolean {
+  if (view.players[seat].tokens.tactic <= 0) return false
+
+  for (const [sysId, sys] of Object.entries(view.systems)) {
+    if (sys.activatedBy.includes(seat)) continue
+
+    const canArrive = view.projection.has(sysId)
+    const shipsHere = sys.space.some(u => u.owner === seat && u.type !== 'fighter' && u.type !== 'infantry')
+    const canReach = canArrive || shipsHere
+
+    if (canReach && sys.planets.some(p => p.owner === null || p.owner !== seat)) {
+      return true
+    }
+
+    if (canReach && sysId === 'mecatol') {
+      return true
+    }
+
+    if (dockValue(view, sysId, seat) > 0) {
+      return true
+    }
+  }
+
+  return false
+}
+
 function scorePass(view: GameStateView, seat: Seat, w: ScoreWeights): number {
-  // passing is only rarely right: when ahead and the round is winding down, or as the only legal way to end
-  // a spent turn. Score it low so the AI prefers real actions.
   const me = view.players[seat]
-  return (me.vp >= view.players[other(view, seat)].vp ? w.priority : -w.priority)
+
+  // Never pass if we haven't used our strategy cards yet!
+  const hasUnusedStrategyCard = me.strategyCards.some(sc => !sc.used)
+  if (hasUnusedStrategyCard) {
+    return -w.priority * 2
+  }
+
+  // Never pass prematurely if we have tactic tokens and productive expansion/combat/production options!
+  if (hasProductiveTacticalAction(view, seat)) {
+    return -w.priority * 2
+  }
+
+  // Passing is appropriate when no productive actions remain or tokens are exhausted
+  return me.vp >= leaderVp(view, seat) ? w.priority * 0.5 : 0
 }
 
 function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w: ScoreWeights): number {
   const me = view.players[seat]
-  const foe = view.players[other(view, seat)]
+  const opponents = view.players.filter(p => p.seat !== seat)
+  const maxOpponentTechs = opponents.length ? Math.max(...opponents.map(p => p.techs.length)) : 0
+  const minOpponentTokens = opponents.length ? Math.min(...opponents.map(p => p.tokens.tactic + p.tokens.fleet)) : 0
+
   let s = w.priority
+
+  // Faction affinities
+  const faction = me.faction
+  if (faction === 'jolnar' && card === 'technology') s += 30
+  if (faction === 'hacan' && card === 'trade') s += 30
+  if (faction === 'letnev' && (card === 'warfare' || card === 'trade')) s += 25
+  if (faction === 'sol' && (card === 'leadership' || card === 'warfare')) s += 25
+  if (faction === 'xxcha' && (card === 'diplomacy' || card === 'politics')) s += 25
+  if (faction === 'l1z1x' && (card === 'warfare' || card === 'technology')) s += 25
+
   // Imperial pays a VP now when we control Mecatol or can score an open objective.
   if (card === 'imperial') {
-    s += vpValue(w) * (controlsMecatol(view, seat) ? 1 : 0)
-    s += countsCanScore(view, seat) * w.objective
+    if (controlsMecatol(view, seat)) {
+      s += vpValue(w)
+    }
+    const scoreable = countsCanScore(view, seat)
+    s += scoreable * w.objective
+    if (view.round === 1 && !controlsMecatol(view, seat) && scoreable === 0) {
+      s -= w.priority
+    }
   }
+
   // Leadership replenishes the command sheet the fleet and economy both draw on.
-  if (card === 'leadership') s += (me.tokens.tactic + me.tokens.fleet) < (foe.tokens.tactic + foe.tokens.fleet) ? w.tempo : w.tempo * 0.5
+  if (card === 'leadership') {
+    const myTokens = me.tokens.tactic + me.tokens.fleet
+    s += (myTokens <= minOpponentTokens) ? w.tempo * 2 : w.tempo
+  }
+
   // Technology advances toward unit upgrades and economy tech.
-  if (card === 'technology') s += me.techs.length < foe.techs.length ? w.economy : w.economy * 0.5
-  // Trade sits low when commodities are already full.
-  if (card === 'trade') s += (me.commodities < FACTIONS[me.faction].commodityValue) ? w.economy : -w.economy
-  if (card === 'warfare') s += w.tempo
-  if (card === 'diplomacy') s += w.military * 0.5
-  if (card === 'politics') s += w.tempo * 0.5
-  if (card === 'construction') s += w.economy * 0.5
+  if (card === 'technology') {
+    s += (me.techs.length < maxOpponentTechs) ? w.economy * 2 : w.economy * 1.5
+  }
+
+  // Trade: primary grants 3 Trade Goods (universal currency) + replenishes commodities
+  if (card === 'trade') {
+    s += w.economy * 2
+    if (me.commodities < FACTIONS[me.faction].commodityValue) {
+      s += w.economy
+    }
+  }
+
+  if (card === 'warfare') s += w.tempo * 1.5
+  if (card === 'diplomacy') s += w.military * 0.8
+  if (card === 'politics') s += w.tempo + w.economy * 0.5
+  if (card === 'construction') s += w.military * 0.5 + w.economy * 0.8
+
   return s
 }
 
@@ -126,10 +211,9 @@ function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w
   const sys = view.systems[systemId]
   if (!sys) return -w.priority
   const isMecatol = systemId === 'mecatol'
-  const foe = other(view, seat)
-  const foePlanets = sys.planets.filter(p => p.owner === foe).length
+  const hostilePlanets = sys.planets.filter(p => p.owner !== null && p.owner !== seat).length
   const neutralPlanets = sys.planets.filter(p => p.owner === null).length
-  const enemyShips = sys.space.filter(u => u.owner === foe && u.type !== 'fighter' && u.type !== 'infantry')
+  const hostileShips = sys.space.filter(u => u.owner !== null && u.owner !== seat && u.owner !== 'guardian' && u.type !== 'fighter' && u.type !== 'infantry')
   // R3.2: a command token already on the system this round cannot be spent there again
   if (sys.activatedBy.includes(seat)) return -w.priority
 
@@ -147,16 +231,47 @@ function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w
   let s = 0
   // Mecatol is the top prize, but only when something is actually gained: First Strike's unowned race, or a
   // foe present to push off it. Re-arming a Mecatol you already hold and no one is contesting earns nothing.
-  if (isMecatol && (neutralPlanets > 0 || enemyShips.length > 0)) s += w.objective * 2
-  // taking planets the foe holds pushes control-4, foothold and Mecatol's neighbours
-  if (foePlanets > 0 && takeSystem) s += w.objective * (1 + foePlanets)
-  if (systemId === homeOf(view, foe) && takeSystem) s += w.objective * 2 // foothold
-  // colonising a neutral system grows the economy and the controlled-planet count
-  if (neutralPlanets > 0 && takeSystem) s += w.economy * (1 + neutralPlanets)
+  if (isMecatol && takeSystem) {
+    if (view.custodiansToken) {
+      const readyInf = readyInfluenceInView(view, seat)
+      const canAffordCustodians = readyInf + view.players[seat].tradeGoods >= 6
+      if (canAffordCustodians) {
+        s += vpValue(w) * 1.5
+      } else {
+        s += w.objective * 0.5
+      }
+    } else {
+      if (neutralPlanets > 0 || hostilePlanets > 0 || hostileShips.length > 0) {
+        s += w.objective * 2
+      }
+    }
+  }
+
+  // taking planets from opponents pushes control-4, foothold and Mecatol's neighbours
+  if (hostilePlanets > 0 && takeSystem) s += w.objective * (1 + hostilePlanets)
+
+  const isEnemyHome = sys.home !== null && sys.home !== undefined && sys.home !== seat
+  if (isEnemyHome && takeSystem) {
+    if (hostileShips.length === 0) {
+      s += w.objective * 2
+    } else {
+      s += w.objective * 0.5
+    }
+  }
+
+  // colonising a neutral system grows the economy, traits, and the controlled-planet count
+  if (neutralPlanets > 0 && takeSystem) {
+    s += w.economy * (2 + neutralPlanets * 2) + w.priority
+    if (view.round <= 2) {
+      // Vital early expansion in rounds 1 & 2
+      s += w.priority
+    }
+  }
+
   // building at your own dock spends otherwise-idle resources; only worth a token if we can actually field it
-  if (build > 0) s += build
+  if (build > 0) s += build * w.economy
   // a contested fleet is a risk: only worth it at favourable odds; a lonely escort is a token wasted
-  if (enemyShips.length > 0) s -= w.military * Math.min(2, enemyShips.length)
+  if (hostileShips.length > 0) s -= w.military * Math.min(3, hostileShips.length)
 
   // command tokens are finite; count the spend, so a nothing-action loses to a strategy card or an end of turn
   s -= w.tempo * (1 + tokensSpentRatio(view, seat))
@@ -294,7 +409,11 @@ function objectiveFulfilled(view: GameStateView, seat: Seat, id: string): boolea
     case 'control_4_outside_home': return controlledOutsideHome(view, seat) >= 4
     case 'spend_6_resources': return me.resourcesSpentThisRound >= 6
     case 'trade_three_times': return me.trades >= 3
-    case 'more_ships': return shipCount(view, seat) > shipCount(view, other(view, seat))
+    case 'more_ships': {
+      const myShips = shipCount(view, seat)
+      const allOtherSeats = view.players.map(p => p.seat).filter(s => s !== seat)
+      return allOtherSeats.some(otherSeat => myShips > shipCount(view, otherSeat))
+    }
     default: return false
   }
 }
@@ -346,24 +465,49 @@ function scoreProduce(view: GameStateView, move: Move, seat: Seat, w: ScoreWeigh
   if (move.type !== 'produce' || Object.keys(move.units).length === 0) return -w.priority
   // Producing is almost always good: it spends idle resources. Value it by how many units we can field.
   const me = view.players[seat]
-  const foe = view.players[other(view, seat)]
-  return w.military + (me.vp < foe.vp ? w.objective * 0.5 : 0) + Object.keys(move.units).length
+  const leader = leaderVp(view, seat)
+  return w.military + (me.vp < leader ? w.objective * 0.5 : 0) + Object.keys(move.units).length
 }
 
 function scoreStrategic(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {
   if (move.type !== 'strategic') return 0
   const card = move.card
   let s = w.priority * 2
+
   if (card === 'imperial') {
-    s += vpValue(w) * (controlsMecatol(view, seat) ? 1 : 0)
-    s += countsCanScore(view, seat) * w.objective
+    const hasMecatol = controlsMecatol(view, seat)
+    const scoreable = countsCanScore(view, seat)
+    if (hasMecatol) s += vpValue(w)
+    s += scoreable * w.objective
+    if (!hasMecatol && scoreable === 0) {
+      s = w.priority * 0.2
+    }
   }
+
   if (card === 'leadership') s += w.tempo
-  if (card === 'technology') s += w.economy
-  if (card === 'trade') s += w.economy * (view.players[seat].commodities < FACTIONS[view.players[seat].faction].commodityValue ? 1 : 0.5)
-  if (card === 'warfare') s += w.tempo
-  if (card === 'diplomacy') s += w.military
-  // R9: Politics is the speaker token plus two action cards; Construction turns a card into structures.
+  if (card === 'technology') s += w.economy * 1.5
+  if (card === 'trade') s += w.economy * 2
+
+  if (card === 'warfare') {
+    const tokensOnBoard = Object.values(view.systems).filter(sys => sys.activatedBy.includes(seat)).length
+    if (tokensOnBoard === 0) {
+      s = w.tempo * 0.5
+    } else {
+      s += w.tempo * 2
+    }
+  }
+
+  if (card === 'diplomacy') {
+    const exhaustedPlanets = Object.values(view.systems)
+      .flatMap(sys => sys.planets)
+      .filter(p => p.owner === seat && p.exhausted).length
+    if (exhaustedPlanets === 0) {
+      s = w.priority * 0.2
+    } else {
+      s += w.economy * Math.min(2, exhaustedPlanets)
+    }
+  }
+
   if (card === 'politics') s += w.tempo + w.economy * 0.5
   if (card === 'construction') s += w.military * 0.5 + w.economy * 0.5
   return s

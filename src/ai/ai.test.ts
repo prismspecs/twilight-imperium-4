@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove, createGame, legalMoves } from '../engine'
-import { DUEL_CONFIG } from '../engine/testUtils'
+import { DUEL_CONFIG, toActionPhase } from '../engine/testUtils'
 import type { GameState, Seat } from '../engine/types'
 import { aiChoose, playMatch } from './index'
 import { PERSONALITIES, type ScoreWeights } from './score'
@@ -118,4 +118,63 @@ describe('AI opponent', () => {
     const r = playMatch(DUEL_CONFIG, 5, [offspring, PERSONALITIES.balanced])
     expect(r.failed).toBeNull()
   })
+
+  it('AI chooses tactical expansion over passing in round 1 when it has tactic tokens', () => {
+    // Start action phase in duel
+    let state = toActionPhase(42, 1)
+    // Mark seat 1's strategic actions as used so it is deciding between tactical and passing
+    state = {
+      ...state,
+      players: state.players.map((p, i) => i === 1 ? {
+        ...p,
+        strategyCards: p.strategyCards.map(sc => ({ ...sc, used: true })),
+      } : p),
+    }
+    const moves = legalMoves(state)
+    const hasPass = moves.some(m => m.type === 'pass')
+    const hasTactical = moves.some(m => m.type === 'startTactical')
+    expect(hasPass).toBe(true)
+    expect(hasTactical).toBe(true)
+    const chosen = aiChoose(state, moves, 1)
+    expect(chosen.type).not.toBe('pass')
+    expect(chosen.type).toBe('startTactical')
+  })
+
+  it('6-player game: AI players colonize neutral planets in round 1', () => {
+    const config = {
+      players: [
+        { faction: 'l1z1x' as const, color: 'blue' as const, name: 'P0' },
+        { faction: 'letnev' as const, color: 'red' as const, name: 'P1' },
+        { faction: 'sol' as const, color: 'yellow' as const, name: 'P2' },
+        { faction: 'hacan' as const, color: 'green' as const, name: 'P3' },
+        { faction: 'jolnar' as const, color: 'purple' as const, name: 'P4' },
+        { faction: 'xxcha' as const, color: 'black' as const, name: 'P5' },
+      ],
+      speaker: 0,
+    }
+    let state = createGame(config, 424281949)
+    let moves = 0
+    while (state.round === 1 && state.phase !== 'ended' && moves < 300) {
+      const options = legalMoves(state)
+      expect(options.length).toBeGreaterThan(0)
+      const move = aiChoose(state, options, state.active)
+      const r = applyMove(state, move, 5000 + moves)
+      if (!r.ok) {
+        expect(r.ok, `move ${move.type} failed: ${r.error}`).toBe(true)
+        break
+      }
+      expect(r.ok).toBe(true)
+      state = r.value
+      moves++
+    }
+
+    // Check that AI players (seats 1-5) colonized neutral planets outside their home systems
+    const aiColonizedOutsideHome = Object.values(state.systems)
+      .filter(sys => sys.home === null)
+      .flatMap(sys => sys.planets)
+      .filter(p => p.owner !== null && p.owner > 0)
+
+    expect(aiColonizedOutsideHome.length).toBeGreaterThanOrEqual(4)
+  })
 })
+

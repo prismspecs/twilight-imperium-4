@@ -44,7 +44,18 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
       gravityUsed = true
     }
   }
-  for (const { unitId, from } of candidates) {
+  const needsGroundForces = dest.planets.some(p => p.owner !== seat)
+  const candidateList = [...candidates]
+  if (needsGroundForces) {
+    candidateList.sort((a, b) => {
+      const shipA = state.systems[a.from]?.space.find(u => u.id === a.unitId)
+      const shipB = state.systems[b.from]?.space.find(u => u.id === b.unitId)
+      const capA = shipA ? unitStats(shipA.type, stats).capacity : 0
+      const capB = shipB ? unitStats(shipB.type, stats).capacity : 0
+      return capB - capA
+    })
+  }
+  for (const { unitId, from } of candidateList) {
     const src = state.systems[from]
     if (!src) continue
     const ship = src.space.find(u => u.id === unitId)
@@ -57,16 +68,31 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
     const carrying: number[] = []
     if (s.capacity > 0) {
       const room = s.capacity
-      // fighters in the source are cargo only if they are not themselves moving on their own (Fighter II)
-      for (const f of src.space) {
-        if (carrying.length >= room) break
-        if (f.owner === seat && f.type === 'fighter' && !selfMoving.has(f.id) && !movedIds.has(f.id)) carrying.push(f.id)
-      }
-      for (const p of src.planets) {
-        if (carrying.length >= room) break
-        for (const g of p.ground) {
+      if (needsGroundForces) {
+        // Prioritize ground forces first so the AI can colonize/invade planets
+        for (const p of src.planets) {
           if (carrying.length >= room) break
-          if (g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id)) carrying.push(g.id)
+          for (const g of p.ground) {
+            if (carrying.length >= room) break
+            if (g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id)) carrying.push(g.id)
+          }
+        }
+        for (const f of src.space) {
+          if (carrying.length >= room) break
+          if (f.owner === seat && f.type === 'fighter' && !selfMoving.has(f.id) && !movedIds.has(f.id)) carrying.push(f.id)
+        }
+      } else {
+        // fighters in the source are cargo only if they are not themselves moving on their own (Fighter II)
+        for (const f of src.space) {
+          if (carrying.length >= room) break
+          if (f.owner === seat && f.type === 'fighter' && !selfMoving.has(f.id) && !movedIds.has(f.id)) carrying.push(f.id)
+        }
+        for (const p of src.planets) {
+          if (carrying.length >= room) break
+          for (const g of p.ground) {
+            if (carrying.length >= room) break
+            if (g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id)) carrying.push(g.id)
+          }
         }
       }
     }

@@ -66,6 +66,7 @@ export interface GameStateView {
   draft: Seat[]
   publicObjectives: string[]
   mecatolCombatWinner: Seat | null
+  custodiansToken: boolean
   /** systemIds into which this seat can move at least one ship before a tactical starts here */
   projection: Set<string>
   players: PublicPlayer[]
@@ -107,6 +108,7 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     draft: state.draft,
     publicObjectives: state.publicObjectives,
     mecatolCombatWinner: state.mecatolCombatWinner,
+    custodiansToken: Boolean(state.custodiansToken),
     projection,
     players: state.players.map((p) => p.seat === seat ? forwardPlayer(p) : maskPlayer(p)),
     systems: state.systems,

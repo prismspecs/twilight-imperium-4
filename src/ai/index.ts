@@ -86,7 +86,7 @@ export interface MatchResult {
   moves: number
   rounds: number
   /** the seats' VP; -1 if the seat somehow failed to finish */
-  vp: [number, number]
+  vp: number[]
   /** a seat whose own AI move was rejected by the engine, so the trainer knows the run was corrupt */
   failed: Seat | null
 }
@@ -99,7 +99,7 @@ export interface MatchResult {
 export function playMatch(
   config: Parameters<typeof createGame>[0],
   seed: number,
-  weights: [Readonly<ScoreWeights>, Readonly<ScoreWeights>],
+  weights: Readonly<ScoreWeights>[] | [Readonly<ScoreWeights>, Readonly<ScoreWeights>],
   maxMoves = 600,
 ): MatchResult {
   let state = createGame(config, seed)
@@ -108,7 +108,8 @@ export function playMatch(
   while (state.phase !== 'ended' && moves < maxMoves) {
     const options = legalMoves(state)
     if (options.length === 0) { failed = state.active; break }
-    const move = aiChoose(state, options, state.active, weights[state.active])
+    const seatWeight = weights[state.active] ?? weights[0] ?? DEFAULT_WEIGHTS
+    const move = aiChoose(state, options, state.active, seatWeight)
     const r = applyMove(state, move, deriveSeed(seed, moves))
     if (!r.ok) { failed = state.active; break }
     state = r.value
@@ -118,7 +119,7 @@ export function playMatch(
     winner: state.phase === 'ended' ? state.winner : null,
     moves,
     rounds: state.round,
-    vp: [state.players[0].vp, state.players[1].vp],
+    vp: state.players.map(p => p.vp),
     failed,
   }
 }
