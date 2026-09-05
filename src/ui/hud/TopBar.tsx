@@ -7,7 +7,7 @@ import { MISC, PORTRAIT, strategyCardUrl, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
 import type { GameState, Seat, StrategyCardId } from '../../engine/types'
 
-const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
+const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 
 function CompactPlayer({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
   const player = state.players[seat]
