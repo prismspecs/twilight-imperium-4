@@ -25,9 +25,12 @@ export const PLAYABLE_ACTION_CARDS: readonly string[] = [
   'ghost_ship_1', 'ghost_ship_2',
   'industrial_initiative',
   'insubordination',
+  'lucky_shot',
   'mining_initiative',
+  'plague',
   'reactor_meltdown',
   'rise_of_a_messiah',
+  'tactical_bombardment',
   'unexpected_action_1', 'unexpected_action_2',
   'unstable_planet',
   'uprising',
@@ -37,7 +40,7 @@ export const PLAYABLE_ACTION_CARDS: readonly string[] = [
 const PLAYABLE = new Set(PLAYABLE_ACTION_CARDS)
 
 /** The printed card, with the copy number stripped: `focused_research_3` and its siblings share one effect. */
-function effectOf(cardId: string): string {
+export function effectOf(cardId: string): string {
   return cardId.replace(/_\d+$/, '')
 }
 
@@ -163,6 +166,33 @@ export function crippleDefensePlanets(state: GameState, seat: Seat): string[] {
     .map(({ planet }) => planet.id)
 }
 
+/** R9 Lucky Shot: systems with a planet of yours holding an enemy capital ship. */
+export function luckyShotSystems(state: GameState, seat: Seat): string[] {
+  return Object.keys(state.systems).filter(systemId => {
+    const sys = state.systems[systemId]
+    const hasPlanet = sys.planets.some(p => p.owner === seat)
+    return hasPlanet && sys.space.some(u => u.owner !== seat && (u.type === 'dreadnought' || u.type === 'cruiser' || u.type === 'destroyer'))
+  })
+}
+
+/** R9 Plague: planets controlled by other players holding infantry. */
+export function plaguePlanets(state: GameState, seat: Seat): string[] {
+  return planetsOnBoard(state)
+    .filter(({ planet }) => planet.owner !== null && planet.owner !== seat && planet.ground.some(u => u.type === 'infantry'))
+    .map(({ planet }) => planet.id)
+}
+
+/** R9 Tactical Bombardment: systems with your bombardment units and unexhausted enemy planets. */
+export function tacticalBombardmentSystems(state: GameState, seat: Seat): string[] {
+  return Object.keys(state.systems).filter(systemId => {
+    const sys = state.systems[systemId]
+    const hasBombardment = sys.space.some(u => u.owner === seat && (u.type === 'dreadnought' || u.type === 'warsun' || u.type === 'flagship'))
+      || sys.planets.some(p => p.owner === seat && p.structures.some(u => u.type === 'pds' && u.owner === seat))
+    const hasEnemyPlanets = sys.planets.some(p => p.owner !== null && p.owner !== seat && !p.exhausted)
+    return hasBombardment && hasEnemyPlanets
+  })
+}
+
 function controlledPlanetIds(state: GameState, seat: Seat): string[] {
   return planetsOnBoard(state).filter(({ planet }) => planet.owner === seat).map(({ planet }) => planet.id)
 }
@@ -171,7 +201,7 @@ function controlledPlanetIds(state: GameState, seat: Seat): string[] {
  * Resolve the printed effect of one action card. Every branch is the whole printed ability; a card whose
  * ability the engine cannot express is not in `PLAYABLE_ACTION_CARDS` and never reaches this switch.
  */
-function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCardParams): Result<GameState> {
+function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCardParams, seed = 0): Result<GameState> {
   switch (effectOf(cardId)) {
     case 'economic_initiative': {
       // "Ready each cultural planet you control." Playable with none, which readies nothing.
@@ -309,6 +339,45 @@ function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCar
       const dock = found.planet.structures.find(u => u.type === 'spacedock')
       return { ok: true, value: dock ? destroyUnits(state, found.systemId, [dock]) : state }
     }
+    case 'lucky_shot': {
+      const systemId = params.systemId
+      if (!systemId || !state.systems[systemId]) return { ok: false, error: 'R9: name a system' }
+      const sys = state.systems[systemId]
+      const hasPlanet = sys.planets.some(p => p.owner === seat)
+      if (!hasPlanet) return { ok: false, error: 'R9: you do not control a planet in that system' }
+      const targets = sys.space.filter(u => u.owner !== seat && (u.type === 'dreadnought' || u.type === 'cruiser' || u.type === 'destroyer'))
+      if (!targets.length) return { ok: false, error: 'R9: no eligible ship in that system' }
+      const targetUnit = params.unitId !== undefined ? targets.find(u => u.id === params.unitId) ?? targets[0] : targets[0]
+      return { ok: true, value: destroyUnits(state, systemId, [targetUnit]) }
+    }
+    case 'plague': {
+      const planetId = params.planetId
+      const found = planetId === undefined ? null : findPlanet(state, planetId)
+      if (!found || found.planet.owner === null || found.planet.owner === seat) {
+        return { ok: false, error: 'R9: name a planet controlled by another player' }
+      }
+      const infantry = found.planet.ground.filter(u => u.type === 'infantry')
+      if (!infantry.length) return { ok: false, error: 'R9: no infantry on that planet' }
+      const rng = mulberry32(seed || 1)
+      const doomed: Unit[] = []
+      for (const unit of infantry) {
+        const roll = Math.floor(rng() * 10) + 1
+        if (roll >= 6) doomed.push(unit)
+      }
+      return { ok: true, value: destroyUnits(state, found.systemId, doomed) }
+    }
+    case 'tactical_bombardment': {
+      const systemId = params.systemId
+      if (!systemId || !state.systems[systemId]) return { ok: false, error: 'R9: name a system' }
+      const sys = state.systems[systemId]
+      const hasBombardment = sys.space.some(u => u.owner === seat && (u.type === 'dreadnought' || u.type === 'warsun' || u.type === 'flagship'))
+        || sys.planets.some(p => p.owner === seat && p.structures.some(u => u.type === 'pds' && u.owner === seat))
+      if (!hasBombardment) return { ok: false, error: 'R9: you have no bombardment units in that system' }
+      const nextSystems = { ...state.systems }
+      const nextPlanets = sys.planets.map(p => (p.owner !== null && p.owner !== seat) ? { ...p, exhausted: true } : p)
+      nextSystems[systemId] = { ...sys, planets: nextPlanets }
+      return { ok: true, value: { ...state, systems: nextSystems } }
+    }
     default:
       return { ok: false, error: `R9: ${cardId} is not implemented yet` }
   }
@@ -342,7 +411,7 @@ function placeShip(state: GameState, seat: Seat, systemId: string, type: 'cruise
  * R9: play an action card as your action for the turn. The card leaves the hand for the discard pile whether
  * or not its effect changed anything, and the action is spent, exactly like a strategic or tactical action.
  */
-export function playActionCard(state: GameState, cardId: string, params: ActionCardParams | undefined): Result<GameState> {
+export function playActionCard(state: GameState, cardId: string, params: ActionCardParams | undefined, seed = 0): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is open' }
@@ -354,7 +423,7 @@ export function playActionCard(state: GameState, cardId: string, params: ActionC
   if (!def) return { ok: false, error: `unknown action card ${cardId}` }
   if (!PLAYABLE.has(cardId)) return { ok: false, error: `R9: ${cardId} is not implemented yet` }
   if (def.window !== 'Action') return { ok: false, error: `R9: ${def.name} is not played as an action` }
-  const played = resolve(state, seat, cardId, params ?? {})
+  const played = resolve(state, seat, cardId, params ?? {}, seed)
   if (!played.ok) return played
   const players = [...played.value.players] as GameState['players']
   const hand = [...players[seat].actionCards]
@@ -427,6 +496,12 @@ export function actionCardMoves(state: GameState, seat: Seat): Move[] {
           return crippleDefensePlanets(state, seat).map((planetId): Move => ({ type: 'playActionCard', cardId, params: { planetId } }))
         case 'reactor_meltdown':
           return meltdownPlanets(state).map((planetId): Move => ({ type: 'playActionCard', cardId, params: { planetId } }))
+        case 'lucky_shot':
+          return luckyShotSystems(state, seat).map((systemId): Move => ({ type: 'playActionCard', cardId, params: { systemId } }))
+        case 'plague':
+          return plaguePlanets(state, seat).map((planetId): Move => ({ type: 'playActionCard', cardId, params: { planetId } }))
+        case 'tactical_bombardment':
+          return tacticalBombardmentSystems(state, seat).map((systemId): Move => ({ type: 'playActionCard', cardId, params: { systemId } }))
         default:
           return []
       }

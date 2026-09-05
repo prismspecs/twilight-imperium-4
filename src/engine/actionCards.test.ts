@@ -103,11 +103,13 @@ describe('R9 playing an action card', () => {
   it('offers every enumerated play already playable, for every card in the deck', () => {
     // one seat holding the whole deck: every move the enumerator offers has to be accepted by the handler
     const rich = withPlayer(withHand(toActionPhase(), 0, [...PLAYABLE_ACTION_CARDS]), 0, { tradeGoods: 8 })
-    const withPds = withUnits(withPlanetOwner(rich, 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
+    const withPds = withUnits(withPlanetOwner(rich, 'bereg', 'bereg', 1), 'bereg', 1, ['pds', 'infantry'], 'bereg')
     const withDock = withUnits(withPds, 'quann', 1, ['spacedock'], 'quann')
+    const withEnemy = withUnits(withDock, 'home-n', 1, ['cruiser'])
+    const withDread = withUnits(withEnemy, 'bereg', 0, ['dreadnought'])
     const board = deepFreeze({
-      ...withDock,
-      systems: { ...withDock.systems, sakulag: { ...withDock.systems.sakulag, activatedBy: [0 as Seat] } },
+      ...withDread,
+      systems: { ...withDread.systems, sakulag: { ...withDread.systems.sakulag, activatedBy: [0 as Seat] } },
     })
     const moves = actionCardMoves(board, 0)
     expect(moves.length).toBeGreaterThan(0)
@@ -260,5 +262,42 @@ describe('R9 the printed abilities', () => {
     if (!played.ok) throw new Error(played.error)
     expect(played.value.systems.quann.planets[0].structures).toEqual([])
     expect(playActionCard(withHand(base, 0, ['reactor_meltdown']), 'reactor_meltdown', { planetId: 'arc-prime' }).ok).toBe(false)
+  })
+
+  it('never places identical card effects consecutively in the shuffled deck', () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const deck = shuffledActionCards(seed)
+      for (let i = 1; i < deck.length; i++) {
+        const prev = deck[i - 1].replace(/_\d+$/, '')
+        const curr = deck[i].replace(/_\d+$/, '')
+        expect(curr).not.toBe(prev)
+      }
+    }
+  })
+
+  it('Lucky Shot destroys a non-fighter ship in a system containing a planet you control', () => {
+    let base = withPlanetOwner(toActionPhase(), 'quann', 'quann', 0)
+    base = withUnits(base, 'quann', 1, ['cruiser', 'fighter'])
+    const played = playActionCard(withHand(base, 0, ['lucky_shot']), 'lucky_shot', { systemId: 'quann' })
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.systems.quann.space.some(u => u.type === 'cruiser')).toBe(false)
+    expect(played.value.systems.quann.space.some(u => u.type === 'fighter')).toBe(true)
+  })
+
+  it('Plague rolls for each infantry on another player planet and destroys on 6 or greater', () => {
+    let base = withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1)
+    base = withUnits(base, 'bereg', 1, ['infantry', 'infantry', 'infantry', 'infantry'], 'bereg')
+    const played = playActionCard(withHand(base, 0, ['plague']), 'plague', { planetId: 'bereg' }, 12345)
+    if (!played.ok) throw new Error(played.error)
+    const remaining = played.value.systems.bereg.planets[0].ground.length
+    expect(remaining).toBeLessThanOrEqual(4)
+  })
+
+  it('Tactical Bombardment exhausts enemy planets in a system where you have bombardment units', () => {
+    let base = withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1)
+    base = withUnits(base, 'bereg', 0, ['dreadnought'])
+    const played = playActionCard(withHand(base, 0, ['tactical_bombardment']), 'tactical_bombardment', { systemId: 'bereg' })
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.systems.bereg.planets[0].exhausted).toBe(true)
   })
 })

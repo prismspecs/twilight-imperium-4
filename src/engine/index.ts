@@ -39,7 +39,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'produce': return produce(logged, move.units, move.planets, move.tradeGoods)
       case 'strategic': return strategic(logged, move.card, move.params, seed)
       case 'secondary': return secondary(logged, move.card, move.accept, move.params, seed)
-      case 'playActionCard': return playActionCard(logged, move.cardId, move.params)
+      case 'playActionCard': return playActionCard(logged, move.cardId, move.params, seed)
       case 'research': return research(logged, move.techId)
       case 'shipyard': return shipyard(logged, move.planetId, move.planets, move.tradeGoods)
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
