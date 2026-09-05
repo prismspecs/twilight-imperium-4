@@ -1,3 +1,4 @@
+import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
@@ -210,6 +211,8 @@ export function legalMoves(state: GameState): Move[] {
   }
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
   for (const card of unusedCards(state, seat)) out.push(...primaryMoves(state, seat, card))
+  // R9: an "ACTION:" card is a whole action, so it belongs beside the tactical and strategic ones
+  out.push(...actionCardMoves(state, seat))
   if (canInheritance(state, seat)) {
     for (const techId of inheritanceTechs(state, seat)) out.push({ type: 'research', techId, via: 'inheritance' })
   }
@@ -246,6 +249,10 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'land' && candidate.planetId === move.planetId
     case 'strategic':
       return candidate.type === 'strategic' && candidate.card === move.card
+    // R9: which card it is identifies the move; its target is checked by `playActionCard`, the only place
+    // that knows what the printed ability needs
+    case 'playActionCard':
+      return candidate.type === 'playActionCard' && candidate.cardId === move.cardId
     case 'secondary':
       return candidate.type === 'secondary' && candidate.card === move.card && candidate.accept === move.accept
     case 'research':

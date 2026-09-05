@@ -211,7 +211,10 @@ describe('legal moves in every phase', () => {
 // the deterministic paths, and seed 203 exercises both `bombard` and `groundCombatRound`.
 // 238 came in when Technology stopped offering the card holder a secondary on their own card: that extra
 // legal move had been nudging the RNG draw onto a path that reached `bombard`; none of the other seeds did.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238]
+// 24 and 27 came in with the action card deck: an "ACTION:" card in hand is one more legal move on every
+// turn, which reshuffled the paths again and left no seed reaching `bombard` or accepting the Trade
+// secondary. 24 reaches `bombard`, `groundCombatRound` and `retreat`; 27 accepts the Trade secondary.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -226,7 +229,7 @@ function runGame(seed: number): GameRun {
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
-  'shipyard', 'tradePost', 'postAbility', 'pass', 'status',
+  'shipyard', 'tradePost', 'postAbility', 'playActionCard', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 

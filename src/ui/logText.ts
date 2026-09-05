@@ -1,3 +1,4 @@
+import { actionCardName } from '../engine'
 import { CARD_NAME, planetLabel, systemLabel, techLabel } from './format'
 import type { GameState, LogEntry, Move, Owner, Seat, UnitType } from '../engine/types'
 
@@ -37,6 +38,7 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'endTactical': return `${name} ends the tactical action`
     case 'endTurn': return `${name} ends their turn`
     case 'strategic': return `${name} plays ${CARD_NAME[move.card]}`
+    case 'playActionCard': return `${name} plays the action card ${actionCardName(move.cardId)}`
     case 'secondary': return `${name} ${move.accept ? 'uses' : 'declines'} the ${CARD_NAME[move.card]} secondary`
     case 'research': return `${name} researches ${techLabel(move.techId)} with Inheritance Systems`
     case 'shipyard': return `${name} builds an emergency shipyard on ${planetLabel(state, move.planetId)}`

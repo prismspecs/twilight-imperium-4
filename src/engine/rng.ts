@@ -17,6 +17,18 @@ export function rollDice(rng: Rng, count: number): number[] {
   return out
 }
 
+/** A Fisher-Yates shuffle of card ids off a seeded stream; the input is never mutated. */
+export function shuffleIds(ids: readonly string[], rng: Rng): string[] {
+  const out = [...ids]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const swap = out[i]
+    out[i] = out[j]
+    out[j] = swap
+  }
+  return out
+}
+
 export function deriveSeed(seed: number, salt: number): number {
   let h = (seed ^ Math.imul(salt + 1, 0x9e3779b1)) >>> 0
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0

@@ -31,6 +31,10 @@ export interface PublicPlayer {
   tradeGoods: number
   commodities: number
   techs: string[]
+  /** R9: the seat's own hand. Another seat's hand is concealed, so it comes through empty. */
+  actionCards: string[]
+  /** R9: how many action cards the player holds, which is public even when the cards are not. */
+  actionCardCount: number
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
   scoredObjectives: string[]
@@ -76,7 +80,12 @@ export interface GameStateView {
 }
 
 function forwardPlayer(player: Player): PublicPlayer {
-  return { ...player }
+  return { ...player, actionCardCount: player.actionCards.length }
+}
+
+/** R9: another seat's action cards are face down. The count is public, the cards themselves are not. */
+function maskPlayer(player: Player): PublicPlayer {
+  return { ...player, actionCards: [], actionCardCount: player.actionCards.length }
 }
 
 /**
@@ -99,7 +108,7 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     publicObjectives: state.publicObjectives,
     mecatolCombatWinner: state.mecatolCombatWinner,
     projection,
-    players: state.players.map((p) => forwardPlayer(p)),
+    players: state.players.map((p) => p.seat === seat ? forwardPlayer(p) : maskPlayer(p)),
     systems: state.systems,
     tactical: state.tactical,
     turnDone: state.turnDone,

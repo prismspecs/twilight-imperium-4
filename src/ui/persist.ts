@@ -1,3 +1,4 @@
+import { shuffledActionCards, shuffledAgendas } from '../engine/setup'
 import type { GameConfig, GameState } from '../engine/types'
 import type { Session } from './store'
 
@@ -71,9 +72,17 @@ function isSummary(value: unknown): value is GameSummary {
  * `turnDone` false (the action is still open), and for a game from before the trade posts had names, the
  * pair the status phase would have rolled anyway, unused.
  */
-function normalise(state: GameState): GameState {
+function normalise(state: GameState, seed: number): GameState {
   const raw = state as unknown as Partial<GameState> & { turnDone?: unknown; posts?: unknown }
   let next = state
+  // R9/R10: a game saved before the action card and agenda decks existed gets the decks its own seed would
+  // have shuffled, with empty hands — the reading that leaves the game in progress playable.
+  if (!Array.isArray(raw.actionCardDeck)) {
+    next = { ...next, actionCardDeck: shuffledActionCards(seed), actionCardDiscard: [], agendaDeck: shuffledAgendas(seed) }
+  }
+  if (Array.isArray(next.players)) {
+    next = { ...next, players: next.players.map(p => ({ ...p, actionCards: Array.isArray(p.actionCards) ? p.actionCards : [] })) }
+  }
   if (typeof raw.turnDone !== 'boolean') next = { ...next, turnDone: false }
   if (typeof raw.posts !== 'object' || raw.posts === null) {
     next = { ...next, posts: { west: 'sarnex', east: 'kesh' }, postAbilityUsed: { west: false, east: false } }
@@ -185,7 +194,7 @@ function migrate(): void {
   if (isLegacy(parsed)) {
     store({
       code: newGameCode(hasGame), seed: parsed.seed, minutes: parsed.minutes,
-      state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
+      state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null,
     })
   }
   remove(LEGACY_KEY)
@@ -219,7 +228,7 @@ export function loadGame(code: string): Session | null {
   if (!isPayload(parsed)) return null
   return {
     code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
-    state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
+    state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null,
     config: parsed.config,
   }
 }

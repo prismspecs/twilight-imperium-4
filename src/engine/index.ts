@@ -1,3 +1,4 @@
+import { playActionCard } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { research, shipyard, tradePost } from './componentActions'
@@ -37,6 +38,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'produce': return produce(logged, move.units, move.planets, move.tradeGoods)
       case 'strategic': return strategic(logged, move.card, move.params)
       case 'secondary': return secondary(logged, move.card, move.accept, move.params)
+      case 'playActionCard': return playActionCard(logged, move.cardId, move.params)
       case 'research': return research(logged, move.techId)
       case 'shipyard': return shipyard(logged, move.planetId, move.planets, move.tradeGoods)
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
@@ -60,6 +62,7 @@ export { isAi } from './types'
 export type * from './types'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
+export { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, actionCardName } from './actionCards'
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
 export { homeSystemOf } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'

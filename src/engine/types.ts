@@ -49,6 +49,7 @@ export interface Player {
   tokens: { tactic: number; fleet: number; strategy: number }
   tradeGoods: number; commodities: number
   techs: string[]                  // tech ids from data/techs.ts
+  actionCards: string[]            // R9: the hand, card ids from data/actionCards.ts; hidden from other seats
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
   scoredObjectives: string[]; scoredMandates: string[]
@@ -93,6 +94,9 @@ export interface GameState {
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
   objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
   secretObjectiveDeck: string[]                          // unrevealed secret objectives
+  actionCardDeck: string[]                               // R9: face-down draw pile, top card first
+  actionCardDiscard: string[]                            // R9: played and discarded cards, reshuffled when the deck runs out
+  agendaDeck: string[]                                   // R10: the agenda deck, top card first; Politics looks at its top two
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: Player[]
   systems: Record<string, System>
@@ -134,6 +138,7 @@ export type Move =
   | { type: 'endTurn' }                                  // R3.2: the action is spent, hand the turn over
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }
   | { type: 'secondary'; card: StrategyCardId; accept: boolean; params?: StrategicParams }
+  | { type: 'playActionCard'; cardId: string; params?: ActionCardParams }   // R9: an "ACTION:" card, played as your whole action
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
@@ -151,6 +156,17 @@ export interface StrategicParams {
   shareWith?: Seat[]                // Trade primary: the other players who replenish without paying
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+
+/**
+ * R9: what an action card needs to name its target. Which of these fields matter is decided by the card
+ * itself, never by which fields the caller filled in — the same contract as `PostAbilityParams`.
+ */
+export interface ActionCardParams {
+  planetId?: string      // Frontline Deployment, Mining Initiative, Uprising, Unstable Planet, Cripple Defenses, Reactor Meltdown
+  systemId?: string      // War Effort, Ghost Ship, Unexpected Action
+  techId?: string        // Focused Research
+  seat?: Seat            // Insubordination: whose tactic pool loses a token
+}
 
 /** R3.2: who has to answer the open strategy-card secondary, in what order, and who played it. */
 export interface SecondaryWindow {

@@ -1,4 +1,5 @@
 import { objectiveDef } from '../data/objectives'
+import { drawActionCards } from './actionCards'
 import { distributeTokens } from './economy'
 import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
@@ -68,6 +69,10 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
       publicObjectives: [...next.publicObjectives, revealed.id],
       log: [...next.log, { t: 'info', text: `objective revealed: ${revealed.text}` }],
     }
+  }
+  // R3.3 step 3: each player draws 1 action card, in turn order from the speaker
+  for (let i = 0; i < next.players.length; i++) {
+    next = drawActionCards(next, (next.speaker + i) % next.players.length, 1, deriveSeed(seed, 110 + i))
   }
   const systems: Record<string, System> = Object.fromEntries(Object.entries(next.systems).map(([id, sys]): [string, System] => [id, {
     ...sys, activatedBy: [], planets: sys.planets.map(p => ({ ...p, exhausted: false })),

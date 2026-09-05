@@ -1,9 +1,11 @@
 import { FACTIONS } from '../data/factions'
+import { AGENDAS } from '../data/agendas'
 import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
 import { SECRET_OBJECTIVES, STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
+import { PLAYABLE_ACTION_CARDS } from './actionCards'
 import { generateGalaxy } from './galaxy'
-import { deriveSeed, mulberry32 } from './rng'
+import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
@@ -30,7 +32,7 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
   return {
     seat, faction: cfg.faction, color: cfg.color, name: cfg.name, vp: 0,
     tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodityValue,
-    techs: [...f.startingTechs], strategyCards: [], passed: false,
+    techs: [...f.startingTechs], actionCards: [], strategyCards: [], passed: false,
     scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
@@ -65,17 +67,6 @@ export function postRollEntry(posts: { west: PostId; east: PostId }): string {
   return `Trade posts: ${POSTS[posts.west].name} to the west, ${POSTS[posts.east].name} to the east`
 }
 
-function shuffleIds(ids: readonly string[], rng: () => number): string[] {
-  const out = [...ids]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    const swap = out[i]
-    out[i] = out[j]
-    out[j] = swap
-  }
-  return out
-}
-
 /**
  * TI4 public objective deck: 5 Stage I objectives placed on top of 5 Stage II objectives.
  * Shuffled from the game seed, so each game draws a unique set of 10 objectives.
@@ -92,6 +83,26 @@ const SECRET_OBJECTIVES_SALT = 94
 export function shuffledSecretObjectives(seed: number): string[] {
   const rng = mulberry32(deriveSeed(seed, SECRET_OBJECTIVES_SALT))
   return shuffleIds(SECRET_OBJECTIVES.map(o => o.id), rng)
+}
+
+const ACTION_CARDS_SALT = 95
+const AGENDAS_SALT = 96
+
+/**
+ * R9: the action card deck, shuffled from the game seed. It holds the base-game cards the engine can play in
+ * full (`PLAYABLE_ACTION_CARDS`), copies included; a card whose printed ability the engine cannot yet resolve
+ * is left out of the deck rather than dealt as a blank.
+ */
+export function shuffledActionCards(seed: number): string[] {
+  return shuffleIds(PLAYABLE_ACTION_CARDS, mulberry32(deriveSeed(seed, ACTION_CARDS_SALT)))
+}
+
+/**
+ * R10: the 50 base-game agendas, shuffled from the game seed. The agenda phase is not implemented yet, but
+ * the deck is real: the Politics primary looks at its top two cards and puts them back in the order it likes.
+ */
+export function shuffledAgendas(seed: number): string[] {
+  return shuffleIds(AGENDAS.map(a => a.id), mulberry32(deriveSeed(seed, AGENDAS_SALT)))
 }
 
 export function createGame(config: GameConfig, seed: number): GameState {
@@ -138,6 +149,9 @@ export function createGame(config: GameConfig, seed: number): GameState {
     publicObjectives: [order[0]],
     objectiveOrder: order,
     secretObjectiveDeck: secretDeck.slice(config.players.length),
+    actionCardDeck: shuffledActionCards(seed),
+    actionCardDiscard: [],
+    agendaDeck: shuffledAgendas(seed),
     mecatolCombatWinner: null,
     players,
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
