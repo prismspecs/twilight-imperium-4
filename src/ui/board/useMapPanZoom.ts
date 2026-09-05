@@ -21,7 +21,20 @@ const MAX_ZOOM = 3.0
 // 50ms window regardless of where it landed. Tile.tsx now makes that call itself, from its own pointerdown
 // origin (AsyncTI4/ti4_web_new's SystemHexTarget.tsx pattern) - this threshold is only about when panning
 // itself should start.
-const DRAG_THRESHOLD = 5
+/**
+ * How far the pointer must travel before a hold-and-move pans the map.
+ *
+ * This is not a comfort setting, it decides whether a tile click happens at all. A `click` only fires when
+ * mousedown and mouseup land on the same element. Real mouse and trackpad hardware always drifts a few
+ * pixels during an ordinary click; a scripted click never does. So while this sat at 5px, an ordinary click
+ * panned the board by those few pixels, the tile slid out from under the cursor, mouseup landed on a
+ * different element, and the browser fired no click event at all - the tile's own handler never ran and
+ * there was nothing to debug. Keyboard activation (Tab then Space) still worked, which is the tell.
+ *
+ * Keep this comfortably above ordinary click jitter, and at or below Tile.tsx's CLICK_DRAG_TOLERANCE so a
+ * gesture that was too small to pan is never then rejected as a drag by the tile.
+ */
+const DRAG_THRESHOLD = 14
 
 export function useMapPanZoom(): PanZoomState {
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })

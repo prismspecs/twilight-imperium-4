@@ -14,7 +14,7 @@ const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
 /** AsyncTI4/ti4_web_new's SystemHexTarget.tsx: a pan that ends over a tile still fires click, so the tile
  * checks its own pointerdown-to-click travel rather than relying on a shared, timing-based "just panned"
  * flag from the pan/zoom handler - the map's own drag threshold is for when panning itself should start. */
-const CLICK_DRAG_TOLERANCE = 6
+const CLICK_DRAG_TOLERANCE = 14
 
 function colourOf(state: GameState, owner: Owner): Color | 'grey' {
   return owner === 'guardian' ? 'grey' : state.players[owner].color
