@@ -329,3 +329,83 @@ Delivered this iteration:
 
 
 
+## Iteration 15 — action cards, agendas, Politics and Construction (steps 5 and 6, partly)
+
+### BLOCKER from iteration 10 RESOLVED — base/PoK card filtering
+
+The /tmp/ti4-rules decks carry no per-card set label, which blocked importing base-only action cards and
+agendas. The AsyncTI4 front-end repo (`AsyncTI4/ti4_web_new`, cloned to the session scratchpad) carries the
+same catalogue with a per-card `source` field (`"base"`, `"pok"`, `"codex1"`, `"ds"`, ...). Filtering on
+`source: "base"` yields exactly 101 action card printings and exactly 50 agendas — and 50 is the known size
+of the base agenda deck, which is the cross-check that the filter is the right one. The same repo's
+`strategyCards.ts` was used as the printed text for Politics (`pok3politics`, `source: "base"`) and
+Construction (`base4`), rather than memory. The user confirmed there is no licensing obstacle to the data.
+
+Ruling — ids: the imported ids are generated from the printed name (`rise_of_a_messiah`), with `_1`, `_2`, ...
+for the duplicate printings the deck really holds (`focused_research_1..4`). The AsyncTI4 aliases
+(`f_researched3`) are not carried over; the printed name is the link back to the source.
+
+### Ruling — which action cards a game's deck holds
+
+CLAUDE.md: a card offers its whole printed ability, never a convenient stub. 101 printings hook into combat,
+invasion, the agenda phase and the strategy phase through *reaction windows* the engine has no way to open.
+Rather than deal blanks, `src/data/actionCards.ts` is the whole printed catalogue and
+`PLAYABLE_ACTION_CARDS` (src/engine/actionCards.ts) is the deck: the 14 base "ACTION:" cards, 20 printings,
+whose timing the action phase already models (a card played as your whole action, on your own turn).
+
+In the deck: Cripple Defenses, Economic Initiative, Focused Research x4, Frontline Deployment x2, Ghost Ship
+x2, Industrial Initiative, Insubordination, Mining Initiative, Reactor Meltdown, Rise of a Messiah,
+Unexpected Action x2, Unstable Planet, Uprising, War Effort.
+
+Not in the deck yet (data only): the other 6 "ACTION:" cards whose effect needs machinery that does not
+exist — Lucky Shot and Plague (a unit-target and a dice roll on a card), Repeal Law and Spy and Signal
+Jamming and Tactical Bombardment (laws, hidden hands, adjacency-from-your-ships) — plus every card with a
+reaction window. `docs/superpowers/plans/2026-09-05-reaction-windows.md` is the follow-up plan for those.
+
+Smaller rulings taken while implementing:
+- Hand limit 7 is enforced the moment a draw would exceed it (LRR "if a player ever has more than seven"),
+  and the surplus discarded is the freshly drawn card, because there is no interface yet for choosing which
+  card to throw away. When one exists the choice becomes the player's.
+- "Destroy up to 3 infantry" (Unstable Planet) resolves at the maximum; the engine takes the whole "up to".
+- Enumeration only offers plays the handler accepts: War Effort and Ghost Ship check the fleet pool before
+  offering a system, Uprising only ready non-home planets of other players, and so on.
+- Each player draws 1 action card in the status phase (R3.3 step 3). The deck reshuffles out of the discard
+  pile when it runs dry; with both empty, a draw says so in the log and draws nothing.
+- Another seat's hand is masked in the AI fog view: `actionCards: []`, `actionCardCount` public.
+
+### Ruling — the agenda deck is real, the agenda phase is not
+
+All 50 base agendas are imported and `agendaDeck` is shuffled from the game seed at setup, because the
+Politics primary genuinely looks at its top two cards and puts them back in any order. When the agenda phase
+lands (roadmap item 6) it reveals from this same deck in this same order; nothing here is a placeholder.
+
+### Politics (initiative 3) and Construction (initiative 4)
+
+Printed text verified against the AsyncTI4 catalogue. Politics: choose a player other than the speaker (the
+card holder may take it themselves), draw 2 action cards, look at the top 2 agenda cards and put each back on
+top or bottom in any order (`agendaTop`/`agendaBottom`, each peeked card exactly once; naming nothing leaves
+them as they were, which is one of the legal arrangements). Secondary: 1 strategy token, 2 action cards.
+Construction: place 1 PDS or 1 space dock, then 1 PDS, on planets you control, honouring the reinforcements
+and the printed per-planet limits (1 space dock, 2 PDS). Secondary: the strategy token lands in a system of
+your choice and may bring 1 space dock or 1 PDS on a planet you control there.
+
+Consequences of having all eight cards, each taken deliberately:
+- The draft: 2 to 4 players now draft 2 cards each in snake order (four players picking twice is exactly the
+  eight cards); 5 and 6 players draft 1 each. Previously 4 players drafted 1 each, because there were 6 cards.
+- The speaker token no longer rotates in the status phase. Rotation was a stand-in for the missing Politics
+  card; keeping both would move the token twice a round. Setup names the first speaker, Politics moves it.
+- `strategic()` and `secondary()` now take the move's seed, because drawing action cards may have to reshuffle
+  the discard pile and all randomness comes from the seed passed in.
+- docs/spec/game-rules.md: the stale "no Construction, no action cards" statements are corrected and a new
+  section 9 describes the decks. The spec still otherwise describes the retired 2-player duel.
+
+### Open, deliberately not done here
+
+- PDS II (and Space Dock II is in `data/techs.ts` but not wired to any stat change) — Construction makes PDS
+  buildable, so the unit upgrade is now worth having. Separate piece of work: it needs the upgraded PDS stats
+  (space cannon 5, 2 dice, range 1 into adjacent systems) which the combat code does not model yet.
+- The 80 action cards with reaction windows.
+- The agenda phase itself.
+
+Verification: 576 tests, tsc clean, lint clean, `npm run ai:stress -- 300` clean (300/300). A 20-game AI
+sample plays both new cards as primaries and secondaries and plays all 14 action cards.

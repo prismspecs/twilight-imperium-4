@@ -31,8 +31,15 @@ objectives (most are 2-player opponent references) remain the main N-player gaps
 2. Full data import (factions, techs/upgrades, objectives, action cards, agendas, promissory notes, 8 strategy cards, map tiles/planets, anomalies, wormholes).
 3. Full setup + draft (map gen, faction/colour pick, speaker, starting units/techs, decks, deals).
 4. Full round structure: strategy (8 cards, initiative), action (tactical/strategic/component/pass), agenda (new), status.
-5. Politics + Construction strategy cards.
+   ✅ strategy phase drafts all 8 cards (2-4 players pick 2 each, 5-6 pick 1); agenda phase still missing.
+5. Politics + Construction strategy cards. ✅ done — printed primary and secondary for both, initiative 3 and 4.
 6. Agendas, action cards, promissory note mechanics.
+   - Action cards: ✅ deck, hands, draw (1 each in the status phase), hand limit 7, discard and reshuffle, and
+     the 14 base "ACTION:" cards implemented and playable. The ~80 cards with reaction windows are imported as
+     data and wait for `2026-09-05-reaction-windows.md`.
+   - Agendas: ✅ all 50 base agendas imported and the deck shuffled into state (Politics reorders its top two).
+     The agenda phase itself is still to build.
+   - Promissory notes: not started.
 7. Faction abilities across 17 factions.
 8. Bots for N players.
 9. UI: setup for up to 6 players, 6-player board, new panels.
