@@ -82,14 +82,19 @@
   --player-4: #9333ea;
   --player-5: #06b6d4;
 
-  /* ---- Rounding ------------------------------------------------------- */
-  --radius-hairline: 1px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-panel: 6px;
-  --radius-soft: 8px;
-  --radius-pill: 999px;
+  /* ---- Rounding -------------------------------------------------------
+     Every corner in this interface is square. The tokens stay so the scale
+     remains one decision in one place, but they are all 0: a rounded corner
+     dates the whole console look this design is after. Circles are a
+     different thing and keep their `border-radius: 50%` (colour swatches,
+     planet discs, tokens) - a disc is a shape, not a softened corner. */
+  --radius-hairline: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-panel: 0;
+  --radius-soft: 0;
+  --radius-pill: 0;
 
   /* ---- Spacing scale -------------------------------------------------- */
   --sp-seam-1: 1px;
@@ -529,7 +534,7 @@ button { font-family: inherit; }
   background-size: 114px 76px;
   background-position: -4px -22px;
   background-color: var(--graphite-socket);
-  border-radius: 2px;
+  border-radius: 0;
 }
 .player-strip .pinfo { min-width: 0; }
 .player-strip .namerow { display: flex; align-items: center; gap: 4px; }
@@ -582,14 +587,14 @@ button { font-family: inherit; }
   width: 60px;
   flex: none;
   background: var(--alpha-separator);
-  border-radius: 1px;
+  border-radius: 0;
 }
 .player-strip .runbar i {
   position: absolute;
   left: 0; top: -1px;
   height: 4px;
   background: linear-gradient(90deg, transparent, var(--accent-blue));
-  border-radius: 1px;
+  border-radius: 0;
 }
 .player-strip .chip {
   font-family: var(--font-display);
@@ -1046,7 +1051,7 @@ button { font-family: inherit; }
   width: 9px; height: 9px;
   transform: rotate(45deg);
   flex: none;
-  border-radius: 1px;
+  border-radius: 0;
 }
 .tdot.blue { background: #4f8ae8; }
 .tdot.red { background: #d64a4a; }
