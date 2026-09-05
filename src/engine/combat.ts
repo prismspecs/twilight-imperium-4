@@ -267,6 +267,12 @@ export function repairAfterRound(state: GameState, systemId: string, owner: Owne
 /** A combat round's hits; the round 0 pre-combat steps never repair (R4.1 step 4, Duranium Armor). */
 const isRoundContext = (context: string): boolean => context.startsWith('combat round')
 
+function summarizeUnitTypes(types: readonly UnitType[]): string {
+  const counts: Partial<Record<UnitType, number>> = {}
+  for (const t of types) counts[t] = (counts[t] ?? 0) + 1
+  return Object.entries(counts).map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`).join(', ')
+}
+
 /**
  * R4.1 step 4: hands a batch of hits to the owner of the ships. The engine resolves it itself for the guardian
  * fleet (which has no player) and whenever rule 4 leaves no real decision, logging what it did; otherwise the
@@ -287,7 +293,23 @@ function resolveHits(state: GameState, systemId: string, owner: Owner, groups: H
   const auto = autoAssign(units, groups, sOwner, nes)
   const taken = coverage(units, auto.destroyed, units.filter(u => auto.sustainedIds.includes(u.id)), groups, nes)
   const next = applyAssignment(state, systemId, owner, auto.units, auto.destroyed)
-  const logged = taken ? { ...next, log: [...next.log, { t: 'info' as const, text: `${taken} hits assigned automatically in ${systemId}` }] } : next
+  let logged = taken ? { ...next, log: [...next.log, { t: 'info' as const, text: `${taken} hits assigned automatically in ${systemId}` }] } : next
+  if (taken > 0 && (auto.sustainedIds.length > 0 || auto.destroyed.length > 0)) {
+    const ownerName = owner === 'guardian' ? 'The guardian fleet' : state.players[owner].name
+    const details: string[] = []
+    if (auto.sustainedIds.length > 0) {
+      const sustainedTypes = units.filter(u => auto.sustainedIds.includes(u.id)).map(u => u.type)
+      details.push(`${summarizeUnitTypes(sustainedTypes)} sustained`)
+    }
+    if (auto.destroyed.length > 0) {
+      const destroyedTypes = auto.destroyed.map(u => u.type)
+      details.push(`${summarizeUnitTypes(destroyedTypes)} destroyed`)
+    }
+    logged = {
+      ...logged,
+      log: [...logged.log, { t: 'info' as const, text: `${ownerName} loses: ${details.join(', ')}` }],
+    }
+  }
   return repair(logged, auto.sustainedIds)
 }
 
@@ -493,8 +515,16 @@ function antiFighterBarrage(state: GameState, ctx: Ctx, seed: number): GameState
       hits += roll.hits
     }
     if (!rolls.length) continue
+    const killed = shipsOf(next.systems[ctx.systemId], foe).filter(u => u.type === 'fighter').slice(0, hits)
     next = { ...next, log: [...next.log, { t: 'roll', owner: side, rolls, context: 'anti-fighter barrage' }] }
-    next = destroyUnits(next, ctx.systemId, shipsOf(next.systems[ctx.systemId], foe).filter(u => u.type === 'fighter').slice(0, hits))
+    next = destroyUnits(next, ctx.systemId, killed)
+    if (killed.length > 0) {
+      const foeName = foe === 'guardian' ? 'The guardian fleet' : next.players[foe].name
+      next = {
+        ...next,
+        log: [...next.log, { t: 'info' as const, text: `${foeName} loses ${killed.length} fighter${killed.length === 1 ? '' : 's'} to anti-fighter barrage` }],
+      }
+    }
   }
   return next
 }

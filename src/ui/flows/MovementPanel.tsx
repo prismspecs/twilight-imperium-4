@@ -99,7 +99,7 @@ export function MovementPanel() {
     <div className="drawer bottom" data-testid="movement-panel">
       <div className="in">
         <div className="dhead">
-          <span className="tab">Movement into {systemLabel(target)}</span>
+          <span className="tab">Movement into {systemLabel(target, state)}</span>
           <span className="sub">Pick the ships that move, then the units they carry.</span>
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={totalPicked === 0} onClick={submit}>Move ships</button>
@@ -107,7 +107,7 @@ export function MovementPanel() {
               disabled={!legal.some(m => m.type === 'endMovement')} onClick={() => apply({ type: 'endMovement' })}>Done moving</button>
           </div>
         </div>
-        {obstacle ? <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target))}</div> : null}
+        {obstacle ? <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target, state))}</div> : null}
         {origins.map(from => {
           const movers = moversAt(state, options, from)
           const chosen = chosenAt(from, movers)
@@ -119,7 +119,7 @@ export function MovementPanel() {
           return (
             <div className="mvorigin" key={from} data-testid={`origin-${from}`}>
               <div className="mvhead">
-                <span className="lbl bul">Ships in {systemLabel(from)}</span>
+                <span className="lbl bul">Ships in {systemLabel(from, state)}</span>
                 <span className="sub" data-testid={`capacity-${from}`}>Capacity {room}, carrying {carried}</span>
               </div>
               <div className="mvunits">

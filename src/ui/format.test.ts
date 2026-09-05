@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { relativeTime } from './format'
+import { relativeTime, systemLabel } from './format'
 
 const NOW = Date.UTC(2026, 8, 3, 12, 0, 0)
 const SECOND = 1000
@@ -35,3 +35,34 @@ describe('relative time', () => {
     expect(relativeTime(NOW - 400 * DAY, NOW)).toBe('over a year ago')
   })
 })
+
+describe('systemLabel and 000, 100, 200 tile numbering system', () => {
+  it('formats duel map systems with their 000 and 100 coordinates', () => {
+    expect(systemLabel('mecatol')).toBe('[000] Mecatol Rex')
+    expect(systemLabel('quann')).toBe('[103] Quann')
+    expect(systemLabel('bereg')).toBe('[104] Bereg')
+    expect(systemLabel('starpoint')).toBe('[101] Starpoint')
+    expect(systemLabel('home-s')).toBe('[102] Arc Prime')
+    expect(systemLabel('sakulag')).toBe('[106] Sakulag')
+  })
+
+  it('formats generated galaxy systems with state coordinates', () => {
+    const mockState = {
+      systems: {
+        'tile-25': { id: 'tile-25', name: 'Quann', q: 1, r: 0 },
+        'tile-39': { id: 'tile-39', name: 'Alpha Wormhole', q: 2, r: -1 },
+        'tile-40': { id: 'tile-40', name: 'Beta Wormhole', q: 0, r: 2 },
+      },
+    } as unknown as Parameters<typeof systemLabel>[1]
+
+    expect(systemLabel('tile-25', mockState)).toBe('[103] Quann')
+    expect(systemLabel('tile-39', mockState)).toBe('[206] Alpha Wormhole')
+    expect(systemLabel('tile-40', mockState)).toBe('[203] Beta Wormhole')
+  })
+
+  it('falls back gracefully to tile catalogue name when state is absent', () => {
+    expect(systemLabel('tile-25')).toBe('Quann')
+    expect(systemLabel('tile-39')).toBe('Alpha Wormhole')
+  })
+})
+

@@ -13,7 +13,7 @@ export interface ActionCardPanelProps {
 function offerLabel(state: GameState, params: ActionCardParams | undefined): string {
   if (!params) return 'Play it'
   if (params.planetId !== undefined) return planetLabel(state, params.planetId)
-  if (params.systemId !== undefined) return systemLabel(params.systemId)
+  if (params.systemId !== undefined) return systemLabel(params.systemId, state)
   if (params.techId !== undefined) return techLabel(params.techId)
   if (params.seat !== undefined) return state.players[params.seat].name
   return 'Play it'

@@ -1,5 +1,5 @@
 import { actionCardName } from '../engine'
-import { CARD_NAME, planetLabel, systemLabel, techLabel } from './format'
+import { CARD_NAME, planetLabel, systemLabel, techLabel, unitLabel } from './format'
 import type { GameState, LogEntry, Move, Owner, Seat, UnitType } from '../engine/types'
 
 function who(state: GameState, seat: Seat | null): string {
@@ -19,7 +19,7 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
   const name = who(state, seat)
   switch (move.type) {
     case 'pickStrategyCard': return `${name} takes ${CARD_NAME[move.card]}`
-    case 'startTactical': return `${name} activates ${systemLabel(move.systemId)}`
+    case 'startTactical': return `${name} activates ${systemLabel(move.systemId, state)}`
     case 'moveShips': return `${name} moves ${move.moves.length} ships in`
     case 'endMovement': return `${name} finishes moving`
     case 'combatRound': {
@@ -28,8 +28,8 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     }
     // the move is logged under the seat on turn, but hits are assigned by their owner, whom the engine's own
     // info entry names right after this one
-    case 'assignHits': return 'Hits are assigned'
-    case 'retreat': return `${name} announces a retreat to ${systemLabel(move.to)}`
+    case 'assignHits': return `${name} assigns hits`
+    case 'retreat': return `${name} announces a retreat to ${systemLabel(move.to, state)}`
     case 'bombard': return `${name} bombards ${planetLabel(state, move.planetId)}`
     case 'land': return `${name} lands ${move.infantryIds.length} infantry on ${planetLabel(state, move.planetId)}`
     case 'groundCombatRound': return `${name} fights a ground combat round`
@@ -55,13 +55,28 @@ export function describeEntry(state: GameState, entry: LogEntry): { text: string
   if (entry.t === 'move') return { text: describeMove(state, entry.seat, entry.move), kind: 'move' }
   if (entry.t === 'roll') {
     const hits = entry.rolls.filter(r => r.hit).length
-    const dice = entry.rolls.map(r => r.value).join(', ')
-    return { text: `${ownerName(state, entry.owner)} rolls ${dice || 'no dice'} for ${entry.context}, ${hits} hits`, kind: 'roll' }
+    const rollParts = entry.rolls.map(r => {
+      const p = entry.owner === 'guardian' ? null : state.players[entry.owner as Seat]
+      const unit = p ? unitLabel(r.unit, p) : (r.unit.charAt(0).toUpperCase() + r.unit.slice(1))
+      return `${unit} [${r.value}]${r.hit ? ' (hit)' : ''}`
+    })
+    const dice = rollParts.length > 0 ? `: ${rollParts.join(', ')}` : ''
+    return {
+      text: `${ownerName(state, entry.owner)} rolls for ${entry.context} (${hits} hit${hits === 1 ? '' : 's'})${dice}`,
+      kind: 'roll',
+    }
   }
   // engine notes name the seat; the log shows the player instead
   let text = entry.text
   for (const player of state.players) {
     text = text.replaceAll(`seat ${player.seat}`, player.name)
+  }
+  // replace system IDs in text with formatted coordinate labels
+  for (const sys of Object.values(state.systems)) {
+    const label = systemLabel(sys.id, state)
+    text = text.replaceAll(`in ${sys.id}`, `in ${label}`)
+    text = text.replaceAll(`from ${sys.id} to`, `from ${label} to`)
+    text = text.replaceAll(`to ${sys.id}`, `to ${label}`)
   }
   return { text, kind: 'info' }
 }

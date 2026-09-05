@@ -1,6 +1,6 @@
 import { actionCardDef, findActionCard } from '../data/actionCards'
 import { ACTION_SPENT } from './actionPhase'
-import { checkFleet, destroyUnits } from './board'
+import { checkFleet, destroyUnits, trimCargo } from './board'
 import { canResearch, researchable } from './research'
 import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { ActionCardParams, GameState, Move, Planet, Result, Seat, Unit } from './types'
@@ -337,7 +337,9 @@ function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCar
       const found = findPlanet(state, planetId)
       if (!found) return { ok: false, error: `unknown planet ${planetId}` }
       const dock = found.planet.structures.find(u => u.type === 'spacedock')
-      return { ok: true, value: dock ? destroyUnits(state, found.systemId, [dock]) : state }
+      if (!dock) return { ok: true, value: state }
+      const afterDestroy = destroyUnits(state, found.systemId, [dock])
+      return { ok: true, value: trimCargo(afterDestroy, found.systemId, dock.owner) }
     }
     case 'lucky_shot': {
       const systemId = params.systemId

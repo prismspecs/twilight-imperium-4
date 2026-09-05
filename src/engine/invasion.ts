@@ -291,8 +291,17 @@ export function groundCombatRound(state: GameState, seed: number): Result<GameSt
   let next: GameState = { ...state, log: [...state.log,
     { t: 'roll', owner: seat, rolls: a.rolls, context: `ground combat on ${planetId}` },
     { t: 'roll', owner: defender, rolls: d.rolls, context: `ground combat on ${planetId}` }] }
-  next = destroyGround(next, tac.systemId, foes.slice(0, a.hits), seed, GROUND_SALT_BASE + 3 * round)
-  next = destroyGround(next, tac.systemId, mine.slice(0, d.hits), seed, GROUND_SALT_BASE + 3 * round + 1)
+  const aKilled = foes.slice(0, a.hits)
+  const dKilled = mine.slice(0, d.hits)
+  next = destroyGround(next, tac.systemId, aKilled, seed, GROUND_SALT_BASE + 3 * round)
+  next = destroyGround(next, tac.systemId, dKilled, seed, GROUND_SALT_BASE + 3 * round + 1)
+  const casualties: string[] = []
+  const defName = defender === 'guardian' ? 'The guardian forces' : state.players[defender].name
+  if (aKilled.length > 0) casualties.push(`${defName} loses ${aKilled.length} infantry`)
+  if (dKilled.length > 0) casualties.push(`${state.players[seat].name} loses ${dKilled.length} infantry`)
+  if (casualties.length > 0) {
+    next = { ...next, log: [...next.log, { t: 'info' as const, text: `Ground combat on ${planet.name}: ${casualties.join(', ')}` }] }
+  }
   next = { ...next, tactical: { ...tac, invasion: { ...inv, round: round + 1 } } }
   const after = planetOf(next, tac.systemId, planetId)
   // HARROW: L1Z1X may bombard after every ground combat round; v1 does it automatically

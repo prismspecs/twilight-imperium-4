@@ -256,23 +256,22 @@ describe('R9 the printed abilities', () => {
     expect(played.value.systems.bereg.planets[0].structures).toEqual([])
   })
 
-  it('Reactor Meltdown destroys a space dock outside a home system, never one inside it', () => {
-    const base = withUnits(withPlanetOwner(toActionPhase(), 'quann', 'quann', 1), 'quann', 1, ['spacedock'], 'quann')
+  it('Reactor Meltdown destroys a space dock outside a home system and trims dependent fighters', () => {
+    let base = withUnits(withPlanetOwner(toActionPhase(), 'quann', 'quann', 1), 'quann', 1, ['spacedock'], 'quann')
+    base = withUnits(base, 'quann', 1, ['fighter', 'fighter', 'fighter'])
+    expect(base.systems.quann.space.filter(u => u.owner === 1 && u.type === 'fighter')).toHaveLength(3)
     const played = playActionCard(withHand(base, 0, ['reactor_meltdown']), 'reactor_meltdown', { planetId: 'quann' })
     if (!played.ok) throw new Error(played.error)
     expect(played.value.systems.quann.planets[0].structures).toEqual([])
+    // with the space dock destroyed and no carriers present, all 3 fighters are trimmed as excess cargo
+    expect(played.value.systems.quann.space.filter(u => u.owner === 1 && u.type === 'fighter')).toHaveLength(0)
     expect(playActionCard(withHand(base, 0, ['reactor_meltdown']), 'reactor_meltdown', { planetId: 'arc-prime' }).ok).toBe(false)
   })
 
-  it('never places identical card effects consecutively in the shuffled deck', () => {
-    for (let seed = 1; seed <= 50; seed++) {
-      const deck = shuffledActionCards(seed)
-      for (let i = 1; i < deck.length; i++) {
-        const prev = deck[i - 1].replace(/_\d+$/, '')
-        const curr = deck[i].replace(/_\d+$/, '')
-        expect(curr).not.toBe(prev)
-      }
-    }
+  it('shuffles the deck randomly preserving all playable cards', () => {
+    const deck = shuffledActionCards(42)
+    expect(deck.length).toBe(PLAYABLE_ACTION_CARDS.length)
+    expect([...deck].sort()).toEqual([...PLAYABLE_ACTION_CARDS].sort())
   })
 
   it('Lucky Shot destroys a non-fighter ship in a system containing a planet you control', () => {

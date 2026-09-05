@@ -1,8 +1,10 @@
 import { systemDef } from '../data/map'
 import { techDef } from '../data/techs'
+import { TILES } from '../data/tiles'
 import { UPGRADE_TECH } from '../data/units'
 import { readyInfluence } from '../engine'
 import type { GameState, Planet, Player, Seat, StrategyCardId, UnitType } from '../engine/types'
+import { tileNumberLabel } from './art'
 
 export { readyInfluence }
 
@@ -76,10 +78,33 @@ export function planetLabel(state: GameState, planetId: string): string {
 }
 
 export function systemLabel(systemId: string, state?: GameState): string {
-  if (state?.systems[systemId]) return state.systems[systemId].name
+  if (state?.systems[systemId]) {
+    const sys = state.systems[systemId]
+    const num = tileNumberLabel(sys.q, sys.r)
+    if (num) {
+      if (sys.name && sys.name !== num && sys.name !== `[${num}]`) {
+        return `[${num}] ${sys.name}`
+      }
+      return `[${num}]`
+    }
+    return sys.name || systemId
+  }
   try {
-    return systemDef(systemId).name
+    const def = systemDef(systemId)
+    const num = tileNumberLabel(def.q, def.r)
+    if (num) {
+      if (def.name && def.name !== num && def.name !== `[${num}]`) {
+        return `[${num}] ${def.name}`
+      }
+      return `[${num}]`
+    }
+    return def.name
   } catch {
+    if (systemId.startsWith('tile-')) {
+      const tileNum = parseInt(systemId.replace('tile-', ''), 10)
+      const t = TILES.find(tile => tile.tile === tileNum)
+      if (t) return t.name
+    }
     return systemId
   }
 }

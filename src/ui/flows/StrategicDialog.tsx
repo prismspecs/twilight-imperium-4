@@ -143,7 +143,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             <div className="rowline">
               {systems.map(id => (
                 <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`} onClick={() => setSystemId(id)}>
-                  {systemLabel(id)}
+                  {systemLabel(id, state)}
                 </button>
               ))}
             </div>
@@ -261,7 +261,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
               {systems.map(id => (
                 <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`}
                   onClick={() => { setSystemId(id); setTokens(null) }}>
-                  Token from {systemLabel(id)}
+                  Token from {systemLabel(id, state)}
                 </button>
               ))}
             </div>

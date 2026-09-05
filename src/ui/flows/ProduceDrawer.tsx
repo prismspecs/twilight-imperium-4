@@ -26,7 +26,7 @@ export function ProduceDrawer() {
     <div className="drawer bottom wide" data-testid="produce-drawer">
       <div className="in">
         <div className="dhead">
-          <span className="tab">Production at {systemLabel(systemId)}</span>
+          <span className="tab">Production at {systemLabel(systemId, state)}</span>
           <span className="sub">
             Production <b data-testid="produce-limit">{limit}</b>, used <b>{total}</b>, cost <b data-testid="produce-cost">{cost}</b>
           </span>

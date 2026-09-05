@@ -168,7 +168,7 @@ export function SecondaryPanel() {
         {card === 'warfare' ? (
           <>
             <div className="sub" data-testid="secondary-units">
-              Produce at {systemLabel(home)}: {warfareLimit} units at most, {warfareCount} chosen, cost {warfareCost}.
+              Produce at {systemLabel(home, state)}: {warfareLimit} units at most, {warfareCount} chosen, cost {warfareCost}.
             </div>
             <ProductionPicker state={state} seat={seat} limit={warfareLimit} units={units} onUnits={setUnits} />
             <PayRow state={state} seat={seat} needed={warfareCost} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
@@ -198,7 +198,7 @@ export function SecondaryPanel() {
                   <button key={`${offer.systemId}-${offer.planetId}-${offer.type}`} type="button" className={`pay${chosen ? ' on' : ''}`}
                     data-testid={`build-${offer.planetId}-${offer.type}`}
                     onClick={() => { setBuildSystem(offer.systemId); setBuild({ planetId: offer.planetId, type: offer.type }) }}>
-                    {offer.type === 'spacedock' ? 'Space dock' : 'PDS'} on {offer.planetName} ({systemLabel(offer.systemId)})
+                    {offer.type === 'spacedock' ? 'Space dock' : 'PDS'} on {offer.planetName} ({systemLabel(offer.systemId, state)})
                   </button>
                 )
               })}

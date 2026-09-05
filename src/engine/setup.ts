@@ -3,7 +3,7 @@ import { AGENDAS } from '../data/agendas'
 import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
 import { SECRET_OBJECTIVES, STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
-import { PLAYABLE_ACTION_CARDS, effectOf } from './actionCards'
+import { PLAYABLE_ACTION_CARDS } from './actionCards'
 import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
@@ -89,44 +89,12 @@ const ACTION_CARDS_SALT = 95
 const AGENDAS_SALT = 96
 
 /**
- * Smooths the shuffled deck so that cards with identical effects (e.g. copies of Focused Research)
- * are never placed consecutively in the deck.
- */
-export function distributeDeck(cards: string[]): string[] {
-  const deck = [...cards]
-  for (let pass = 0; pass < 3; pass++) {
-    for (let i = 1; i < deck.length; i++) {
-      if (effectOf(deck[i]) === effectOf(deck[i - 1])) {
-        let swapIdx = -1
-        for (let k = 0; k < deck.length; k++) {
-          if (k === i || k === i - 1) continue
-          const leftOk = k === 0 || effectOf(deck[k - 1]) !== effectOf(deck[i])
-          const rightOk = k === deck.length - 1 || effectOf(deck[k + 1]) !== effectOf(deck[i])
-          const selfOk = effectOf(deck[k]) !== effectOf(deck[i - 1])
-          if (leftOk && rightOk && selfOk) {
-            swapIdx = k
-            break
-          }
-        }
-        if (swapIdx !== -1) {
-          const temp = deck[i]
-          deck[i] = deck[swapIdx]
-          deck[swapIdx] = temp
-        }
-      }
-    }
-  }
-  return deck
-}
-
-/**
  * R9: the action card deck, shuffled from the game seed. It holds the base-game cards the engine can play in
  * full (`PLAYABLE_ACTION_CARDS`), copies included; a card whose printed ability the engine cannot yet resolve
  * is left out of the deck rather than dealt as a blank.
  */
 export function shuffledActionCards(seed: number): string[] {
-  const shuffled = shuffleIds(PLAYABLE_ACTION_CARDS, mulberry32(deriveSeed(seed, ACTION_CARDS_SALT)))
-  return distributeDeck(shuffled)
+  return shuffleIds(PLAYABLE_ACTION_CARDS, mulberry32(deriveSeed(seed, ACTION_CARDS_SALT)))
 }
 
 /**

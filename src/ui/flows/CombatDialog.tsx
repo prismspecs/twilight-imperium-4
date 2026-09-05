@@ -4,7 +4,7 @@ import { munitionsOptions, retreatTargetsOf } from '../moveOptions'
 import { systemLabel, unitLabel } from '../format'
 import { assignmentComplete, assignmentTargets, pendingFor } from '../../engine'
 import { useGame } from '../store'
-import type { Owner } from '../../engine/types'
+import type { Owner, Seat } from '../../engine/types'
 
 export function CombatDialog() {
   const { session, legal, apply } = useGame()
@@ -61,7 +61,7 @@ export function CombatDialog() {
     <div className="dialog" data-testid="combat-dialog">
       <div className="in">
         <div className="dhead">
-          <span className="tab">Space combat in {systemLabel(state.tactical?.systemId ?? '')}</span>
+          <span className="tab">Space combat in {systemLabel(state.tactical?.systemId ?? '', state)}</span>
           <span className="sub" data-testid="combat-round">Round {combat.round}</span>
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-combat-round"
@@ -86,11 +86,95 @@ export function CombatDialog() {
             </label>
           ) : null}
         </div>
-        {lastRolls(state).map((entry, i) => (
-          <div className="logline roll" key={i} data-testid={`combat-rolls-${i}`}>
-            {name(entry.owner)}: {entry.rolls.map(r => `${r.value}${r.hit ? ' hit' : ''}`).join(', ') || 'no dice'} ({entry.context})
+        <div className="combat-rolls-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: '6px 0' }}>
+          {lastRolls(state).map((entry, i) => {
+            const hits = entry.rolls.filter(r => r.hit).length
+            const rollParts = entry.rolls.map(r => {
+              const p = entry.owner === 'guardian' ? null : state.players[entry.owner as Seat]
+              const uName = p ? unitLabel(r.unit, p) : (r.unit.charAt(0).toUpperCase() + r.unit.slice(1))
+              return `${uName}: [${r.value}]${r.hit ? ' ★ HIT' : ' miss'}`
+            })
+            return (
+              <div
+                className="logline roll"
+                key={i}
+                data-testid={`combat-rolls-${i}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  padding: '8px 10px',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  borderRadius: '4px',
+                  borderLeft: hits > 0 ? '3px solid #eab308' : '3px solid #64748b',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
+                  <span style={{ color: hits > 0 ? '#fbbf24' : '#e2e8f0' }}>
+                    {name(entry.owner)}: {hits} hit{hits === 1 ? '' : 's'}
+                  </span>
+                  <span className="sub" style={{ fontSize: '11px', textTransform: 'capitalize' }}>
+                    {entry.context}
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#cbd5e1', wordBreak: 'break-word', lineHeight: 1.4 }}>
+                  {rollParts.length > 0 ? rollParts.join('  •  ') : 'no dice rolled'}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {state.log
+          .filter((e): e is Extract<typeof e, { t: 'info' }> => e.t === 'info' && (
+            e.text.includes('loses:') ||
+            e.text.includes('fighter') ||
+            e.text.includes('hits assigned') ||
+            e.text.includes('assigns') ||
+            e.text.includes('retreats') ||
+            e.text.includes('Assault Cannon')
+          ))
+          .slice(-4)
+          .length > 0 ? (
+          <div
+            className="combat-events-box"
+            style={{
+              marginTop: '6px',
+              padding: '6px 10px',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '4px',
+              fontSize: '11px',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#f87171', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>
+              Casualties & Hit Assignments
+            </div>
+            {state.log
+              .filter((e): e is Extract<typeof e, { t: 'info' }> => e.t === 'info' && (
+                e.text.includes('loses:') ||
+                e.text.includes('fighter') ||
+                e.text.includes('hits assigned') ||
+                e.text.includes('assigns') ||
+                e.text.includes('retreats') ||
+                e.text.includes('Assault Cannon')
+              ))
+              .slice(-4)
+              .map((evt, idx) => {
+                let text = evt.text
+                for (const player of state.players) {
+                  text = text.replaceAll(`seat ${player.seat}`, player.name)
+                }
+                for (const sys of Object.values(state.systems)) {
+                  text = text.replaceAll(`in ${sys.id}`, `in ${systemLabel(sys.id, state)}`)
+                }
+                return (
+                  <div key={idx} style={{ color: '#f1f5f9', marginBottom: '2px', lineHeight: 1.4 }}>
+                    • {text}
+                  </div>
+                )
+              })}
           </div>
-        ))}
+        ) : null}
         {head && assigning ? (
           <div className="assign" data-testid="hits-assignment">
             <div className="rowline lbl" data-testid="hits-to-assign">
@@ -127,12 +211,12 @@ export function CombatDialog() {
           </div>
         ) : null}
         {combat.retreating !== null ? (
-          <div className="rowline" data-testid="retreat-announced">Retreat announced to {systemLabel(combat.retreatTo ?? '')}</div>
+          <div className="rowline" data-testid="retreat-announced">Retreat announced to {systemLabel(combat.retreatTo ?? '', state)}</div>
         ) : (
           <div className="rowline">
             {retreats.map(to => (
               <button key={to} type="button" className="btn quiet" data-testid={`btn-retreat-${to}`} onClick={() => apply({ type: 'retreat', to })}>
-                Retreat to {systemLabel(to)}
+                Retreat to {systemLabel(to, state)}
               </button>
             ))}
           </div>

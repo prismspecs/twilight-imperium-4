@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { BoardMap } from '../board/BoardMap'
 import { SystemInfo } from '../board/SystemInfo'
@@ -64,6 +64,42 @@ export function BoardScreen() {
       setSideSeat(null)
     }
   }, [session, activeSeat])
+
+  const [dismissedWinIndex, setDismissedWinIndex] = useState<number>(-1)
+  const combatOutcome = useMemo<{ winIndex: number; systemId: string; winner: Seat | 'guardian'; notes: string[] } | null>(() => {
+    if (!session?.state) return null
+    const s = session.state
+    let winIndex = -1
+    for (let i = s.log.length - 1; i >= 0; i--) {
+      const e = s.log[i]
+      if (e.t === 'info' && e.text.includes('space combat in ') && e.text.includes(' won by ')) {
+        winIndex = i
+        break
+      }
+    }
+    if (winIndex <= dismissedWinIndex || winIndex < 0) return null
+    const entry = s.log[winIndex]
+    if (entry.t !== 'info') return null
+    const match = /space combat in (.*) won by seat (\d+)/.exec(entry.text)
+    if (!match) return null
+    const sysId = match[1]
+    const winnerSeat = parseInt(match[2], 10) as Seat
+    const casualties = s.log
+      .slice(Math.max(0, winIndex - 6), winIndex + 1)
+      .filter((e): e is Extract<typeof e, { t: 'info' }> => e.t === 'info' && (e.text.includes('loses:') || e.text.includes('fighter') || e.text.includes('assigns')))
+      .map(e => {
+        let text = e.text
+        for (const p of s.players) text = text.replaceAll(`seat ${p.seat}`, p.name)
+        for (const sys of Object.values(s.systems)) text = text.replaceAll(`in ${sys.id}`, `in ${systemLabel(sys.id, s)}`)
+        return text
+      })
+    return {
+      winIndex,
+      systemId: sysId,
+      winner: winnerSeat,
+      notes: casualties,
+    }
+  }, [session?.state, dismissedWinIndex])
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale(mapSize.width, mapSize.height)
   if (!session) return null
@@ -100,7 +136,15 @@ export function BoardScreen() {
         style={{ '--k': k, '--s': s } as CSSProperties}
       >
         <SpaceBackdrop dim />
-        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
+        <TopBar
+          state={state}
+          clockMs={session.clockMs}
+          clockMinutes={session.minutes}
+          clockRunning={clockRunning}
+          onPick={onPick}
+          selectedSeat={panelSeat}
+          onSelectSeat={setSideSeat}
+        />
         <SidePanel state={state} seat={panelSeat} onSelectSeat={setSideSeat} />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
         <div className="stage" data-testid="stage">
@@ -124,17 +168,42 @@ export function BoardScreen() {
           />
           {inspecting ? <SystemInfo state={state} systemId={inspecting} onClose={() => setInspecting(null)} /> : null}
           {/* tactical flows (Task 4a) */}
+          {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+          {combatOutcome && state.tactical?.step !== 'spaceCombat' ? (
+            <div className="dialog" data-testid="combat-outcome-banner" style={{ zIndex: 120, maxWidth: 460 }}>
+              <div className="in">
+                <div className="dhead">
+                  <span className="tab" style={{ color: 'var(--gold)' }}>Space Combat Decided</span>
+                  <div className="right">
+                    <button type="button" className="btn gold" data-testid="btn-dismiss-combat-outcome" onClick={() => setDismissedWinIndex(combatOutcome.winIndex)}>
+                      Continue
+                    </button>
+                  </div>
+                </div>
+                <div className="rowline" style={{ fontWeight: 600, fontSize: '13px' }}>
+                  {combatOutcome.winner === 'guardian' ? 'The guardian fleet' : state.players[combatOutcome.winner].name} victorious in {systemLabel(combatOutcome.systemId, state)}!
+                </div>
+                {combatOutcome.notes.length > 0 ? (
+                  <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(0,0,0,0.35)', borderRadius: '4px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--ink-muted)', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.05em' }}>Casualties</div>
+                    {combatOutcome.notes.map((note, idx) => (
+                      <div key={idx} style={{ color: '#e2e8f0' }}>• {note}</div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {!isAiTurn ? (
             <>
               {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
-              {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
               {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
               {producing ? <ProduceDrawer /> : null}
               {idleTactical ? (
                 <div className="drawer bottom" data-testid="end-tactical-bar">
                   <div className="in">
                     <div className="dhead">
-                      <span className="tab">{systemLabel(state.tactical?.systemId ?? '')}</span>
+                      <span className="tab">{systemLabel(state.tactical?.systemId ?? '', state)}</span>
                       <span className="sub">No space dock here, so there is nothing to produce.</span>
                       <div className="right">
                         <button
