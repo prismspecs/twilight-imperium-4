@@ -92,8 +92,9 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   if (winner !== null) {
     return { ...next, phase: 'ended', winner, draft: [], log: [...next.log, { t: 'info', text: `seat ${winner} wins with ${next.players[winner].vp} VP` }] }
   }
-  // R3.3 step 6 and R3.1: the speaker token moves on and the next round drafts a new snake
-  const speaker = (next.speaker + 1) % state.players.length
+  // R3.1/R6: the speaker token does not rotate on its own. It starts with the seat the setup names and only
+  // the Politics primary hands it on, which is exactly what makes Politics worth picking.
+  const speaker = next.speaker
   // R8: the round starting here gets two new posts, drawn from the four that were not in play. They are new
   // posts, so the ability nobody took is gone with them and the fresh pair starts unused.
   const round = next.round + 1

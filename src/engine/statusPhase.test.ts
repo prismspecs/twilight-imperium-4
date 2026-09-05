@@ -86,7 +86,7 @@ describe('R3.3 status phase', () => {
     expect(done.strategyPool.map(c => c.bonus)).toEqual([0, 1, 1, 1, 1, 0, 0, 0])
     const picked = applyMove(done, { type: 'pickStrategyCard', card: 'diplomacy' }, 0)
     if (!picked.ok) throw new Error(picked.error)
-    expect(picked.value.players[1].tradeGoods).toBe(done.players[1].tradeGoods + 1)
+    expect(picked.value.players[0].tradeGoods).toBe(done.players[0].tradeGoods + 1)
   })
   it('R3.3 step 5: no guardian fleets are rolled in status phase in base game', () => {
     const s = toStatusPhase(toActionPhase())
@@ -129,12 +129,12 @@ describe('R3.3 status phase', () => {
     expect(done.phase).toBe('ended')
     expect(done.winner).toBe(0)                                       // tied at 10, decided by the Mecatol Rex controller
   })
-  it('R3.1/R3.3 step 6: the speaker changes and the next round starts with a fresh draft', () => {
+  it('R3.1/R6: the speaker token stays put (only Politics moves it) and the next round drafts a fresh snake', () => {
     const done = bothSubmit(toStatusPhase(toActionPhase()))
-    expect(done.speaker).toBe(1)
-    expect(done.active).toBe(1)
+    expect(done.speaker).toBe(0)
+    expect(done.active).toBe(0)
     expect(done.phase).toBe('strategy')
-    expect(done.draft).toEqual([1, 0, 0, 1])
+    expect(done.draft).toEqual([0, 1, 1, 0])
     expect(done.tactical).toBeNull()
     expect(done.pendingSecondary).toBeNull()
   })

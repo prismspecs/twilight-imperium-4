@@ -19,7 +19,7 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 - Adjacency: hex neighbours (centre touches all six; ring tiles touch their two ring neighbours and the centre), plus wormholes: alpha links `bereg` and `starpoint`, beta links `sakulag` and `quann`.
 - Anomalies: none. The duel map carries no asteroid field and no nebula, so every system is entered and crossed the same way and the only thing that stops a ship short of its destination is a fleet in the way. Antimass Deflectors therefore has no effect on this map, which is a balance question still open for the Barony starting technologies.
 - Units: infantry, fighter, destroyer, cruiser, carrier, dreadnought (L1Z1X: super-dreadnought), war sun, flagship, PDS (L1Z1X starting unit only), space dock. Stats from `data/reference/factions.json` (`units`) and `techs.json` (`unit_upgrades`, `faction_extras`).
-- Strategy cards: Leadership 1, Diplomacy 2, Trade 5, Warfare 6, Technology 7, Imperial 8. Texts from `factions.json` (`strategy_cards`), with the duel changes in section 6.
+- Strategy cards: all eight of the base game — Leadership 1, Diplomacy 2, Politics 3, Construction 4, Trade 5, Warfare 6, Technology 7, Imperial 8. Texts verified against the AsyncTI4 catalogue (`source: "base"`), with the duel changes in section 6.
 - Command tokens: three pools (tactic, fleet, strategy). Start 3 / 3 / 2. Fleet pool limits non-fighter ships per system (Letnev Armada: +2).
 - Trade goods and commodities (commodity value 2 for both factions).
 - Objectives: one public objective revealed per round (rounds 1 to 6), worth 1 VP each, plus the Mandate (section 7).
@@ -85,13 +85,13 @@ Neutral, grey. Composition rolled from a table so that the total cost is exactly
 A space dock produces up to (planet resources + 2) units (Space Dock II: +4). A space dock, I or II, lets up to 3 fighters in its system ignore capacity. Costs from the unit table; fighters and infantry come in pairs for their cost. Payment: exhaust ready planets (resources) and spend trade goods (1 each); overpay is lost. Sarween Tools: total cost -1 (minimum 0). Fleet pool: after production, non-fighter ships in the system may not exceed the fleet pool (Armada: +2); fighters need capacity of ships in the system (or the dock's 3 free slots), excess fighters are not produced (the move succeeds with the trimmed count); non-fighter ships beyond the fleet pool make the production illegal. A War Sun needs no technology: it may be produced from the first round. Flagship: one per player at a time.
 
 ## 5. Technology
-Research via Technology strategy card (primary: one technology; secondary: one technology for one strategy token plus 4 resources... note: the base card says the primary lets you research one, then optionally spend 6 resources for a second; the secondary costs a strategy token and 4 resources) and via Inheritance Systems (component action, exhaust the card, spend 2 resources, ignore prerequisites). Prerequisites are colour counts of owned technologies (`techs.json`). Unit upgrades replace the unit's stats. L1Z1X's dreadnought upgrade is Super-Dreadnought II. No PDS II, no Construction, no War Sun technology.
+Research via Technology strategy card (primary: one technology; secondary: one technology for one strategy token plus 4 resources... note: the base card says the primary lets you research one, then optionally spend 6 resources for a second; the secondary costs a strategy token and 4 resources) and via Inheritance Systems (component action, exhaust the card, spend 2 resources, ignore prerequisites). Prerequisites are colour counts of owned technologies (`techs.json`). Unit upgrades replace the unit's stats. L1Z1X's dreadnought upgrade is Super-Dreadnought II. No PDS II and no War Sun technology yet; Construction is in (section 9), so a PDS and a space dock can now be built without one.
 
 ## 6. Duel-specific rules
 - Imperial secondary: spend one strategy token to gain 2 trade goods (replaces "draw a secret objective").
 - Diplomacy uses the errata text (ready up to 2 exhausted planets you control; the opponent places a command token from reinforcements in the chosen system, which they then cannot activate this round).
 - Emergency shipyard: once per game, component action: spend one strategy token and 4 resources to place a space dock on a planet you control, only if you control no space dock.
-- No action cards, no promissory notes, no agenda phase, no secret objectives in v1.
+- No promissory notes and no agenda phase yet; action cards and secret objectives are in (section 9).
 - Chess clock: 15 minutes per player, running whenever it is that player's turn to decide something, in every phase: picking a strategy card, taking an action, answering a secondary, distributing status tokens. It stops only while the handoff screen is up and once the game is over, so neither player can hold the other one hostage by sitting on a draft pick. At zero the player automatically passes for the rest of the round and receives 3 extra minutes at the start of each later round. The engine is time-free; the transport records a timestamp per move (see lobby-architecture.md) and enforces the clock.
 
 ## 7. Objectives and victory
@@ -99,6 +99,25 @@ Research via Technology strategy card (primary: one technology; secondary: one t
 - Two mandates sit outside the pool and are active from the first round. "First Strike" is a race for a single point: the first player to win a space combat in the Mecatol Rex system takes it, and beating the guardian fleet counts. "Foothold" is the secret both players start with: take a planet in your opponent's home system. Each is worth 1 VP and is scored in a status phase; Foothold can be scored by both players, First Strike only by the one who got there first.
 - Mecatol Rex: 1 VP per status phase in which you control the planet. Imperial primary: 1 VP immediately if you control Mecatol Rex.
 - Victory: the first player to reach 7 VP at a victory check wins. If both reach 7 in the same status phase, or after the round 6 status phase nobody has 7: higher VP wins; ties go to the Mecatol Rex controller, then to the player with more planets, then to the speaker's opponent.
+
+## 9. Action cards and agendas
+- The 101 base-game action cards and the 50 base-game agendas are imported as printed data
+  (`src/data/actionCards.ts`, `src/data/agendas.ts`), filtered on the AsyncTI4 `source: "base"` field.
+- The action card deck a game shuffles holds only the cards the engine resolves in full: the base "ACTION:"
+  cards, played as a whole action on your own turn. A card whose printed ability the engine cannot resolve is
+  never dealt, because a dealt card must offer its whole ability. The rest join the deck as their reaction
+  windows are built (`docs/superpowers/plans/2026-09-05-reaction-windows.md`).
+- Every player draws 1 action card in the status phase. The hand limit is 7; the deck reshuffles out of the
+  discard pile when it runs dry. A hand is private, its size is public.
+- Politics (3): choose a player other than the speaker, who takes the speaker token; draw 2 action cards; look
+  at the top 2 agenda cards and put each back on top or bottom in any order. Secondary: 1 strategy token for
+  2 action cards. The agenda deck is real and shuffled from the game seed even though the agenda phase does
+  not exist yet, so the reordering is a real decision about what the phase will reveal.
+- Construction (4): place 1 PDS or 1 space dock on a planet you control, then 1 PDS on a planet you control
+  (1 space dock and 2 PDS per planet at most). Secondary: place the strategy token in any system and, on a
+  planet you control there, 1 space dock or 1 PDS.
+- The speaker token no longer rotates every round on its own: the setup names the first speaker and only the
+  Politics primary hands it on, which is what makes Politics worth picking.
 
 ## 8. Trade posts
 Two neutral posts outside the map: west (linked to systems `sakulag` and `starpoint`) and east (linked to `bereg` and `quann`). There are six named posts, of which two are in play at a time: the first pair is rolled from the game seed at setup, and every later round rolls a fresh pair from the four that were not in play. Each post has its own commodity limit and its own special ability. **`docs/spec/trade-posts.md` is the binding detail for all of it: the six posts, what each one does, and how the pair turns over.**
