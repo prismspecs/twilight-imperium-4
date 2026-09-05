@@ -82,8 +82,8 @@ describe('R3.3 status phase', () => {
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft
-    expect(done.strategyPool.map(c => c.id)).toEqual(['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial'])
-    expect(done.strategyPool.map(c => c.bonus)).toEqual([0, 1, 1, 0, 0, 0])
+    expect(done.strategyPool.map(c => c.id)).toEqual(['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial'])
+    expect(done.strategyPool.map(c => c.bonus)).toEqual([0, 1, 1, 1, 1, 0, 0, 0])
     const picked = applyMove(done, { type: 'pickStrategyCard', card: 'diplomacy' }, 0)
     if (!picked.ok) throw new Error(picked.error)
     expect(picked.value.players[1].tradeGoods).toBe(done.players[1].tradeGoods + 1)

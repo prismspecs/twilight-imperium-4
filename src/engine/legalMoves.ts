@@ -12,7 +12,7 @@ import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
 import { homeSystemOf } from './board'
 import { isShip } from '../data/units'
-import { diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
+import { constructionPlanets, diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { MECATOL_ID } from '../data/map'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
@@ -104,6 +104,26 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
       const open = state.publicObjectives.filter(id => !state.players[seat].scoredObjectives.includes(id) && fulfils(state, seat, id))
       return [{ type: 'strategic', card, params: {} }, ...open.map((objectiveId): Move => ({ type: 'strategic', card, params: { objectiveId } }))]
     }
+    case 'politics': {
+      // R6: the speaker token must go to somebody other than the current speaker; the card holder may take it
+      // themselves. The two agenda cards go back as they were unless the interface names an order.
+      const seats = state.players.map((_, i) => i).filter(i => i !== state.speaker)
+      return seats.map((speakerTo): Move => ({ type: 'strategic', card, params: { speakerTo } }))
+    }
+    case 'construction': {
+      // R6: the primary places a PDS or a space dock, and then a PDS. Only the placements the seat can afford
+      // are offered; with nothing to place the card is still playable and simply places nothing.
+      const pds = constructionPlanets(state, seat, 'pds')
+      const docks = constructionPlanets(state, seat, 'spacedock')
+      const out: Move[] = []
+      for (const planetId of docks) {
+        const structures: { planetId: string; type: 'pds' | 'spacedock' }[] = [{ planetId, type: 'spacedock' }]
+        if (pds.length) structures.push({ planetId: pds[0], type: 'pds' })
+        out.push({ type: 'strategic', card, params: { structures } })
+      }
+      for (const planetId of pds) out.push({ type: 'strategic', card, params: { structures: [{ planetId, type: 'pds' }] } })
+      return out.length ? out : [{ type: 'strategic', card, params: {} }]
+    }
     case 'trade':
       // R6: sharing is optional and can target any other player, so each one is offered alongside the bare primary
       return [{ type: 'strategic', card, params: {} }, ...otherSeatsInOrder(state, seat).map(s2 => ({ type: 'strategic' as const, card, params: { shareWith: [s2] } }))]
@@ -129,6 +149,25 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
         for (const p of sys.planets) if (p.owner === seat && p.exhausted && exhausted.length < 2) exhausted.push(p.id)
       }
       return exhausted.length ? [{ type: 'secondary', card, accept: true, params: { planets: exhausted } }] : []
+    }
+    case 'politics':
+      // R6: two action cards. With deck and discard pile both empty there is nothing to draw, so the token
+      // burn is not offered, consistent with the Trade and Diplomacy filters.
+      return state.actionCardDeck.length + state.actionCardDiscard.length > 0
+        ? [{ type: 'secondary', card, accept: true, params }]
+        : []
+    case 'construction': {
+      // R6: the command token goes into a system of your choice and may bring a structure with it. Only the
+      // systems where a structure can actually go are offered; the handler accepts any system the UI names.
+      const out: Move[] = []
+      for (const systemId of Object.keys(state.systems)) {
+        for (const type of ['spacedock', 'pds'] as const) {
+          for (const planetId of constructionPlanets(state, seat, type, systemId)) {
+            out.push({ type: 'secondary', card, accept: true, params: { systemId, structures: [{ planetId, type }] } })
+          }
+        }
+      }
+      return out
     }
     case 'trade':
       // R6, consistent with the Diplomacy filter above: already replenished is a no-op token burn, not useful

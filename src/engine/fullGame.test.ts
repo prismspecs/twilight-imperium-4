@@ -214,7 +214,10 @@ describe('legal moves in every phase', () => {
 // 24 and 27 came in with the action card deck: an "ACTION:" card in hand is one more legal move on every
 // turn, which reshuffled the paths again and left no seed reaching `bombard` or accepting the Trade
 // secondary. 24 reaches `bombard`, `groundCombatRound` and `retreat`; 27 accepts the Trade secondary.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27]
+// 19 came in with Politics and Construction: eight cards in the pool means a different draft and a
+// different path again, and 19 is the seed that still reaches `groundCombatRound` and an accepted Trade
+// secondary.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -231,7 +234,7 @@ const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
   'shipyard', 'tradePost', 'postAbility', 'playActionCard', 'pass', 'status',
 ]
-const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
+const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 
 /**
  * Two move kinds random legal play never reaches in these seeds, left out rather than faked:

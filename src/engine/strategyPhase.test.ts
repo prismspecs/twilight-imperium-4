@@ -15,7 +15,7 @@ function pick(state: GameState, card: StrategyCardId): GameState {
 
 describe('R3.1 strategy phase', () => {
   it('initiative numbers are the printed ones', () => {
-    expect(INITIATIVE).toEqual({ leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 })
+    expect(INITIATIVE).toEqual({ leadership: 1, diplomacy: 2, politics: 3, construction: 4, trade: 5, warfare: 6, technology: 7, imperial: 8 })
   })
   it('a player holding no strategy cards goes last in initiative order', () => {
     const g = createGame(config, 1)
@@ -23,7 +23,7 @@ describe('R3.1 strategy phase', () => {
   })
   it('legal moves in the strategy phase are one pick per pool card for the drafting player', () => {
     const g = createGame(config, 1)
-    expect(legalMoves(g)).toHaveLength(6)
+    expect(legalMoves(g)).toHaveLength(8)
     expect(legalMoves(g).every(m => m.type === 'pickStrategyCard')).toBe(true)
   })
   it('snake draft: speaker, other, other, speaker; wrong player or missing card is rejected', () => {
@@ -36,7 +36,7 @@ describe('R3.1 strategy phase', () => {
     const s3 = pick(s2, 'imperial'); expect(s3.active).toBe(0)
     const s4 = pick(s3, 'technology')
     expect(s4.phase).toBe('action')
-    expect(s4.strategyPool.map(c => [c.id, c.bonus])).toEqual([['diplomacy', 1], ['trade', 1]])
+    expect(s4.strategyPool.map(c => [c.id, c.bonus])).toEqual([['diplomacy', 1], ['politics', 1], ['construction', 1], ['trade', 1]])
     expect(s4.active).toBe(1)   // leadership 1 beats warfare 6
     expect(initiativeOrder(s4)).toEqual([1, 0])
     expect(s4.players[0].passed).toBe(false); expect(s4.players[1].passed).toBe(false)
@@ -114,12 +114,12 @@ describe('R3.1 strategy phase', () => {
     }
     expect(state.phase).toBe('action')
     expect(state.draft).toEqual([])
-    expect(state.strategyPool).toHaveLength(1)
-    expect(state.strategyPool[0].bonus).toBe(1)
+    expect(state.strategyPool).toHaveLength(3)
+    expect(state.strategyPool.every(c => c.bonus === 1)).toBe(true)
     expect(legalMoves(state).length).toBeGreaterThan(0)
   })
 
-  it('in a 4-player game with 6 strategy cards, each seat drafts one card and 2 cards gain bonuses', () => {
+  it('in a 4-player game, each seat drafts two cards in snake order and the pool empties', () => {
     const config4: GameConfig = {
       players: [
         { faction: 'sol', color: 'blue', name: 'P0' },
@@ -130,16 +130,16 @@ describe('R3.1 strategy phase', () => {
       speaker: 0,
     }
     const g = createGame(config4, 42)
-    expect(g.draft).toEqual([0, 1, 2, 3])
+    expect(g.draft).toEqual([0, 1, 2, 3, 3, 2, 1, 0])
     let state = g
-    for (let seat = 0; seat < 4; seat++) {
+    for (let pickNo = 0; pickNo < 8; pickNo++) {
       const card = state.strategyPool[0].id
       state = pick(state, card)
     }
     expect(state.phase).toBe('action')
     expect(state.draft).toEqual([])
-    expect(state.strategyPool).toHaveLength(2)
-    expect(state.strategyPool.every(c => c.bonus === 1)).toBe(true)
+    expect(state.strategyPool).toHaveLength(0)
+    expect(state.players.every(p => p.strategyCards.length === 2)).toBe(true)
     expect(legalMoves(state).length).toBeGreaterThan(0)
   })
 })

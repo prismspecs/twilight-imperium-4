@@ -9,7 +9,7 @@ import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
-export const ALL_STRATEGY_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
+export const ALL_STRATEGY_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 export const REINFORCEMENTS: Readonly<Record<UnitType, number>> = { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 }
 
 export const GUARDIAN_FLEETS: readonly Partial<Record<UnitType, number>>[] = [
@@ -133,9 +133,10 @@ export function createGame(config: GameConfig, seed: number): GameState {
       }
     }
   }
-  // N-player draft over the strategy pool: 2-3 players draft 2 cards (snake); 4-6 players draft 1 card.
+  // R3.1 N-player draft over the eight strategy cards: 2 to 4 players draft 2 cards each (snake order),
+  // 5 and 6 players draft 1 each. Kept in step with `snakeOrder`, which lays out every later round.
   const orderSeats = seats.map((_, i) => (config.speaker + i) % config.players.length)
-  const draft = config.players.length <= 3 ? [...orderSeats, ...orderSeats.slice().reverse()] : orderSeats
+  const draft = config.players.length <= 4 ? [...orderSeats, ...orderSeats.slice().reverse()] : orderSeats
   const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
   const players = config.players.map((cfg, seat) => {
     const p = makePlayer(seat, cfg)

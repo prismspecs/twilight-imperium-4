@@ -77,6 +77,9 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'shipyard': return scoreShipyard(view, seat, w)
     case 'tradePost': return scoreTradePost(view, seat, w)
     case 'postAbility': return w.economy
+    // R9: an action card played as an action is a free effect; the enumerator only offers plays that do
+    // something, so taking one is generally worth a turn, but never more than a real tactical action
+    case 'playActionCard': return w.economy
     case 'pass': return scorePass(view, seat, w)
     case 'status': return w.priority // keep the engine's default distribution
     default: return 0
@@ -107,6 +110,8 @@ function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w:
   if (card === 'trade') s += (me.commodities < FACTIONS[me.faction].commodityValue) ? w.economy : -w.economy
   if (card === 'warfare') s += w.tempo
   if (card === 'diplomacy') s += w.military * 0.5
+  if (card === 'politics') s += w.tempo * 0.5
+  if (card === 'construction') s += w.economy * 0.5
   return s
 }
 
@@ -358,6 +363,9 @@ function scoreStrategic(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   if (card === 'trade') s += w.economy * (view.players[seat].commodities < FACTIONS[view.players[seat].faction].commodityValue ? 1 : 0.5)
   if (card === 'warfare') s += w.tempo
   if (card === 'diplomacy') s += w.military
+  // R9: Politics is the speaker token plus two action cards; Construction turns a card into structures.
+  if (card === 'politics') s += w.tempo + w.economy * 0.5
+  if (card === 'construction') s += w.military * 0.5 + w.economy * 0.5
   return s
 }
 
@@ -372,6 +380,8 @@ function scoreSecondary(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   if (card === 'warfare') s += w.military
   if (card === 'diplomacy') s += w.military * 0.5
   if (card === 'trade') s += w.economy
+  if (card === 'politics') s += w.economy * 0.5      // two action cards for a strategy token
+  if (card === 'construction') s += w.military * 0.5 // a PDS or a dock, plus a token on the board
   return s
 }
 

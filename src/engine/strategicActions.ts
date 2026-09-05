@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID } from '../data/map'
+import { drawActionCards } from './actionCards'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, homeSystemOf } from './board'
 import { cheapestPlanets, distributeTokens, exhaustPlanets, payCost } from './economy'
@@ -189,6 +190,129 @@ function warfareSecondary(state: GameState, seat: Seat, params: StrategicParams)
   return { ok: true, value: { ...made.value, tactical: state.tactical } }
 }
 
+/**
+ * R6 Politics, third line: "Look at the top 2 cards of the agenda deck. Place each card on the top or bottom
+ * of the deck in any order." The two cards come back in the arrangement the player names; naming nothing puts
+ * them back as they were, which is one of the legal arrangements.
+ */
+export function reorderAgendaDeck(state: GameState, params: StrategicParams): Result<GameState> {
+  const peeked = state.agendaDeck.slice(0, 2)
+  if (params.agendaTop === undefined && params.agendaBottom === undefined) return { ok: true, value: state }
+  const top = params.agendaTop ?? []
+  const bottom = params.agendaBottom ?? []
+  const placed = [...top, ...bottom]
+  if (placed.length !== peeked.length || new Set(placed).size !== placed.length || placed.some(id => !peeked.includes(id))) {
+    return { ok: false, error: 'R6: put each of the two agenda cards you looked at back exactly once' }
+  }
+  return { ok: true, value: { ...state, agendaDeck: [...top, ...state.agendaDeck.slice(peeked.length), ...bottom] } }
+}
+
+/**
+ * R6 Politics primary: choose a new speaker (anyone but the current speaker, yourself included), draw 2
+ * action cards, then look at the top 2 agenda cards and put them back in any order.
+ */
+function politicsPrimary(state: GameState, seat: Seat, params: StrategicParams, seed: number): Result<GameState> {
+  const to = params.speakerTo
+  if (to === undefined || !Number.isInteger(to) || to < 0 || to >= state.players.length) {
+    return { ok: false, error: 'R6: Politics needs a new speaker' }
+  }
+  if (to === state.speaker) return { ok: false, error: 'R6: choose a player other than the speaker' }
+  const spoken: GameState = {
+    ...state,
+    speaker: to,
+    log: [...state.log, { t: 'info', text: `seat ${to} takes the speaker token` }],
+  }
+  return reorderAgendaDeck(drawActionCards(spoken, seat, 2, seed), params)
+}
+
+/** R6 Construction: how many of that structure the planet may still take (1 space dock, 2 PDS per planet). */
+function structureRoom(planet: { structures: { type: string }[] }, type: 'pds' | 'spacedock'): number {
+  const limit = type === 'spacedock' ? 1 : 2
+  return limit - planet.structures.filter(u => u.type === type).length
+}
+
+/** R6 Construction: the planets a seat may still put that structure on. */
+export function constructionPlanets(state: GameState, seat: Seat, type: 'pds' | 'spacedock', systemId?: string): string[] {
+  if (state.players[seat].reinforcements[type] < 1) return []
+  const out: string[] = []
+  for (const id of Object.keys(state.systems)) {
+    if (systemId !== undefined && id !== systemId) continue
+    for (const planet of state.systems[id].planets) {
+      if (planet.owner === seat && structureRoom(planet, type) > 0) out.push(planet.id)
+    }
+  }
+  return out
+}
+
+/** Places one structure on a planet the seat controls, checking the reinforcements and the per-planet limit. */
+function placeStructure(state: GameState, seat: Seat, planetId: string, type: 'pds' | 'spacedock'): Result<GameState> {
+  const systemId = Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId))
+  if (systemId === undefined) return { ok: false, error: `unknown planet ${planetId}` }
+  const sys = state.systems[systemId]
+  const planet = sys.planets.find(p => p.id === planetId)
+  if (!planet || planet.owner !== seat) return { ok: false, error: `R6: you do not control ${planetId}` }
+  if (structureRoom(planet, type) < 1) {
+    return { ok: false, error: type === 'spacedock' ? `R6: ${planetId} already has a space dock` : `R6: ${planetId} already has two PDS` }
+  }
+  const player = state.players[seat]
+  if (player.reinforcements[type] < 1) return { ok: false, error: `R6: no ${type} left in your reinforcements` }
+  const unit = { id: state.nextUnitId, type, owner: seat, damaged: false }
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...player, reinforcements: { ...player.reinforcements, [type]: player.reinforcements[type] - 1 } }
+  return {
+    ok: true,
+    value: {
+      ...state,
+      players,
+      nextUnitId: state.nextUnitId + 1,
+      systems: { ...state.systems, [systemId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, structures: [...p.structures, unit] } : p) } },
+      log: [...state.log, { t: 'info', text: `seat ${seat} places a ${type === 'spacedock' ? 'space dock' : 'PDS'} on ${planetId}` }],
+    },
+  }
+}
+
+/**
+ * R6 Construction primary: "Place 1 PDS or 1 Space Dock on a planet you control. Place 1 PDS on a planet you
+ * control." Two structures, and only the first of them may be a space dock. Placing fewer is allowed (and is
+ * all a player with no planet or no reinforcements can do), so the card is always playable (R3.2).
+ */
+function constructionPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  const wanted = params.structures ?? []
+  if (wanted.length > 2) return { ok: false, error: 'R6: Construction places at most two structures' }
+  if (wanted.slice(1).some(s => s.type !== 'pds')) return { ok: false, error: 'R6: only the first structure may be a space dock' }
+  let next = state
+  for (const spec of wanted) {
+    const placed = placeStructure(next, seat, spec.planetId, spec.type)
+    if (!placed.ok) return placed
+    next = placed.value
+  }
+  return { ok: true, value: next }
+}
+
+/**
+ * R6 Construction secondary: "Place 1 token from your strategy pool in any system; you may place either 1
+ * space dock or 1 PDS on a planet you control in that system." The token itself is the secondary's cost,
+ * already taken from the strategy pool; here it lands on the board.
+ */
+function constructionSecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  const systemId = params.systemId
+  if (systemId === undefined || !state.systems[systemId]) return { ok: false, error: 'R6: name the system your command token goes into' }
+  const wanted = params.structures ?? []
+  if (wanted.length > 1) return { ok: false, error: 'R6: the Construction secondary places at most one structure' }
+  const sys = state.systems[systemId]
+  const activatedBy = sys.activatedBy.includes(seat) ? sys.activatedBy : [...sys.activatedBy, seat]
+  let next: GameState = { ...state, systems: { ...state.systems, [systemId]: { ...sys, activatedBy } } }
+  for (const spec of wanted) {
+    if (!next.systems[systemId].planets.some(p => p.id === spec.planetId)) {
+      return { ok: false, error: `R6: ${spec.planetId} is not in ${systemId}` }
+    }
+    const placed = placeStructure(next, seat, spec.planetId, spec.type)
+    if (!placed.ok) return placed
+    next = placed.value
+  }
+  return { ok: true, value: next }
+}
+
 /** R5: one technology, then optionally a second one for 6 resources; the first may be the prerequisite. */
 function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   let next = state
@@ -235,12 +359,16 @@ function imperialPrimary(state: GameState, seat: Seat, params: StrategicParams):
   return { ok: true, value: next }
 }
 
-function primary(state: GameState, seat: Seat, card: StrategyCardId, params: StrategicParams): Result<GameState> {
+function primary(state: GameState, seat: Seat, card: StrategyCardId, params: StrategicParams, seed: number): Result<GameState> {
   switch (card) {
     case 'leadership':
       return leadership(state, seat, params, 3)
     case 'diplomacy':
       return diplomacyPrimary(state, seat, params)
+    case 'politics':
+      return politicsPrimary(state, seat, params, seed)
+    case 'construction':
+      return constructionPrimary(state, seat, params)
     case 'trade': {
       let next = replenish(addTradeGoods(state, seat, 3), seat)
       // R7: each chosen other player replenishes without paying, and it counts as a trade for both of them
@@ -262,12 +390,17 @@ function primary(state: GameState, seat: Seat, card: StrategyCardId, params: Str
   }
 }
 
-function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, params: StrategicParams): Result<GameState> {
+function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, params: StrategicParams, seed: number): Result<GameState> {
   switch (card) {
     case 'leadership':
       return leadership(state, seat, params, 0)
     case 'diplomacy':
       return readyPlanets(state, seat, params.planets ?? [], 2)
+    case 'politics':
+      // "Spend 1 token from your strategy pool to draw 2 action cards."
+      return { ok: true, value: drawActionCards(state, seat, 2, seed) }
+    case 'construction':
+      return constructionSecondary(state, seat, params)
     case 'trade':
       return { ok: true, value: replenish(state, seat) }
     case 'warfare':
@@ -285,7 +418,7 @@ export function otherSeatsInOrder(state: GameState, from: Seat): Seat[] {
   return Array.from({ length: n - 1 }, (_, i) => (from + 1 + i) % n)
 }
 
-export function strategic(state: GameState, card: StrategyCardId, params: StrategicParams | undefined): Result<GameState> {
+export function strategic(state: GameState, card: StrategyCardId, params: StrategicParams | undefined, seed: number): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is already open' }
@@ -295,7 +428,7 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   const entry = state.players[seat].strategyCards.find(c => c.id === card)
   if (!entry) return { ok: false, error: `R3.2: seat ${seat} does not hold ${card}` }
   if (entry.used) return { ok: false, error: `R3.2: ${card} is already used` }
-  const played = primary(state, seat, card, params ?? {})
+  const played = primary(state, seat, card, params ?? {}, seed)
   if (!played.ok) return played
   const players = [...played.value.players] as GameState['players']
   players[seat] = { ...players[seat], strategyCards: players[seat].strategyCards.map(c => c.id === card ? { ...c, used: true } : c) }
@@ -309,7 +442,7 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   return { ok: true, value: { ...played.value, players, pendingSecondary: window, active, turnDone: queue.length === 0 } }
 }
 
-export function secondary(state: GameState, card: StrategyCardId, accept: boolean, params: StrategicParams | undefined): Result<GameState> {
+export function secondary(state: GameState, card: StrategyCardId, accept: boolean, params: StrategicParams | undefined, seed: number): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   const pending = state.pendingSecondary
   if (pending === null || pending.card !== card) return { ok: false, error: `R3.2: no secondary window for ${card}` }
@@ -323,7 +456,7 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
     const isFree = pending.card === 'trade' && (pending.freeSeats?.includes(seat) ?? false)
     const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card, isFree))
     if (!paid.ok) return paid
-    const used = secondaryEffect(paid.value, seat, card, params ?? {})
+    const used = secondaryEffect(paid.value, seat, card, params ?? {}, seed)
     if (!used.ok) return used
     next = used.value
   }

@@ -7,8 +7,8 @@ import type { GameState, Planet, Player, Seat, StrategyCardId, UnitType } from '
 export { readyInfluence }
 
 export const CARD_NAME: Record<StrategyCardId, string> = {
-  leadership: 'Leadership', diplomacy: 'Diplomacy', trade: 'Trade',
-  warfare: 'Warfare', technology: 'Technology', imperial: 'Imperial',
+  leadership: 'Leadership', diplomacy: 'Diplomacy', politics: 'Politics', construction: 'Construction',
+  trade: 'Trade', warfare: 'Warfare', technology: 'Technology', imperial: 'Imperial',
 }
 
 const UNIT_NAME: Record<UnitType, string> = {

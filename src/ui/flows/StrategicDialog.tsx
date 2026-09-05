@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
+import { agendaDef } from '../../data/agendas'
 import { objectiveDef } from '../../data/objectives'
 import { controlsMecatol, isAi } from '../../engine'
-import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
+import { BADGE, MISC, spriteUrl, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
 import { PayRow } from './PayRow'
@@ -30,6 +31,11 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [secondTradeGoods, setSecondTradeGoods] = useState(0)
   const [objectiveId, setObjectiveId] = useState<string | null>(null)
   const [shared, setShared] = useState<Seat[]>([])
+  const [speakerTo, setSpeakerTo] = useState<Seat | null>(null)
+  const [agendaOrder, setAgendaOrder] = useState<string[] | null>(null)
+  const [agendaBottom, setAgendaBottom] = useState<string[]>([])
+  const [dock, setDock] = useState<string | null>(null)
+  const [firstPds, setFirstPds] = useState<string | null>(null)
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   useEscape(onClose)
   if (!session) return null
@@ -51,10 +57,28 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   // the new tokens start unplaced: the player adds them pool by pool
   const sheet = tokens ?? { ...player.tokens }
 
+  // R6 Politics: the two cards you look at go back on top or on the bottom, in the order shown
+  const peek = state.agendaDeck.slice(0, 2)
+  const peekOrder = agendaOrder ?? peek
+  // R6 Construction: a space dock (at most one per planet) and a PDS (at most two per planet)
+  const controlled = ownedPlanets(state, seat)
+  const dockable = controlled.filter(p => !p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  const pdsable = controlled.filter(p => p.structures.filter(u => u.type === 'pds' && u.owner === seat).length < 2)
+  const structures: { planetId: string; type: 'pds' | 'spacedock' }[] = [
+    ...(dock ? [{ planetId: dock, type: 'spacedock' as const }] : []),
+    ...(firstPds ? [{ planetId: firstPds, type: 'pds' as const }] : []),
+  ]
+
   function params(): StrategicParams {
     switch (card) {
       case 'leadership': return { planets, tradeGoods, tokens: sheet }
       case 'diplomacy': return systemId ? { systemId, planets } : { planets }
+      case 'politics': return {
+        speakerTo: speakerTo ?? undefined,
+        agendaTop: peekOrder.filter(id => !agendaBottom.includes(id)),
+        agendaBottom: peekOrder.filter(id => agendaBottom.includes(id)),
+      }
+      case 'construction': return { structures }
       case 'trade': return { shareWith: shared }
       case 'warfare': return systemId ? { systemId, tokens: sheet } : { tokens: sheet }
       case 'technology':
@@ -81,8 +105,9 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const missing =
     card === 'technology' ? techOptions.length > 0 && techId === null
       : card === 'imperial' ? objectives.length > 0 && objectiveId === null
-        : (card === 'diplomacy' || card === 'warfare') ? systems.length > 0 && systemId === null
-          : false
+        : card === 'politics' ? speakerTo === null
+          : (card === 'diplomacy' || card === 'warfare') ? systems.length > 0 && systemId === null
+            : false
 
   return (
     <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="strategic-dialog">
@@ -131,6 +156,76 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
                 </button>
               ))}
             </div>
+          </>
+        ) : null}
+
+        {card === 'politics' ? (
+          <>
+            <div className="sub">
+              Choose a new speaker (anyone but {state.players[state.speaker].name}), draw 2 action cards, then
+              put the top 2 agenda cards back in any order.
+            </div>
+            <Rewards items={[
+              { icon: MISC.mandateBack, alt: 'Action card', count: 2, label: 'Action cards' },
+            ]} />
+            <div className="rowline">
+              {state.players.filter(p => p.seat !== state.speaker).map(p => (
+                <button key={p.seat} type="button" className={`pay${speakerTo === p.seat ? ' on' : ''}`}
+                  data-testid={`speaker-pick-${p.seat}`} onClick={() => setSpeakerTo(p.seat)}>
+                  {p.seat === seat ? 'Take the speaker token yourself' : `${p.name} becomes speaker`}
+                </button>
+              ))}
+            </div>
+            {peek.length > 0 ? (
+              <>
+                <div className="tab" style={{ margin: '12px 0 6px' }}>The top {peek.length} agenda cards</div>
+                <div className="rowline">
+                  {peekOrder.map(id => (
+                    <button key={id} type="button" className={`pay${agendaBottom.includes(id) ? '' : ' on'}`}
+                      data-testid={`agenda-place-${id}`}
+                      onClick={() => setAgendaBottom(agendaBottom.includes(id) ? agendaBottom.filter(x => x !== id) : [...agendaBottom, id])}>
+                      {agendaDef(id).name}: {agendaBottom.includes(id) ? 'to the bottom' : 'stays on top'}
+                    </button>
+                  ))}
+                  {peekOrder.length > 1 ? (
+                    <button type="button" className="pay" data-testid="agenda-swap"
+                      onClick={() => setAgendaOrder([...peekOrder].reverse())}>Swap the two</button>
+                  ) : null}
+                </div>
+              </>
+            ) : <div className="sub">The agenda deck is empty.</div>}
+          </>
+        ) : null}
+
+        {card === 'construction' ? (
+          <>
+            <div className="sub">Place 1 PDS or 1 space dock on a planet you control, then 1 PDS on a planet you control.</div>
+            <Rewards items={[
+              { icon: spriteUrl(player.color, 'spacedock'), alt: 'Space dock', count: dock ? 1 : 0, label: 'Space dock' },
+              { icon: spriteUrl(player.color, 'pds'), alt: 'PDS', count: firstPds ? 1 : 0, label: 'PDS' },
+            ]} />
+            <div className="tab" style={{ margin: '12px 0 6px' }}>Space dock</div>
+            <div className="rowline">
+              {dockable.map(planet => (
+                <button key={planet.id} type="button" className={`pay${dock === planet.id ? ' on' : ''}`}
+                  data-testid={`dock-${planet.id}`} onClick={() => setDock(dock === planet.id ? null : planet.id)}>
+                  Dock on {planet.name}
+                </button>
+              ))}
+              {dockable.length === 0 ? <span className="sub">Every planet you control already has a space dock.</span> : null}
+            </div>
+            <div className="tab" style={{ margin: '12px 0 6px' }}>PDS</div>
+            <div className="rowline">
+              {pdsable.map(planet => (
+                <button key={planet.id} type="button" className={`pay${firstPds === planet.id ? ' on' : ''}`}
+                  data-testid={`pds-${planet.id}`} onClick={() => setFirstPds(firstPds === planet.id ? null : planet.id)}>
+                  PDS on {planet.name}
+                </button>
+              ))}
+              {pdsable.length === 0 ? <span className="sub">Every planet you control already carries two PDS.</span> : null}
+            </div>
+            {player.reinforcements.spacedock < 1 ? <div className="sub">No space dock left in your reinforcements.</div> : null}
+            {player.reinforcements.pds < 1 ? <div className="sub">No PDS left in your reinforcements.</div> : null}
           </>
         ) : null}
 

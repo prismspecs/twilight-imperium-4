@@ -19,6 +19,8 @@ export function SecondaryPanel() {
   const [techId, setTechId] = useState<string | null>(null)
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
+  const [buildSystem, setBuildSystem] = useState<string | null>(null)
+  const [build, setBuild] = useState<{ planetId: string; type: 'pds' | 'spacedock' } | null>(null)
   if (!session) return null
   const state = session.state
   if (isAi(session.config, state.active)) return null
@@ -40,11 +42,24 @@ export function SecondaryPanel() {
   // auto-allocate newly gained tokens so the user doesn't hit a blocking tokensPending error by default
   const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
   const techOptions = legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : [])
+  // R6 Construction secondary: the enumerator offers one entry per placement the seat can actually make
+  const buildOffers = legal.flatMap(m => {
+    if (m.type !== 'secondary' || !m.accept) return []
+    const systemId = m.params?.systemId
+    const spec = m.params?.structures?.[0]
+    if (systemId === undefined || spec === undefined) return []
+    const planet = state.systems[systemId].planets.find(p => p.id === spec.planetId)
+    return planet ? [{ systemId, planetId: spec.planetId, planetName: planet.name, type: spec.type }] : []
+  })
 
   function params(): StrategicParams {
     switch (card) {
       case 'leadership': return { planets: pay, tradeGoods, tokens: sheet }
       case 'diplomacy': return { planets: pay }
+      case 'construction': return {
+        systemId: buildSystem ?? template.systemId,
+        structures: build ? [build] : [],
+      }
       case 'technology': return { techId: techId ?? template.techId, planets: pay, tradeGoods }
       case 'warfare': return { units, planets: pay, tradeGoods }
       default: return {}
@@ -78,7 +93,11 @@ export function SecondaryPanel() {
           ? 'You have no influence to spend and no trade goods, so the secondary would hand out 0 command tokens.'
           : card === 'diplomacy'
             ? 'You have no exhausted planet to ready.'
-            : undefined
+            : card === 'politics'
+              ? 'The action card deck and the discard pile are both empty, so there is nothing to draw.'
+              : card === 'construction'
+                ? 'You control no planet with room for another structure, or your reinforcements hold no PDS and no space dock.'
+                : undefined
       : card === 'leadership' && gained < 1
         ? 'You have not spent any influence yet: spend 3 influence per command token gained, or trade goods 1 for 1.'
         : undefined
@@ -153,6 +172,38 @@ export function SecondaryPanel() {
             </div>
             <ProductionPicker state={state} seat={seat} limit={warfareLimit} units={units} onUnits={setUnits} />
             <PayRow state={state} seat={seat} needed={warfareCost} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+          </>
+        ) : null}
+        {card === 'politics' ? (
+          <>
+            <div className="sub">Draw 2 action cards.</div>
+            <Rewards items={[
+              { icon: MISC.mandateBack, alt: 'Action card', count: 2, label: 'Action cards' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+          </>
+        ) : null}
+        {card === 'construction' ? (
+          <>
+            <div className="sub">
+              Your command token goes into the system you choose; you may place 1 space dock or 1 PDS on a
+              planet you control there.
+            </div>
+            <Rewards items={[
+              { icon: tokenUrl(player.faction, 'command'), alt: 'Command token', count: 1, label: 'Command token' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+            <div className="rowline">
+              {buildOffers.map(offer => {
+                const chosen = buildSystem === offer.systemId && build?.planetId === offer.planetId && build.type === offer.type
+                return (
+                  <button key={`${offer.systemId}-${offer.planetId}-${offer.type}`} type="button" className={`pay${chosen ? ' on' : ''}`}
+                    data-testid={`build-${offer.planetId}-${offer.type}`}
+                    onClick={() => { setBuildSystem(offer.systemId); setBuild({ planetId: offer.planetId, type: offer.type }) }}>
+                    {offer.type === 'spacedock' ? 'Space dock' : 'PDS'} on {offer.planetName} ({systemLabel(offer.systemId)})
+                  </button>
+                )
+              })}
+              {buildOffers.length === 0 ? <span className="sub">You control no planet with room for another structure.</span> : null}
+            </div>
           </>
         ) : null}
         {card === 'trade' ? (

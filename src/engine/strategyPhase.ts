@@ -1,17 +1,17 @@
 import { reviveInfantry } from './actionPhase'
 import type { GameState, Result, Seat, StrategyCardId } from './types'
 
-export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 }
+export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, politics: 3, construction: 4, trade: 5, warfare: 6, technology: 7, imperial: 8 }
 
 /**
- * N-player strategy draft order:
- * In a 2- or 3-player game, each player drafts 2 strategy cards in snake order (e.g. [speaker, other, other, speaker]).
- * In a 4-, 5-, or 6-player game (with 6 strategy cards), each player drafts 1 strategy card clockwise from speaker.
+ * R3.1 N-player strategy draft order, with all eight strategy cards in the pool:
+ * 2 to 4 players draft 2 cards each in snake order (e.g. [speaker, other, other, speaker]); 5 and 6 players
+ * draft 1 card each, clockwise from the speaker. Four players picking twice is exactly the eight cards.
  */
 export function snakeOrder(state: GameState): Seat[] {
   const n = state.players.length
   const seats = Array.from({ length: n }, (_, i) => (state.speaker + i) % n)
-  return n <= 3 ? [...seats, ...seats.slice().reverse()] : seats
+  return n <= 4 ? [...seats, ...seats.slice().reverse()] : seats
 }
 
 export function initiativeOrder(state: GameState): Seat[] {

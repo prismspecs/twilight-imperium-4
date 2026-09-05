@@ -17,7 +17,7 @@ export type TechSkip = 'red' | 'blue' | 'green' | 'yellow'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
 export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock'
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
-export type StrategyCardId = 'leadership' | 'diplomacy' | 'trade' | 'warfare' | 'technology' | 'imperial'
+export type StrategyCardId = 'leadership' | 'diplomacy' | 'politics' | 'construction' | 'trade' | 'warfare' | 'technology' | 'imperial'
 export type Phase = 'strategy' | 'action' | 'status' | 'ended'
 export type PlayerType = 'human' | 'ai'
 
@@ -154,6 +154,14 @@ export interface StrategicParams {
   tokens?: { tactic: number; fleet: number; strategy: number }   // the resulting command sheet after Leadership or Warfare
   objectiveId?: string              // Imperial primary: the public objective to score
   shareWith?: Seat[]                // Trade primary: the other players who replenish without paying
+  speakerTo?: Seat                  // Politics primary: who gains the speaker token (anyone but the speaker)
+  // Politics primary: how the two agenda cards you looked at go back. Every peeked card appears exactly once
+  // across the two lists; `agendaTop[0]` ends up the top card of the deck.
+  agendaTop?: string[]
+  agendaBottom?: string[]
+  // Construction: the structures to place. The primary places up to two (the second must be a PDS), the
+  // secondary up to one, always on a planet you control.
+  structures?: { planetId: string; type: 'pds' | 'spacedock' }[]
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
 

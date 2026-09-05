@@ -48,7 +48,7 @@ describe('the hot-seat store', () => {
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
     act(() => { result.current.start(CONFIG, 7, 15) })
     expect(result.current.session?.state.phase).toBe('strategy')
-    expect(result.current.legal).toHaveLength(6)
+    expect(result.current.legal).toHaveLength(8)
     expect(result.current.legal.every(m => m.type === 'pickStrategyCard')).toBe(true)
     expect(result.current.session?.clockMs).toEqual([900000, 900000])
   })
