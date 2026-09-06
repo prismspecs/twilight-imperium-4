@@ -93,15 +93,16 @@ export function fallbackPlanetSpot(index: number, count: number): PlanetSpot {
 }
 
 export function getPlanetSpot(planetId: string, index = 0, count = 1): PlanetSpot {
+  if (count >= 2 && (planetId === 'sakulag' || planetId === 'starpoint' || planetId === 'quann')) {
+    return fallbackPlanetSpot(index, count)
+  }
   return PLANET_SPOTS[planetId] ?? fallbackPlanetSpot(index, count)
 }
 
-export function getPlanetCentre(planetId: string, spot: PlanetSpot): Point {
-  const existing = PLANET_CENTRE[planetId]
-  if (existing) return existing
+export function getPlanetCentre(_planetId: string, spot: PlanetSpot): Point {
   return {
-    left: spot.art.left + spot.art.width / 2,
-    top: spot.art.top + spot.art.height / 2,
+    left: Math.round(spot.art.left + spot.art.width / 2),
+    top: Math.round(spot.art.top + spot.art.height / 2),
   }
 }
 

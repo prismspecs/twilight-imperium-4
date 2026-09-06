@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileNumberLabel, tileUrl, tokenUrl } from '../art'
+import { useRef, type CSSProperties } from 'react'
+import { BADGE, COLOUR_INK, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileNumberLabel, tileUrl, tokenUrl } from '../art'
 import {
   ACTIVATION_SIZE, ACTIVATION_SPOT, GALAXY_ORIGIN, PLATE_VALS_W, SIGIL_SIZE, SIGIL_SPOT,
   TILE_H, TILE_NUMBER_SPOT, TILE_POS, TILE_W, WORMHOLE_SIZE, fleetScale,
@@ -7,6 +7,8 @@ import {
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import { diagnoseMovement } from '../debugLogger'
+import { productionLimit, shipsThatCanReach } from '../../engine'
+import { FACTIONS } from '../../data/factions'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
 const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
@@ -56,10 +58,36 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
         </span>
       )}
       <span className="row-ground" style={{ left: centre.left, top: centre.top }} data-testid={`ground-row-${planet.id}`}>
-        {planet.owner !== null ? (
-          <img className="ctl" src={tokenUrl(state.players[planet.owner].faction, 'control')} alt="control"
-            data-testid={`control-${planet.id}`} width={26} />
-        ) : null}
+        {planet.owner !== null ? (() => {
+          const ownerPlayer = state.players[planet.owner]
+          const ownerInk = ownerPlayer ? COLOUR_INK[ownerPlayer.color] : undefined
+          return (
+            <span
+              className="ctl-wrapper"
+              title={`Controlled by ${ownerPlayer?.name ?? `Player ${planet.owner + 1}`} (${ownerPlayer ? FACTIONS[ownerPlayer.faction].name : ''})`}
+              style={{
+                borderColor: ownerInk?.accent ?? 'transparent',
+                boxShadow: ownerInk?.glow ? `0 0 5px ${ownerInk.glow}` : undefined,
+              }}
+            >
+              <img
+                className="ctl"
+                src={tokenUrl(ownerPlayer ? ownerPlayer.faction : 'l1z1x', 'control')}
+                alt="control"
+                data-testid={`control-${planet.id}`}
+                width={26}
+              />
+              {ownerPlayer && (
+                <img
+                  className="ctl-sigil"
+                  src={SIGIL[ownerPlayer.faction]}
+                  alt=""
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
+            </span>
+          )
+        })() : null}
         {ground.map(group => (
           <span key={`${ownerKey(group.owner)}-${group.type}`} data-testid={`ground-${planet.id}-${ownerKey(group.owner)}-${group.type}`}>
             <UnitStack group={group} colour={colourOf(state, group.owner)}
@@ -111,15 +139,36 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
+  const canProduce = selectable && productionLimit(state, state.active, system.id) > 0
+  const canReach = selectable && shipsThatCanReach(state, state.active, system.id).length > 0
   const pointerDown = useRef<{ x: number; y: number } | null>(null)
+  const activeColor = state.players[state.active] ? COLOUR_INK[state.players[state.active].color] : undefined
+  const tileStyle: CSSProperties = {
+    left: pos.left,
+    top: pos.top,
+    width: TILE_W,
+    height: TILE_H,
+    ...(active && activeColor ? {
+      '--active-hex-stroke': activeColor.accent,
+      '--active-hex-glow': activeColor.glow,
+      '--active-hex-tint': activeColor.tint,
+    } as CSSProperties : {}),
+  }
+  const actAriaLabel = act
+    ? (activate
+      ? (canProduce && !canReach
+        ? `Activate ${system.name} to produce`
+        : `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}`)
+      : `View ${system.name}`)
+    : undefined
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
-      style={{ left: pos.left, top: pos.top, width: TILE_W, height: TILE_H }}
+      style={tileStyle}
       role={act ? 'button' : undefined}
       tabIndex={act ? 0 : undefined}
       title={reachDiag}
-      aria-label={act ? (activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : `View ${system.name}`) : undefined}
+      aria-label={actAriaLabel}
       onPointerDown={act ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
       onClick={act
         ? event => {
@@ -159,10 +208,37 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
       </span>
       {system.activatedBy.length > 0 ? (
         <span className="acts" style={{ left: ACTIVATION_SPOT.left, top: ACTIVATION_SPOT.top }}>
-          {system.activatedBy.map(seat => (
-            <img key={seat} className="act" src={tokenUrl(state.players[seat].faction, 'command')} width={ACTIVATION_SIZE}
-              alt={`${state.players[seat].name} command token`} data-testid={`activation-${system.id}-${seat}`} />
-          ))}
+          {system.activatedBy.map(seat => {
+            const actPlayer = state.players[seat]
+            const actInk = actPlayer ? COLOUR_INK[actPlayer.color] : undefined
+            return (
+              <span
+                key={seat}
+                className="act-wrapper"
+                title={`Activated by ${actPlayer?.name ?? `Player ${seat + 1}`} (${actPlayer ? FACTIONS[actPlayer.faction].name : ''})`}
+                style={{
+                  borderColor: actInk?.accent ?? 'rgba(255, 255, 255, 0.4)',
+                  boxShadow: actInk?.glow ? `0 0 6px ${actInk.glow}, 0 2px 4px rgba(0,0,0,0.8)` : undefined,
+                }}
+              >
+                <img
+                  className="act"
+                  src={tokenUrl(actPlayer ? actPlayer.faction : 'l1z1x', 'command')}
+                  width={ACTIVATION_SIZE}
+                  alt={`${actPlayer ? actPlayer.name : `Seat ${seat}`} command token`}
+                  data-testid={`activation-${system.id}-${seat}`}
+                />
+                {actPlayer && (
+                  <img
+                    className="act-sigil"
+                    src={SIGIL[actPlayer.faction]}
+                    alt=""
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                  />
+                )}
+              </span>
+            )
+          })}
         </span>
       ) : null}
       {system.wormhole ? (
@@ -203,6 +279,9 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
       {selectable && outOfReach ? (
         <span className="noreach" data-testid={`noreach-${system.id}`}>No ship in range</span>
+      ) : null}
+      {selectable && canProduce && !canReach ? (
+        <span className="canproduce" data-testid={`canproduce-${system.id}`}>Produce here</span>
       ) : null}
     </div>
   )

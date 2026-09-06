@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { applyMove, createGame, deriveSeed, isAi, legalMoves } from '../engine'
+import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { aiChoose } from '../ai'
 import { DEFAULT_WEIGHTS } from '../ai/score'
@@ -46,6 +46,56 @@ function humanSeats(config: GameConfig | undefined): number {
 function handoffFor(config: GameConfig | undefined, prevState: GameState, next: GameState): Seat | null {
   if (humanSeats(config) < 2) return null
   return next.active !== prevState.active && next.winner === null && !isAi(config, next.active) ? next.active : null
+}
+
+/** Which seat is expected to provide input/act next in this game state. */
+export function seatToAct(state: GameState): Seat {
+  const pending = pendingFor(state)
+  if (pending) return pending.owner
+  if (state.pendingSecondary !== null && state.pendingSecondary.queue.length > 0) {
+    return state.pendingSecondary.queue[0]
+  }
+  if (state.phase === 'strategy' && state.draft.length > 0) {
+    return state.draft[0]
+  }
+  return state.active
+}
+
+/** Whether the AI loop should automatically take a move in this state. */
+export function shouldAiStep(config: GameConfig | undefined, state: GameState): boolean {
+  if (state.winner !== null || state.phase === 'ended') return false
+
+  // 1. Pending hits: only the owner of the fleet taking hits may assign them
+  const pending = pendingFor(state)
+  if (pending) {
+    return isAi(config, pending.owner)
+  }
+
+  // 2. Pending secondary window: only the seat currently answering secondary acts
+  if (state.pendingSecondary !== null) {
+    const queueSeat = state.pendingSecondary.queue[0]
+    return queueSeat !== undefined && isAi(config, queueSeat)
+  }
+
+  // 3. Space combat round rolls: if ANY human is a combatant, do NOT auto-roll!
+  // The human player clicks the roll button and chooses cards/tactics interactively.
+  if (state.tactical?.step === 'spaceCombat' && state.tactical.combat) {
+    const combat = state.tactical.combat
+    const attackerHuman = !isAi(config, combat.attacker)
+    const defenderHuman = combat.defender !== 'guardian' && !isAi(config, combat.defender)
+    if (attackerHuman || defenderHuman) {
+      return false
+    }
+  }
+
+  // 4. Strategy phase draft: check the drafting seat
+  if (state.phase === 'strategy') {
+    const draftSeat = state.draft[0]
+    return draftSeat !== undefined && isAi(config, draftSeat)
+  }
+
+  // 5. Default action phase: check the active seat
+  return isAi(config, state.active)
 }
 
 const TICK_MS = 100
@@ -112,12 +162,12 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const pumpAiRef = useRef<(seed: number) => void>(() => undefined)
   const stepAi = useCallback((seed: number) => {
     const cur = sessionRef.current
-    if (!cur || cur.state.winner !== null || cur.state.phase === 'ended') return
-    if (!isAi(cur.config, cur.state.active)) return
+    if (!cur || !shouldAiStep(cur.config, cur.state)) return
+    const actor = seatToAct(cur.state)
     const moves = legalMoves(cur.state)
     if (moves.length === 0) return
-    const chosen = aiChoose(cur.state, moves, cur.state.active, DEFAULT_WEIGHTS)
-    logInfo('AI', `Seat ${cur.state.active} chose move: ${chosen.type}`, chosen)
+    const chosen = aiChoose(cur.state, moves, actor, DEFAULT_WEIGHTS)
+    logInfo('AI', `Seat ${actor} chose move: ${chosen.type}`, chosen)
     const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
     if (!r.ok) {
       logError('AI', `AI move rejected: ${r.error}`, { chosen, error: r.error })
@@ -131,7 +181,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff }
     sessionRef.current = updated
     setSession(updated)
-    if (next.winner === null && isAi(cur.config, next.active)) pumpAiRef.current(seed)
+    if (shouldAiStep(cur.config, next)) pumpAiRef.current(seed)
   }, [])
   stepAiRef.current = stepAi
 
@@ -159,7 +209,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
     // both-seats-AI (or a lone AI sitting on seat 0) has to get the game going with no human to nudge it
-    if (fresh.state.winner === null && isAi(config, fresh.state.active)) pumpAi(seed)
+    if (shouldAiStep(config, fresh.state)) pumpAi(seed)
   }, [pumpAi])
 
   const resume = useCallback((next: Session) => {
@@ -169,7 +219,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     sessionRef.current = next
     setSession(next)
     // a restored game may come back in the middle of an AI seat's turn: pick the loop back up
-    if (next.state.winner === null && isAi(next.config, next.state.active)) pumpAi(next.seed)
+    if (shouldAiStep(next.config, next.state)) pumpAi(next.seed)
   }, [pumpAi])
 
   const apply = useCallback((move: Move): boolean => {
@@ -197,7 +247,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     sessionRef.current = updated
     setSession(updated)
     // the AI is not burst: it plays each of its moves one at a time, a beat apart, so the game is watchable
-    if (next.winner === null && isAi(config, next.active)) pumpAi(seed)
+    if (shouldAiStep(config, next)) pumpAi(seed)
     return true
   }, [session, pumpAi])
 

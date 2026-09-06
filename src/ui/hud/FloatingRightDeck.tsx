@@ -2,21 +2,28 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { MANDATES, objectiveDef } from '../../data/objectives'
-import { cardOwner } from '../../engine'
+import { HAND_LIMIT, cardOwner, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { INITIATIVE } from '../../engine/strategyPhase'
-import { MISC, strategyCardUrl, tokenUrl } from '../art'
-import { CARD_NAME } from '../format'
-import type { GameState, Seat, StrategyCardId } from '../../engine/types'
+import { techDef } from '../../data/techs'
+import { BADGE, MISC, SIGIL, spriteUrl, strategyCardUrl, tokenUrl, unitCardUrl } from '../art'
+import { CARD_NAME, ownedPlanets, readyInfluence, unitLabel } from '../format'
+import { TechIcon } from '../TechIcon'
+import { PANEL_SCALE, spriteSize } from '../sprites'
+import { useModelStyle } from '../modelStyle'
+import type { GameState, Seat, StrategyCardId, UnitType } from '../../engine/types'
 
 const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
+const POOLS = ['tactic', 'fleet', 'strategy'] as const
+const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
 
 export interface FloatingRightDeckProps {
   state: GameState
-  activeTab: 'objectives' | 'strategy'
-  onTabChange: (tab: 'objectives' | 'strategy') => void
+  activeTab: 'objectives' | 'strategy' | 'faction'
+  onTabChange: (tab: 'objectives' | 'strategy' | 'faction') => void
   isOpen: boolean
   onToggleOpen: () => void
   onPick?: (card: StrategyCardId) => void
+  humanSeat?: Seat
 }
 
 export function FloatingRightDeck({
@@ -26,8 +33,21 @@ export function FloatingRightDeck({
   isOpen,
   onToggleOpen,
   onPick,
+  humanSeat,
 }: FloatingRightDeckProps) {
   const [hoveredCard, setHoveredCard] = useState<StrategyCardId | null>(null)
+  const [shownForce, setShownForce] = useState<UnitType | null>(null)
+  const { style } = useModelStyle()
+
+  const safeSeat = (humanSeat !== undefined && humanSeat < state.players.length
+    ? humanSeat
+    : state.active < state.players.length ? state.active : 0) as Seat
+  const myPlayer = state.players[safeSeat]
+  const myFaction = FACTIONS[myPlayer.faction]
+  const myPlanets = ownedPlanets(state, safeSeat)
+  const counts = new Map<UnitType, number>()
+  for (const unit of unitsOf(state, safeSeat)) counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1)
+  const targetVp = state.players.length <= 2 ? 7 : 10
 
   const scoredBy = (test: (seat: Seat) => boolean) =>
     state.players.map((_, i) => i as Seat).filter(test)
@@ -43,6 +63,19 @@ export function FloatingRightDeck({
       {/* Header with tabs and collapse toggle */}
       <div className="frd-header">
         <div className="frd-tabs" role="tablist">
+          <button
+            id="tab-faction"
+            type="button"
+            role="tab"
+            aria-selected={isOpen && activeTab === 'faction'}
+            aria-controls="panel-faction"
+            className={`frd-tab-btn${activeTab === 'faction' ? ' active' : ''}`}
+            data-testid="tab-btn-faction"
+            onClick={() => onTabChange('faction')}
+          >
+            <span className="frd-tab-icon" aria-hidden="true">🛡️</span>
+            <span className="frd-tab-title">My Faction</span>
+          </button>
           <button
             id="tab-objectives"
             type="button"
@@ -86,6 +119,153 @@ export function FloatingRightDeck({
 
       {/* Main Body */}
       <div className="frd-body">
+        {/* My Faction Tab Panel */}
+        <div
+          id="panel-faction"
+          className={`frd-pane${activeTab === 'faction' ? ' active' : ''}`}
+          role="tabpanel"
+          aria-labelledby="tab-faction"
+          data-testid="panel-faction"
+          style={{ display: activeTab === 'faction' ? 'flex' : 'none' }}
+        >
+          {/* Faction Header Hero */}
+          <div className="frd-faction-hero" data-testid={`frd-hero-${safeSeat}`}>
+            <img
+              src={SIGIL[myPlayer.faction] || tokenUrl(myPlayer.faction, 'control')}
+              alt={myFaction.name}
+              className="frd-faction-sigil"
+              onError={e => { (e.currentTarget as HTMLImageElement).src = tokenUrl(myPlayer.faction, 'control') }}
+            />
+            <div className="frd-faction-info">
+              <div className="frd-faction-name">{myFaction.name}</div>
+              <div className="frd-player-name">
+                {myPlayer.name} {state.speaker === safeSeat ? '⭐ Speaker' : ''}
+              </div>
+            </div>
+            <div className="frd-vp-chip" data-testid={`frd-vp-${safeSeat}`}>
+              {myPlayer.vp} of {targetVp} VP
+            </div>
+          </div>
+
+          {/* Command Tokens */}
+          <div className="frd-section-title">Command Tokens</div>
+          <div className="slots frd-slots">
+            {POOLS.map(pool => (
+              <div className="slot" key={pool}>
+                <div className="stack">
+                  {Array.from({ length: Math.min(3, myPlayer.tokens[pool]) }, (_, i) => (
+                    <img key={i} src={tokenUrl(myPlayer.faction, pool === 'fleet' ? 'command-fleet' : 'command')} alt="" style={{ top: i * 5 }} />
+                  ))}
+                </div>
+                <div className="cap">{pool}<b data-testid={`frd-tokens-${safeSeat}-${pool}`}>{myPlayer.tokens[pool]}</b></div>
+              </div>
+            ))}
+          </div>
+          <div className="tot frd-tot"><span className="k">Fleet pool:</span>{fleetPoolLimit(myPlayer)} ships / system</div>
+
+          {/* Economy & Resources */}
+          <div className="frd-section-title">Economy & Resources</div>
+          <div className="tot frd-tot">
+            <span className="k">Ready:</span>
+            <span className="econ-badge-val" title="Ready Resources" aria-label={`Ready Resources: ${readyResources(state, safeSeat)}`}>
+              <span className="badge res" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
+              <b data-testid={`frd-economy-${safeSeat}-resources`}>{readyResources(state, safeSeat)}</b>
+            </span>
+            <span className="econ-badge-val" title="Ready Influence" aria-label={`Ready Influence: ${readyInfluence(state, safeSeat)}`}>
+              <span className="badge inf" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
+              <b data-testid={`frd-economy-${safeSeat}-influence`}>{readyInfluence(state, safeSeat)}</b>
+            </span>
+          </div>
+          <div className="econ-row frd-econ-row">
+            <span className="econ"><img src={MISC.tradeGood} alt="Trade goods" /> <b data-testid={`frd-economy-${safeSeat}-tradegoods`}>{myPlayer.tradeGoods}</b></span>
+            <span className="econ"><img src={MISC.commodity} alt="Commodities" /> <b data-testid={`frd-economy-${safeSeat}-commodities`}>{myPlayer.commodities} of {myFaction.commodityValue}</b></span>
+            <span className="econ"><img src={MISC.mandateBack} alt="Action cards" /> <b data-testid={`frd-action-cards-${safeSeat}`}>{myPlayer.actionCards.length} of {HAND_LIMIT}</b></span>
+          </div>
+
+          {/* Secret Objectives */}
+          <div className="frd-section-title">Secret Objectives ({myPlayer.secretObjectives.length})</div>
+          <div className="frd-secrets-list" data-testid={`frd-secret-objectives-${safeSeat}`}>
+            {myPlayer.secretObjectives.length === 0 ? (
+              <div className="frd-empty-hint">No secret objectives held</div>
+            ) : (
+              myPlayer.secretObjectives.map(id => {
+                const def = objectiveDef(id)
+                const scored = myPlayer.scoredObjectives.includes(id)
+                return (
+                  <div
+                    key={id}
+                    className={`frd-obj-card secret-card${scored ? ' scored' : ''}`}
+                    data-testid={`frd-secret-${safeSeat}-${id}`}
+                  >
+                    <div className="frd-obj-top">
+                      <span className="frd-tier-badge">SECRET</span>
+                      <span className="frd-vp-badge">{scored ? 'SCORED · 1 VP' : '1 VP'}</span>
+                    </div>
+                    <div className="frd-obj-name">{def?.name ?? id}</div>
+                    {def?.text && <div className="frd-obj-desc">{def.text}</div>}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Technologies */}
+          <div className="frd-section-title">Technologies ({myPlayer.techs.length})</div>
+          <div className="tech-list frd-tech-list">
+            {myPlayer.techs.length === 0 ? (
+              <div className="frd-empty-hint">No technologies researched</div>
+            ) : (
+              myPlayer.techs.map(id => (
+                <div className="techrow" key={id} data-testid={`frd-tech-${safeSeat}-${id}`}>
+                  <TechIcon techId={id} colour={myPlayer.color} />
+                  <span>{techDef(id).name}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Controlled Planets */}
+          <div className="frd-section-title">Controlled Planets ({myPlanets.length})</div>
+          <div className="planets frd-planets">
+            {myPlanets.length === 0 ? (
+              <div className="frd-empty-hint">No planets controlled</div>
+            ) : (
+              myPlanets.map(planet => (
+                <div className={`pl${planet.exhausted ? ' exh' : ''}`} key={planet.id} data-testid={`frd-planet-${safeSeat}-${planet.id}`}>
+                  <div className="n">{planet.name}</div>
+                  <div className="v">
+                    <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
+                    <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Forces */}
+          <div className="frd-section-title">Forces in Play</div>
+          <div className="forces frd-forces">
+            {FORCE_ORDER.filter(type => counts.has(type)).map(type => {
+              const size = spriteSize(type, PANEL_SCALE, style)
+              return (
+                <div
+                  className={`fc${type === 'dreadnought' ? ' wide' : ''}`}
+                  key={type}
+                  data-testid={`frd-forces-${safeSeat}-${type}`}
+                  onMouseEnter={() => setShownForce(type)}
+                  onMouseLeave={() => setShownForce(null)}
+                  onFocus={() => setShownForce(type)}
+                  onBlur={() => setShownForce(null)}
+                  tabIndex={0}
+                >
+                  <img src={spriteUrl(myPlayer.color, type, style)} alt="" width={size.width} height={size.height} />
+                  <b>{counts.get(type)}</b>{' '}<span className="n">{unitLabel(type, myPlayer)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Objectives Tab Panel */}
         <div
           id="panel-objectives"
@@ -269,6 +449,14 @@ export function FloatingRightDeck({
             <img src={strategyCardUrl(hoveredCard)} alt={CARD_NAME[hoveredCard]} />
           </div>
           <div className="strat-hover-label">{CARD_NAME[hoveredCard]}</div>
+        </div>,
+        document.body,
+      ) : null}
+
+      {/* Floating Hover Unit Card Preview */}
+      {isOpen && shownForce !== null && typeof document !== 'undefined' ? createPortal(
+        <div className="unitcard" data-testid={`frd-unitcard-${safeSeat}-${shownForce}`}>
+          <img src={unitCardUrl(shownForce, myPlayer.faction)} alt={unitLabel(shownForce, myPlayer)} />
         </div>,
         document.body,
       ) : null}

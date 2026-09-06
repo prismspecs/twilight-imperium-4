@@ -4,7 +4,8 @@ import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { MISC, SIGIL, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
-import type { GameState, Seat } from '../../engine/types'
+import { isAi } from '../../engine'
+import type { GameConfig, GameState, Seat } from '../../engine/types'
 
 function CompactPlayer({
   state,
@@ -14,6 +15,7 @@ function CompactPlayer({
   clockRunning,
   isSelected,
   onSelect,
+  config,
 }: {
   state: GameState
   seat: Seat
@@ -22,10 +24,12 @@ function CompactPlayer({
   clockRunning: boolean
   isSelected?: boolean
   onSelect?: (seat: Seat) => void
+  config?: GameConfig
 }) {
   const player = state.players[seat]
   const active = state.active === seat && state.winner === null
   const running = active && clockRunning
+  const isAiSeat = config ? isAi(config, seat) : false
 
   return (
     <div
@@ -84,7 +88,7 @@ function CompactPlayer({
       <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
 
       <span className="vis" data-testid={`turn-${seat}`}>
-        {active ? 'Your turn' : 'Waiting'}
+        {active ? (isAiSeat ? 'AI Turn' : 'Your turn') : 'Waiting'}
       </span>
     </div>
   )
@@ -97,9 +101,10 @@ export interface TopBarProps {
   clockRunning: boolean
   selectedSeat?: Seat
   onSelectSeat?: (seat: Seat) => void
-  activeDeckTab?: 'objectives' | 'strategy'
+  activeDeckTab?: 'objectives' | 'strategy' | 'faction'
   isDeckOpen?: boolean
-  onToggleDeck?: (tab?: 'objectives' | 'strategy') => void
+  onToggleDeck?: (tab?: 'objectives' | 'strategy' | 'faction') => void
+  config?: GameConfig
 }
 
 export function TopBar({
@@ -112,6 +117,7 @@ export function TopBar({
   activeDeckTab,
   isDeckOpen,
   onToggleDeck,
+  config,
 }: TopBarProps) {
   const clockMaxMs = clockMinutes * 60000
 
@@ -148,11 +154,22 @@ export function TopBar({
               clockRunning={clockRunning}
               isSelected={selectedSeat === seat}
               onSelect={onSelectSeat}
+              config={config}
             />
           ))}
         </div>
 
         <div className="topbar-deck-toggles">
+          <button
+            type="button"
+            className={`topbar-deck-btn${isDeckOpen && activeDeckTab === 'faction' ? ' active' : ''}`}
+            data-testid="topbar-btn-faction"
+            onClick={() => onToggleDeck?.('faction')}
+            title="Toggle My Faction Deck"
+          >
+            <span className="deck-icon" aria-hidden="true">🛡️</span>
+            <span className="deck-label">Faction</span>
+          </button>
           <button
             type="button"
             className={`topbar-deck-btn${isDeckOpen && activeDeckTab === 'objectives' ? ' active' : ''}`}

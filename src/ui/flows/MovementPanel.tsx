@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { unitStats } from '../../data/units'
-import { movableShips, movementObstacle } from '../../engine'
+import { isShip, unitStats } from '../../data/units'
+import { movableShips, movementObstacle, productionLimit } from '../../engine'
 import type { MovementObstacle } from '../../engine'
 import { spriteUrl } from '../art'
 import { systemLabel, unitLabel } from '../format'
@@ -93,21 +93,96 @@ export function MovementPanel() {
   }
 
   const totalPicked = origins.reduce((sum, from) => sum + Object.values(pickedAt(from)).reduce((a, b) => a + b, 0), 0)
-  const obstacle = origins.length === 0 ? movementObstacle(state, seat, target) : null
+  const canProduceHere = productionLimit(state, seat, target) > 0
+  const obstacle = origins.length === 0 && !canProduceHere ? movementObstacle(state, seat, target) : null
+  const lockedSystemsWithShips = Object.values(state.systems).filter(sys =>
+    sys.id !== target &&
+    sys.activatedBy.includes(seat) &&
+    sys.space.some(u => u.owner === seat && isShip(u.type))
+  )
 
   return (
     <div className="drawer bottom" data-testid="movement-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">Movement into {systemLabel(target, state)}</span>
-          <span className="sub">Pick the ships that move, then the units they carry.</span>
+          <span className="sub">
+            {origins.length === 0 && canProduceHere
+              ? 'No ships to move. Proceed directly to production at your space dock.'
+              : 'Pick the ships that move, then the units they carry.'}
+          </span>
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={totalPicked === 0} onClick={submit}>Move ships</button>
-            <button type="button" className="btn quiet" data-testid="btn-end-movement"
-              disabled={!legal.some(m => m.type === 'endMovement')} onClick={() => apply({ type: 'endMovement' })}>Done moving</button>
+            <button
+              type="button"
+              className={origins.length === 0 && canProduceHere ? 'btn gold' : 'btn quiet'}
+              data-testid="btn-end-movement"
+              disabled={!legal.some(m => m.type === 'endMovement')}
+              onClick={() => apply({ type: 'endMovement' })}
+            >
+              {origins.length === 0 && canProduceHere ? 'Proceed to production' : 'Done moving'}
+            </button>
           </div>
         </div>
-        {obstacle ? <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target, state))}</div> : null}
+        {origins.length === 0 && canProduceHere ? (
+          <div
+            className="info-callout"
+            data-testid="produce-ready-notice"
+            style={{
+              margin: '8px 0',
+              padding: '10px 14px',
+              background: 'rgba(59, 130, 246, 0.15)',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              borderRadius: '6px',
+              color: '#93c5fd',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>🏭</span>
+            <span>
+              <strong>Ready to produce:</strong> No ships are moving into this system. You have a space dock in{' '}
+              {systemLabel(target, state)} ready to produce up to {productionLimit(state, seat, target)} units. Click &quot;Proceed to production&quot; to build.
+            </span>
+          </div>
+        ) : obstacle ? (
+          <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target, state))}</div>
+        ) : null}
+        {lockedSystemsWithShips.map(sys => {
+          const lockedShips = sys.space.filter(u => u.owner === seat && isShip(u.type))
+          const counts: Record<string, number> = {}
+          for (const s of lockedShips) {
+            const label = unitLabel(s.type, player)
+            counts[label] = (counts[label] ?? 0) + 1
+          }
+          const summary = Object.entries(counts).map(([name, count]) => `${count} ${name}`).join(', ')
+          return (
+            <div
+              key={sys.id}
+              className="info-callout warn"
+              data-testid={`locked-system-${sys.id}`}
+              style={{
+                margin: '8px 0',
+                padding: '8px 14px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: '6px',
+                color: '#fca5a5',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>🔒</span>
+              <span>
+                <strong>{systemLabel(sys.id, state)}:</strong> {summary} cannot move because this system already contains your command token (from activation or Construction secondary). Under TI4 rules (LRR 49.5), ships cannot move out of a system containing your command token.
+              </span>
+            </div>
+          )
+        })}
         {origins.map(from => {
           const movers = moversAt(state, options, from)
           const chosen = chosenAt(from, movers)

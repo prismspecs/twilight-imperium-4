@@ -279,7 +279,7 @@ export function MiltyDraftScreen({
       {/* The 3 Draft Pools */}
       <main className="draft-pools-container">
         {/* Factions Pool */}
-        <section className="draft-pool-col" data-testid="draft-factions-pool">
+        <section className="draft-pool-col pool-factions" data-testid="draft-factions-pool">
           <div className="pool-title-bar">
             <h2 className="pool-title">Factions Pool</h2>
             <span className="pool-count">
@@ -358,7 +358,7 @@ export function MiltyDraftScreen({
         </section>
 
         {/* Slices Pool */}
-        <section className="draft-pool-col" data-testid="draft-slices-pool">
+        <section className="draft-pool-col pool-slices" data-testid="draft-slices-pool">
           <div className="pool-title-bar">
             <h2 className="pool-title">Slices Pool</h2>
             <span className="pool-count">
@@ -366,7 +366,7 @@ export function MiltyDraftScreen({
             </span>
           </div>
 
-          <div className="pool-items-list">
+          <div className="pool-items-list slices-grid">
             {draftState.slicesPool.map(slice => {
               const owner = claimedSliceOwners.get(slice.id)
               const isClaimed = Boolean(owner)
@@ -418,31 +418,36 @@ export function MiltyDraftScreen({
 
                   <div className="slice-metrics-row">
                     <span className="metric-badge optimal">
-                      Optimal: {slice.optimalResources}r / {slice.optimalInfluence}i
+                      {slice.optimalResources}r / {slice.optimalInfluence}i opt
                     </span>
-                    <span className="metric-badge">
-                      Total: {slice.totalResources}r / {slice.totalInfluence}i
+                    <span className="metric-sep">•</span>
+                    <span className="metric-badge total">
+                      {slice.totalResources}r / {slice.totalInfluence}i tot
                     </span>
                     {slice.techSkips.map((skip, i) => (
                       <span key={i} className={`metric-badge skip-${skip}`}>
+                        <span className="metric-sep">•</span>
                         {skip.toUpperCase()} skip
                       </span>
                     ))}
                     {slice.wormholes.map((wh, i) => (
                       <span key={i} className="metric-badge wormhole">
-                        {wh} wormhole
+                        <span className="metric-sep">•</span>
+                        {wh} WH
                       </span>
                     ))}
                     {slice.anomalies.map((anom, i) => (
                       <span key={i} className="metric-badge anomaly">
+                        <span className="metric-sep">•</span>
                         {anom.replace('_', ' ')}
                       </span>
                     ))}
                   </div>
 
                   <div className="slice-planets-list">
-                    {slice.tiles.map(tile => (
+                    {slice.tiles.map((tile, i) => (
                       <span key={tile.tile} className="slice-planet-tag">
+                        {i > 0 && <span className="planet-sep">•</span>}
                         {tile.planets.length > 0
                           ? tile.planets.map(p => `${p.name} (${String(p.resources)}/${String(p.influence)})`).join(', ')
                           : tile.name}
@@ -456,7 +461,7 @@ export function MiltyDraftScreen({
         </section>
 
         {/* Positions Pool */}
-        <section className="draft-pool-col" data-testid="draft-positions-pool">
+        <section className="draft-pool-col pool-positions" data-testid="draft-positions-pool">
           <div className="pool-title-bar">
             <h2 className="pool-title">Speaker & Table Positions</h2>
             <span className="pool-count">

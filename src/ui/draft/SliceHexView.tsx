@@ -107,7 +107,6 @@ export function SliceHexView({
         className="slice-hex-svg"
         style={{
           width: '100%',
-          maxWidth: '260px',
           height: 'auto',
           overflow: 'visible',
         }}

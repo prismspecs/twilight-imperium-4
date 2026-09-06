@@ -3,6 +3,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from '../../engine/testUtils'
+import type { Seat } from '../../engine/types'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -187,6 +188,38 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('custodians-block')).toBeTruthy()
     expect(screen.getByTestId('custodians-breakdown').textContent).toContain('6 / 6')
     expect(screen.getByTestId('btn-remove-custodians')).toBeTruthy()
+  })
+
+  it('allows activating home system space dock with no ships in range and proceeds to production', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-tactical'))
+    expect(screen.getByTestId('canproduce-home-n')).toBeTruthy()
+    expect(screen.getByTestId('tile-home-n').className).not.toContain('outofreach')
+    fireEvent.click(screen.getByTestId('tile-home-n'))
+    expect(screen.getByTestId('produce-ready-notice')).toBeTruthy()
+    const proceedBtn = screen.getByTestId('btn-end-movement')
+    expect(proceedBtn.textContent).toBe('Proceed to production')
+    expect(proceedBtn.className).toContain('gold')
+    fireEvent.click(proceedBtn)
+    expect(screen.getByTestId('produce-drawer')).toBeTruthy()
+  })
+
+  it('displays locked system notice when friendly ships sit in an already activated system', () => {
+    let s = toActionPhase()
+    s = withUnits(s, 'sakulag', 0, ['carrier'])
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        sakulag: { ...s.systems.sakulag, activatedBy: [0] as Seat[] },
+      },
+    }
+    s = withTactical(s, { systemId: 'bereg', step: 'movement' })
+    renderWithSession(s, <BoardScreen />)
+
+    expect(screen.getByTestId('locked-system-sakulag')).toBeTruthy()
+    expect(screen.getByTestId('locked-system-sakulag').textContent).toContain('1 Carrier I cannot move because this system already contains your command token')
+    expect(screen.getByTestId('locked-system-sakulag').textContent).toContain('LRR 49.5')
   })
 })
 

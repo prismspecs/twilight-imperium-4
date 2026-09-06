@@ -4,6 +4,7 @@ import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../../engine'
 import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
+import type { Seat } from '../../engine/types'
 import { renderWithSession } from '../test/harness'
 import { BoardScreen } from '../screens/BoardScreen'
 
@@ -139,6 +140,31 @@ describe('the HUD', () => {
     expect(screen.getByTestId('secret-0-fwm').textContent).toContain('Scored')
   })
 
+  it('hides un-scored secret objectives of other players in the side panel', () => {
+    // Player 1 has an un-scored secret objective and a scored secret objective
+    const s = withPlayer(toActionPhase(), 1, {
+      secretObjectives: ['fwm', 'ans'],
+      scoredObjectives: ['fwm'],
+    })
+    // Player 0 is the viewer / active player
+    renderWithSession(s, <BoardScreen />)
+
+    // Switch side panel to player 1
+    fireEvent.click(screen.getByTestId('tab-side-1'))
+
+    // Scored objective 'fwm' is visible
+    const scoredEl = screen.getByTestId('secret-1-fwm')
+    expect(scoredEl.textContent).toContain('Fuel the War Machine')
+    expect(scoredEl.textContent).toContain('Scored')
+
+    // Un-scored objective 'ans' is masked/hidden
+    const hiddenEl = screen.getByTestId('secret-1-ans')
+    expect(hiddenEl.textContent).toContain('Hidden Secret Objective')
+    expect(hiddenEl.textContent).toContain('Hidden')
+    expect(hiddenEl.textContent).toContain('Only visible to B')
+    expect(hiddenEl.textContent).not.toContain('Adapt New Strategies')
+  })
+
   it('opens log panel and allows switching to debug log tab', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-log'))
@@ -150,5 +176,44 @@ describe('the HUD', () => {
     fireEvent.click(screen.getByTestId('tab-debug-log'))
     expect(screen.getByTestId('debug-log-list')).toBeTruthy()
     expect(screen.getByTestId('btn-clear-debug-log')).toBeTruthy()
+  })
+
+  it('shows personalized waiting state in bottom bar during opponent turn and keeps human action cards accessible', () => {
+    const baseState = toActionPhase()
+    const stateWithActiveAi: any = {
+      ...baseState,
+      active: 1 as Seat,
+      players: [
+        { ...baseState.players[0], actionCards: ['industrial_initiative'] },
+        { ...baseState.players[1], actionCards: ['mining_initiative', 'focused_research_1'] },
+      ],
+    }
+    const config: any = {
+      players: [
+        { seat: 0 as Seat, faction: 'l1z1x', color: 'blue', name: 'A', playerType: 'human' },
+        { seat: 1 as Seat, faction: 'letnev', color: 'red', name: 'B', playerType: 'ai' },
+      ],
+      speaker: 0 as Seat,
+    }
+    renderWithSession(stateWithActiveAi, <BoardScreen />, { config })
+
+    // Bottom bar waiting indicator
+    expect(screen.getByTestId('action-bar-waiting')).toBeTruthy()
+    expect(screen.getByTestId('action-bar-waiting').textContent).toContain('Waiting for B (Barony of Letnev)')
+
+    // Opponent actions are hidden
+    expect(screen.queryByTestId('btn-tactical')).toBeNull()
+    expect(screen.queryByTestId('btn-strategic')).toBeNull()
+    expect(screen.queryByTestId('btn-pass')).toBeNull()
+
+    // Human's own action cards (1 card) are displayed, NOT AI's 2 cards
+    const acBtn = screen.getByTestId('btn-action-card')
+    expect(acBtn.textContent).toContain('Action cards (1)')
+
+    // Human can open and view their action cards even on AI turn
+    fireEvent.click(acBtn)
+    expect(screen.getByTestId('action-card-panel')).toBeTruthy()
+    expect(screen.getByTestId('action-card-industrial_initiative')).toBeTruthy()
+    expect(screen.getByTestId('action-card-panel').textContent).toContain("It is currently B's turn")
   })
 })

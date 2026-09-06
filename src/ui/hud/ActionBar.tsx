@@ -3,6 +3,9 @@ import { navigate } from '../route'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
 import { MusicButton } from '../music'
+import { isAi } from '../../engine'
+import { FACTIONS } from '../../data/factions'
+import type { Seat } from '../../engine/types'
 
 export type ActionMode = 'tactical' | 'strategic' | 'component' | 'actionCard' | null
 
@@ -11,21 +14,29 @@ export interface ActionBarProps {
   onMode: (mode: ActionMode) => void
   hint: string
   onLog: () => void
+  viewingSeat?: Seat
+  isMyTurn?: boolean
 }
 
-export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
+export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: isMyTurnProp }: ActionBarProps) {
   const { session, legal, apply, canUndo, undo, error } = useGame()
   const [menu, setMenu] = useState(false)
   useEscape(() => { setMenu(false) })
   if (!session) return null
   const state = session.state
+  const humanSeatIndex = session.config?.players.findIndex(p => p.playerType === 'human') ?? -1
+  const humanSeat = humanSeatIndex !== -1 ? (humanSeatIndex as Seat) : undefined
+  const mySeat = viewingSeat ?? humanSeat ?? state.active
+  const myPlayer = state.players[mySeat] ?? state.players[state.active]
+  const isMyTurn = isMyTurnProp ?? (humanSeat !== undefined ? state.active === humanSeat : !isAi(session.config, state.active))
+  const activePlayer = state.players[state.active]
+
   const can = {
     tactical: legal.some(m => m.type === 'startTactical'),
     strategic: legal.some(m => m.type === 'strategic'),
     component: legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'tradePost'),
-    // R9: the hand is always worth opening when it holds something, even when nothing in it is playable:
-    // the panel is where the cards and the reasons they cannot be played are read
-    actionCard: state.players[state.active].actionCards.length > 0,
+    // R9: the hand is always worth opening when it holds something, even when nothing in it is playable
+    actionCard: myPlayer.actionCards.length > 0,
     pass: legal.some(m => m.type === 'pass'),
     // R3.2: only offered once the action is spent, so the bar shows plainly that the turn is the last thing left
     endTurn: legal.some(m => m.type === 'endTurn'),
@@ -54,22 +65,42 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
         </div>
       </div>
       <div className="actions">
-        <button type="button" className={`btn${mode === 'tactical' ? ' gold' : ''}`} data-testid="btn-tactical"
-          disabled={!can.tactical} onClick={() => onMode(mode === 'tactical' ? null : 'tactical')}>Tactical action</button>
-        <button type="button" className={`btn${mode === 'strategic' ? ' gold' : ''}`} data-testid="btn-strategic"
-          disabled={!can.strategic} onClick={() => onMode(mode === 'strategic' ? null : 'strategic')}>Strategic action</button>
-        <button type="button" className={`btn${mode === 'component' ? ' gold' : ''}`} data-testid="btn-component"
-          disabled={!can.component} onClick={() => onMode(mode === 'component' ? null : 'component')}>Component action</button>
-        <button type="button" className={`btn${mode === 'actionCard' ? ' gold' : ''}`} data-testid="btn-action-card"
-          disabled={!can.actionCard} onClick={() => onMode(mode === 'actionCard' ? null : 'actionCard')}>
-          Action cards ({state.players[state.active].actionCards.length})
-        </button>
-        <button type="button" className="btn" data-testid="btn-pass"
-          disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
-        {can.endTurn ? (
-          <button type="button" className="btn gold" data-testid="btn-end-turn"
-            onClick={() => apply({ type: 'endTurn' })}>End turn</button>
-        ) : null}
+        {isMyTurn ? (
+          <>
+            <button type="button" className={`btn${mode === 'tactical' ? ' gold' : ''}`} data-testid="btn-tactical"
+              disabled={!can.tactical} onClick={() => onMode(mode === 'tactical' ? null : 'tactical')}>Tactical action</button>
+            <button type="button" className={`btn${mode === 'strategic' ? ' gold' : ''}`} data-testid="btn-strategic"
+              disabled={!can.strategic} onClick={() => onMode(mode === 'strategic' ? null : 'strategic')}>Strategic action</button>
+            <button type="button" className={`btn${mode === 'component' ? ' gold' : ''}`} data-testid="btn-component"
+              disabled={!can.component} onClick={() => onMode(mode === 'component' ? null : 'component')}>Component action</button>
+            <button type="button" className={`btn${mode === 'actionCard' ? ' gold' : ''}`} data-testid="btn-action-card"
+              disabled={!can.actionCard} onClick={() => onMode(mode === 'actionCard' ? null : 'actionCard')}>
+              Action cards ({myPlayer.actionCards.length})
+            </button>
+            <button type="button" className="btn" data-testid="btn-pass"
+              disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
+            {can.endTurn ? (
+              <button type="button" className="btn gold" data-testid="btn-end-turn"
+                onClick={() => apply({ type: 'endTurn' })}>End turn</button>
+            ) : null}
+          </>
+        ) : (
+          <div className="action-bar-waiting" data-testid="action-bar-waiting">
+            <span className="action-bar-waiting-indicator" />
+            <span className="action-bar-waiting-text">
+              Waiting for {activePlayer.name} ({FACTIONS[activePlayer.faction]?.name ?? activePlayer.faction})...
+            </span>
+            <button
+              type="button"
+              className={`btn quiet${mode === 'actionCard' ? ' gold' : ''}`}
+              data-testid="btn-action-card"
+              disabled={!can.actionCard}
+              onClick={() => onMode(mode === 'actionCard' ? null : 'actionCard')}
+            >
+              Action cards ({myPlayer.actionCards.length})
+            </button>
+          </div>
+        )}
       </div>
       <div className="hintbox">
         {/* the engine's own rejection text; `apply` clears it again on the next move it accepts */}

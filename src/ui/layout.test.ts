@@ -3,7 +3,7 @@ import { SYSTEMS } from '../data/map'
 import {
   ACTIVATION_OVERLAP, ACTIVATION_SIZE, ACTIVATION_SPOT, GROUND_ROW, PLANET_CENTRE, PLANET_SPOTS, PLATE_SIZE, SIGIL_SIZE,
   SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_NUMBER_SIZE, TILE_NUMBER_SPOT, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS,
-  boxInsideHex, discInsideHex, fleetCapacity, fleetScale, plateBox, pointInsideHex,
+  boxInsideHex, discInsideHex, fleetCapacity, fleetScale, getPlanetCentre, getPlanetSpot, plateBox, pointInsideHex,
 } from './layout'
 
 /** The drawn hexagon, written out again here so the test checks the numbers, not the source's own helper. */
@@ -177,5 +177,14 @@ describe('planet centres', () => {
   })
   it('names a planet for every system on the map', () => {
     for (const def of SYSTEMS) expect(planetsOf(def.id).length).toBeGreaterThan(0)
+  })
+  it('places Sakulag on the bottom-right planet in a 2-planet system (Lazar/Sakulag), not in space', () => {
+    const duelSpot = PLANET_SPOTS['sakulag']
+    expect(duelSpot.art.left).toBe(72) // 1-planet center
+    const galaxySpot = getPlanetSpot('sakulag', 1, 2)
+    expect(galaxySpot.art.left).toBe(95) // 2-planet bottom right
+    const centre = getPlanetCentre('sakulag', galaxySpot)
+    expect(centre.left).toBe(138)
+    expect(centre.top).toBe(140)
   })
 })

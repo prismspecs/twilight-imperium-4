@@ -126,6 +126,17 @@ export const SIGIL: Record<FactionId, string> = {
   yssaril: '/assets/factions/yssaril.png',
 }
 
+export const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> = {
+  red: { accent: '#ef4444', tint: '#fca5a5', glow: 'rgba(239, 68, 68, 0.4)' },
+  blue: { accent: '#3b82f6', tint: '#93c5fd', glow: 'rgba(59, 130, 246, 0.4)' },
+  green: { accent: '#22c55e', tint: '#86efac', glow: 'rgba(34, 197, 94, 0.4)' },
+  yellow: { accent: '#eab308', tint: '#fde047', glow: 'rgba(234, 179, 8, 0.4)' },
+  purple: { accent: '#a855f7', tint: '#d8b4fe', glow: 'rgba(168, 85, 247, 0.4)' },
+  black: { accent: '#94a3b8', tint: '#cbd5e1', glow: 'rgba(148, 163, 184, 0.4)' },
+  orange: { accent: '#f97316', tint: '#fdba74', glow: 'rgba(249, 115, 22, 0.4)' },
+  pink: { accent: '#ec4899', tint: '#f9a8d4', glow: 'rgba(236, 72, 153, 0.4)' },
+}
+
 export const TILE_IMAGE_BY_NUMBER: Readonly<Record<number, string>> = {
   1: '01_Jord.png',
   2: '02_MollPrimus.png',

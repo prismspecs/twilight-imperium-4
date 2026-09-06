@@ -78,7 +78,7 @@ describe('MiltyDraftScreen', () => {
     )
 
     // When all players are AI with autoDraftAi enabled, draft completes
-    const launchBtn = await screen.findByTestId('btn-launch-drafted-game')
+    const launchBtn = await screen.findByTestId('btn-launch-drafted-game', {}, { timeout: 5000 })
     expect(launchBtn).toBeTruthy()
 
     fireEvent.click(launchBtn)

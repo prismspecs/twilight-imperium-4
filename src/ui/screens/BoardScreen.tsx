@@ -12,7 +12,9 @@ import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
 import { isAi } from '../../engine/types'
-import type { Seat, StrategyCardId } from '../../engine/types'
+import type { GameConfig, GameState, Seat, StrategyCardId } from '../../engine/types'
+import { FACTIONS } from '../../data/factions'
+import { COLOUR_INK, SIGIL, tokenUrl } from '../art'
 import { diagnoseMovement, logInfo, logWarn } from '../debugLogger'
 // tactical flows (Task 4a)
 import { CombatDialog } from '../flows/CombatDialog'
@@ -40,6 +42,86 @@ const HINTS: Record<string, string> = {
   status: 'Status phase. Distribute your new command tokens.',
   idle: 'Choose an action.',
   spent: 'Your action is spent. Trade at a post or end your turn.',
+}
+
+function ActiveTurnBanner({ state, config }: { state: GameState; config?: GameConfig }) {
+  const activePlayer = state.players[state.active]
+  if (!activePlayer || state.winner !== null) return null
+  const isAiPlayer = isAi(config, state.active)
+  const faction = FACTIONS[activePlayer.faction]
+  const ink = COLOUR_INK[activePlayer.color]
+
+  let actionText = 'Taking turn'
+  if (state.phase === 'strategy') {
+    actionText = 'Strategy Phase: Drafting Strategy Card'
+  } else if (state.pendingSecondary !== null) {
+    const secSeat = state.pendingSecondary.queue[0]
+    const secPlayer = secSeat !== undefined ? state.players[secSeat] : null
+    actionText = secPlayer
+      ? `${secPlayer.name} deciding ${CARD_NAME[state.pendingSecondary.card]} secondary`
+      : 'Resolving secondary'
+  } else if (state.tactical) {
+    const sysName = systemLabel(state.tactical.systemId, state)
+    switch (state.tactical.step) {
+      case 'movement':
+        actionText = `Tactical: Moving fleet to ${sysName}`
+        break
+      case 'spaceCombat':
+        actionText = `⚔️ Space Combat in ${sysName} (Round ${state.tactical.combat?.round ?? 1})`
+        break
+      case 'invasion':
+        actionText = `🪖 Planetary Invasion in ${sysName}`
+        break
+      case 'production':
+        actionText = `🛠️ Production at Space Dock in ${sysName}`
+        break
+      case 'done':
+        actionText = `Completing tactical action in ${sysName}`
+        break
+    }
+  } else if (state.turnDone) {
+    actionText = 'Action complete — ready to end turn'
+  } else if (isAiPlayer) {
+    actionText = 'AI is deliberating action...'
+  } else {
+    actionText = 'Select an action (Tactical, Strategic, or Component)'
+  }
+
+  return (
+    <div
+      className="turn-action-hud"
+      data-testid="turn-action-hud"
+      style={{
+        '--turn-accent': ink.accent,
+        '--turn-glow': ink.glow,
+        '--turn-tint': ink.tint,
+      } as CSSProperties}
+    >
+      <div className="turn-hud-sigil">
+        <img
+          src={SIGIL[activePlayer.faction] || tokenUrl(activePlayer.faction, 'control')}
+          alt={faction.name}
+          onError={e => { (e.currentTarget as HTMLImageElement).src = tokenUrl(activePlayer.faction, 'control') }}
+        />
+      </div>
+      <div className="turn-hud-content">
+        <div className="turn-hud-player">
+          <span className="turn-hud-name" style={{ color: ink.accent }}>
+            {activePlayer.name}
+          </span>
+          <span className="turn-hud-faction">
+            ({faction.name})
+          </span>
+          <span className={`turn-hud-type-badge ${isAiPlayer ? 'ai' : 'human'}`}>
+            {isAiPlayer ? 'AI' : 'YOU'}
+          </span>
+        </div>
+        <div className="turn-hud-action">
+          {actionText}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function BoardScreen() {
@@ -103,8 +185,9 @@ export function BoardScreen() {
   }, [session?.state, dismissedWinIndex])
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale(mapSize.width, mapSize.height)
-  const [userRightDeckTab, setUserRightDeckTab] = useState<'objectives' | 'strategy' | null>(null)
+  const [userRightDeckTab, setUserRightDeckTab] = useState<'objectives' | 'strategy' | 'faction' | null>(null)
   const [userIsRightDeckOpen, setUserIsRightDeckOpen] = useState<boolean | null>(null)
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true)
   const [prevPhase, setPrevPhase] = useState(session?.state.phase)
   if (session && session.state.phase !== prevPhase) {
     setPrevPhase(session.state.phase)
@@ -119,6 +202,9 @@ export function BoardScreen() {
 
   if (!session) return null
   const state = session.state
+  const humanSeatIndex = session.config?.players.findIndex(p => p.playerType === 'human') ?? -1
+  const humanSeat: Seat | undefined = humanSeatIndex !== -1 ? (humanSeatIndex as Seat) : undefined
+  const viewingSeat: Seat = humanSeat !== undefined ? humanSeat : (state.active as Seat)
   const panelSeat = (sideSeat ?? state.active) as Seat
   const drafting = state.phase === 'strategy'
   const onPick = drafting ? (card: StrategyCardId) => { apply({ type: 'pickStrategyCard', card }) } : undefined
@@ -126,14 +212,23 @@ export function BoardScreen() {
   const selectable = mode === 'tactical'
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
-  // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
-  // before the click rather than the movement panel saying it afterwards
-  const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
+  // R3.2: activating a system your ships cannot enter and where you have no space dock to produce is
+  // legal but usually a mistake, so the board says so before the click
+  const outOfReach = selectable.filter(id => {
+    const canReach = shipsThatCanReach(state, state.active, id).length > 0
+    const canProduce = productionLimit(state, state.active, id) > 0
+    return !canReach && !canProduce
+  })
+  const isAiTurn = isAi(session.config, state.active)
+  const isMyTurn = humanSeat !== undefined ? state.active === humanSeat : !isAiTurn
+  const activePlayer = state.players[state.active]
   // R3.2: with the action spent the bar has only two things left to say, whichever panel happens to be open
-  const hint = drafting ? HINTS.strategy
-    : state.phase === 'status' ? HINTS.status
-      : state.turnDone ? (isGalaxy ? 'Your action is spent. End your turn.' : HINTS.spent)
-        : HINTS[mode ?? 'idle']
+  const hint = !isMyTurn && state.phase === 'action'
+    ? `${activePlayer.name} (${FACTIONS[activePlayer.faction]?.name ?? activePlayer.faction}) is taking their turn...`
+    : drafting ? HINTS.strategy
+      : state.phase === 'status' ? HINTS.status
+        : state.turnDone ? (isGalaxy ? 'Your action is spent. End your turn.' : HINTS.spent)
+          : HINTS[mode ?? 'idle']
   // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
   // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would
   // only ask the player to confirm an empty production, so the turn simply ends.
@@ -144,7 +239,6 @@ export function BoardScreen() {
   const idleTactical = state.tactical !== null
     && (state.tactical.step === 'production' || state.tactical.step === 'done')
     && !producing
-  const isAiTurn = isAi(session.config, state.active)
   const hasActiveModal = Boolean(
     (state.tactical && state.tactical.step !== 'done') ||
     combatOutcome ||
@@ -185,12 +279,28 @@ export function BoardScreen() {
               setUserIsRightDeckOpen(prev => !(prev ?? true))
             }
           }}
+          config={session.config}
         />
         <SidePanel
           state={state}
           seat={panelSeat}
           onSelectSeat={setSideSeat}
+          isOpen={isSidePanelOpen}
+          onToggleCollapse={() => setIsSidePanelOpen(false)}
+          viewingSeat={viewingSeat}
         />
+        {!isSidePanelOpen && (
+          <button
+            type="button"
+            className="side-panel-open-tab"
+            data-testid="btn-open-side-panel"
+            onClick={() => setIsSidePanelOpen(true)}
+            title="Expand player panel"
+            aria-label="Expand player panel"
+          >
+            <span>▶ Players</span>
+          </button>
+        )}
         <FloatingRightDeck
           state={state}
           activeTab={rightDeckTab}
@@ -201,9 +311,11 @@ export function BoardScreen() {
           isOpen={isRightDeckOpen}
           onToggleOpen={() => setUserIsRightDeckOpen(prev => !(prev ?? true))}
           onPick={onPick}
+          humanSeat={humanSeat}
         />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
-        <div className={`stage${hasActiveModal ? ' has-modal' : ''}`} data-testid="stage">
+        <div className={`stage${hasActiveModal ? ' has-modal' : ''}${!isSidePanelOpen ? ' side-collapsed' : ''}`} data-testid="stage">
+          <ActiveTurnBanner state={state} config={session.config} />
           <BoardMap
             state={state}
             activeSystemId={state.tactical?.systemId ?? null}
@@ -292,13 +404,20 @@ export function BoardScreen() {
             ) : null}
             {!isAiTurn && mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
             {!isAiTurn && mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
-            {!isAiTurn && mode === 'actionCard' ? <ActionCardPanel onClose={() => setMode(null)} /> : null}
+            {mode === 'actionCard' ? <ActionCardPanel viewingSeat={viewingSeat} onClose={() => setMode(null)} /> : null}
             {!isAiTurn && state.pendingSecondary !== null ? <SecondaryPanel /> : null}
             {!isAiTurn && state.phase === 'status' ? <StatusDialog /> : null}
           </div>
           {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
         </div>
-        <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
+        <ActionBar
+          mode={mode}
+          onMode={setMode}
+          hint={hint}
+          onLog={() => setShowLog(!showLog)}
+          viewingSeat={viewingSeat}
+          isMyTurn={isMyTurn}
+        />
       </div>
       <HandoffOverlay />
     </>

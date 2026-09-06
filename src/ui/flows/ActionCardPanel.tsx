@@ -1,12 +1,13 @@
 import { actionCardDef } from '../../data/actionCards'
-import { HAND_LIMIT, PLAYABLE_ACTION_CARDS, isAi } from '../../engine'
+import { HAND_LIMIT, PLAYABLE_ACTION_CARDS } from '../../engine'
 import { planetLabel, systemLabel, techLabel } from '../format'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
-import type { ActionCardParams, GameState, Move } from '../../engine/types'
+import type { ActionCardParams, GameState, Move, Seat } from '../../engine/types'
 
 export interface ActionCardPanelProps {
   onClose: () => void
+  viewingSeat?: Seat
 }
 
 /** What one enumerated play of a card actually does, in words: the card names its own target. */
@@ -23,15 +24,19 @@ function offerLabel(state: GameState, params: ActionCardParams | undefined): str
  * R9: the hand, and every play the engine will accept for it. A card that cannot be played says why in
  * words rather than sitting there greyed out and mute (CLAUDE.md).
  */
-export function ActionCardPanel({ onClose }: ActionCardPanelProps) {
+export function ActionCardPanel({ onClose, viewingSeat }: ActionCardPanelProps) {
   const { session, legal, apply } = useGame()
   useEscape(onClose)
   if (!session) return null
   const state = session.state
-  if (isAi(session.config, state.active)) return null
-  const seat = state.active
-  const hand = state.players[seat].actionCards
-  const plays = legal.filter((m): m is Extract<Move, { type: 'playActionCard' }> => m.type === 'playActionCard')
+  const humanSeatIndex = session.config?.players.findIndex(p => p.playerType === 'human') ?? -1
+  const humanSeat = humanSeatIndex !== -1 ? (humanSeatIndex as Seat) : undefined
+  const seat = viewingSeat ?? humanSeat ?? state.active
+  const isMyTurn = state.active === seat
+  const hand = state.players[seat]?.actionCards ?? []
+  const plays = isMyTurn
+    ? legal.filter((m): m is Extract<Move, { type: 'playActionCard' }> => m.type === 'playActionCard')
+    : []
   return (
     <div className="drawer full" data-testid="action-card-panel">
       <div className="in">
@@ -42,12 +47,19 @@ export function ActionCardPanel({ onClose }: ActionCardPanelProps) {
           </div>
         </div>
         {hand.length === 0 ? <div className="sub">You hold no action cards. One is dealt to every player in the status phase.</div> : null}
+        {!isMyTurn ? (
+          <div className="sub" style={{ color: '#93c5fd', marginBottom: 10 }}>
+            It is currently {state.players[state.active].name}&apos;s turn. Action cards can be reviewed here.
+          </div>
+        ) : null}
         {hand.map(cardId => {
           const def = actionCardDef(cardId)
           const offers = plays.filter(m => m.cardId === cardId)
-          const reason = PLAYABLE_ACTION_CARDS.includes(cardId)
-            ? `Nothing on the board is a legal target for this card right now (${def.window.toLowerCase()}).`
-            : `This card waits for a moment the game cannot offer yet: ${def.window.toLowerCase()}.`
+          const reason = !isMyTurn
+            ? 'Cards can only be played during your turn or during appropriate reaction windows.'
+            : PLAYABLE_ACTION_CARDS.includes(cardId)
+              ? `Nothing on the board is a legal target for this card right now (${def.window.toLowerCase()}).`
+              : `This card waits for a moment the game cannot offer yet: ${def.window.toLowerCase()}.`
           return (
             <div key={cardId} className="rowline" data-testid={`action-card-${cardId}`} style={{ alignItems: 'flex-start', marginBottom: 10 }}>
               <div style={{ minWidth: 220 }}>

@@ -102,7 +102,7 @@ export function SecondaryPanel() {
         ? 'You have not spent any influence yet: spend 3 influence per command token gained, or trade goods 1 for 1.'
         : undefined
   return (
-    <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="secondary-panel">
+    <div className={card === 'technology' ? 'drawer full' : 'dialog secondary-dialog'} data-testid="secondary-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, secondary</span>

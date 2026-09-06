@@ -18,6 +18,9 @@ export interface SidePanelProps {
   state: GameState
   seat: Seat
   onSelectSeat?: (seat: Seat) => void
+  isOpen?: boolean
+  onToggleCollapse?: () => void
+  viewingSeat?: Seat
 }
 
 function Section({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
@@ -33,7 +36,14 @@ function Section({ title, id, children }: { title: string; id: string; children:
   )
 }
 
-export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
+export function SidePanel({
+  state,
+  seat,
+  onSelectSeat,
+  isOpen = true,
+  onToggleCollapse,
+  viewingSeat,
+}: SidePanelProps) {
   const [shown, setShown] = useState<UnitType | null>(null)
   const { style } = useModelStyle()
   const safeSeat = (seat < state.players.length ? seat : 0) as Seat
@@ -43,7 +53,13 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
   for (const unit of unitsOf(state, safeSeat)) counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1)
   const targetVp = state.players.length <= 2 ? 7 : 10
   return (
-    <div className="side-panel" data-testid={`panel-${seat}`}>
+    <aside
+      className={`side-panel${isOpen ? ' is-open' : ' is-collapsed'}`}
+      data-testid={`panel-${seat}`}
+      aria-label="Player Details Panel"
+      aria-hidden={!isOpen}
+      inert={!isOpen ? true : undefined}
+    >
       <div className="seat-tabs" data-testid="seat-tabs-side">
         {state.players.map((p, idx) => (
           <button
@@ -57,6 +73,18 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
             {state.players.length > 2 ? `P${idx + 1}` : FACTIONS[p.faction].name}
           </button>
         ))}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className="side-panel-collapse-btn"
+            data-testid="btn-collapse-side-panel"
+            onClick={onToggleCollapse}
+            title="Collapse player panel"
+            aria-label="Collapse player panel"
+          >
+            ◀
+          </button>
+        )}
       </div>
       <div className="pcontent">
         <Section title="Victory points" id="vp">
@@ -145,17 +173,27 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
               {player.secretObjectives.map(id => {
                 const def = objectiveDef(id)
                 const scored = player.scoredObjectives.includes(id)
+                const isViewer = viewingSeat === undefined || viewingSeat === safeSeat
+                const isVisible = isViewer || scored
                 return (
                   <div
                     key={id}
-                    className={`secret-item${scored ? ' scored' : ''}`}
+                    className={`secret-item${scored ? ' scored' : ''}${!isVisible ? ' secret-hidden' : ''}`}
                     data-testid={`secret-${seat}-${id}`}
                   >
                     <div className="secret-head">
-                      <span className="secret-name">{def?.name ?? id}</span>
-                      <span className="secret-badge">{scored ? 'Scored' : 'Secret'}</span>
+                      <span className="secret-name">
+                        {isVisible ? (def?.name ?? id) : 'Hidden Secret Objective'}
+                      </span>
+                      <span className="secret-badge">
+                        {scored ? 'Scored' : isVisible ? 'Secret' : 'Hidden'}
+                      </span>
                     </div>
-                    {def?.text && <div className="secret-text">{def.text}</div>}
+                    {isVisible && def?.text ? (
+                      <div className="secret-text">{def.text}</div>
+                    ) : !isVisible ? (
+                      <div className="secret-text secret-hidden-text">Only visible to {player.name}.</div>
+                    ) : null}
                   </div>
                 )
               })}
@@ -169,6 +207,6 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
         </div>,
         document.body,
       ) : null}
-    </div>
+    </aside>
   )
 }

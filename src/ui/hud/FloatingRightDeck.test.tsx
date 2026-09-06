@@ -132,4 +132,53 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     const stage = screen.getByTestId('stage')
     expect(stage.className).toContain('has-modal')
   })
+
+  it('switches to My Faction tab in FloatingRightDeck and displays player faction overview and secret objectives', () => {
+    let state = toActionPhase()
+    state = withPlayer(state, 0, {
+      secretObjectives: ['fwm'],
+    })
+
+    renderWithSession(state, <BoardScreen />)
+
+    // Click Faction button in TopBar
+    fireEvent.click(screen.getByTestId('topbar-btn-faction'))
+    expect(screen.getByTestId('tab-btn-faction').className).toContain('active')
+    expect(screen.getByTestId('panel-faction')).toBeTruthy()
+
+    // Faction hero and stats are rendered
+    expect(screen.getByTestId('frd-hero-0')).toBeTruthy()
+    expect(screen.getByTestId('frd-tokens-0-tactic')).toBeTruthy()
+    expect(screen.getByTestId('frd-economy-0-resources')).toBeTruthy()
+
+    // Secret objective is fully visible to owner
+    const secretCard = screen.getByTestId('frd-secret-0-fwm')
+    expect(secretCard).toBeTruthy()
+    expect(secretCard.textContent).toContain('Fuel the War Machine')
+  })
+
+  it('collapses and restores the left player panel via collapse and open buttons', () => {
+    const state = toActionPhase()
+    renderWithSession(state, <BoardScreen />)
+
+    const sidePanel = screen.getByTestId('panel-0')
+    const stage = screen.getByTestId('stage')
+    expect(sidePanel.className).toContain('is-open')
+    expect(stage.className).not.toContain('side-collapsed')
+
+    // Click collapse button
+    fireEvent.click(screen.getByTestId('btn-collapse-side-panel'))
+    expect(sidePanel.className).toContain('is-collapsed')
+    expect(stage.className).toContain('side-collapsed')
+
+    // Reopen button is shown
+    const openBtn = screen.getByTestId('btn-open-side-panel')
+    expect(openBtn).toBeTruthy()
+
+    // Click reopen button
+    fireEvent.click(openBtn)
+    expect(sidePanel.className).toContain('is-open')
+    expect(stage.className).not.toContain('side-collapsed')
+    expect(screen.queryByTestId('btn-open-side-panel')).toBeNull()
+  })
 })
