@@ -6,6 +6,7 @@ import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
+import { FloatingRightDeck } from '../hud/FloatingRightDeck'
 import { productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
@@ -102,11 +103,26 @@ export function BoardScreen() {
   }, [session?.state, dismissedWinIndex])
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale(mapSize.width, mapSize.height)
+  const [userRightDeckTab, setUserRightDeckTab] = useState<'objectives' | 'strategy' | null>(null)
+  const [userIsRightDeckOpen, setUserIsRightDeckOpen] = useState<boolean | null>(null)
+  const [prevPhase, setPrevPhase] = useState(session?.state.phase)
+  if (session && session.state.phase !== prevPhase) {
+    setPrevPhase(session.state.phase)
+    if (session.state.phase === 'strategy') {
+      setUserRightDeckTab('strategy')
+      setUserIsRightDeckOpen(true)
+    }
+  }
+  const isStrategyPhase = session?.state.phase === 'strategy'
+  const rightDeckTab = userRightDeckTab ?? (isStrategyPhase ? 'strategy' : 'objectives')
+  const isRightDeckOpen = userIsRightDeckOpen ?? true
+
   if (!session) return null
   const state = session.state
   const panelSeat = (sideSeat ?? state.active) as Seat
   const drafting = state.phase === 'strategy'
   const onPick = drafting ? (card: StrategyCardId) => { apply({ type: 'pickStrategyCard', card }) } : undefined
+
   const selectable = mode === 'tactical'
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
@@ -129,6 +145,18 @@ export function BoardScreen() {
     && (state.tactical.step === 'production' || state.tactical.step === 'done')
     && !producing
   const isAiTurn = isAi(session.config, state.active)
+  const hasActiveModal = Boolean(
+    (state.tactical && state.tactical.step !== 'done') ||
+    combatOutcome ||
+    state.phase === 'status' ||
+    mode === 'strategic' ||
+    mode === 'component' ||
+    mode === 'actionCard' ||
+    state.pendingSecondary !== null ||
+    inspecting !== null ||
+    showLog
+  )
+
   return (
     <>
       <div
@@ -141,13 +169,41 @@ export function BoardScreen() {
           clockMs={session.clockMs}
           clockMinutes={session.minutes}
           clockRunning={clockRunning}
-          onPick={onPick}
           selectedSeat={panelSeat}
           onSelectSeat={setSideSeat}
+          activeDeckTab={rightDeckTab}
+          isDeckOpen={isRightDeckOpen}
+          onToggleDeck={(tab) => {
+            if (tab) {
+              if (rightDeckTab === tab && isRightDeckOpen) {
+                setUserIsRightDeckOpen(false)
+              } else {
+                setUserRightDeckTab(tab)
+                setUserIsRightDeckOpen(true)
+              }
+            } else {
+              setUserIsRightDeckOpen(prev => !(prev ?? true))
+            }
+          }}
         />
-        <SidePanel state={state} seat={panelSeat} onSelectSeat={setSideSeat} />
+        <SidePanel
+          state={state}
+          seat={panelSeat}
+          onSelectSeat={setSideSeat}
+        />
+        <FloatingRightDeck
+          state={state}
+          activeTab={rightDeckTab}
+          onTabChange={(tab) => {
+            setUserRightDeckTab(tab)
+            setUserIsRightDeckOpen(true)
+          }}
+          isOpen={isRightDeckOpen}
+          onToggleOpen={() => setUserIsRightDeckOpen(prev => !(prev ?? true))}
+          onPick={onPick}
+        />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
-        <div className="stage" data-testid="stage">
+        <div className={`stage${hasActiveModal ? ' has-modal' : ''}`} data-testid="stage">
           <BoardMap
             state={state}
             activeSystemId={state.tactical?.systemId ?? null}

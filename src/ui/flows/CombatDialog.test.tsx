@@ -21,21 +21,9 @@ describe('CombatDialog and combat outcome visibility', () => {
         retreating: null,
         retreatTo: null,
         lastRolls: [
-          {
-            owner: 0,
-            context: 'combat round 1',
-            rolls: [
-              { unit: 'cruiser', value: 8, hit: true },
-              { unit: 'fighter', value: 4, hit: false },
-            ],
-          },
-          {
-            owner: 1,
-            context: 'combat round 1',
-            rolls: [
-              { unit: 'destroyer', value: 2, hit: false },
-            ],
-          },
+          { owner: 0, unit: 'cruiser', value: 8, hit: true },
+          { owner: 0, unit: 'fighter', value: 4, hit: false },
+          { owner: 1, unit: 'destroyer', value: 2, hit: false },
         ],
         pending: [],
       },
@@ -49,8 +37,8 @@ describe('CombatDialog and combat outcome visibility', () => {
           owner: 0,
           context: 'combat round 1',
           rolls: [
-            { unit: 'cruiser', value: 8, hit: true },
-            { unit: 'fighter', value: 4, hit: false },
+            { owner: 0, unit: 'cruiser', value: 8, hit: true },
+            { owner: 0, unit: 'fighter', value: 4, hit: false },
           ],
         },
         {
@@ -58,7 +46,7 @@ describe('CombatDialog and combat outcome visibility', () => {
           owner: 1,
           context: 'combat round 1',
           rolls: [
-            { unit: 'destroyer', value: 2, hit: false },
+            { owner: 1, unit: 'destroyer', value: 2, hit: false },
           ],
         },
         { t: 'info', text: 'seat 1 loses: 1 destroyer destroyed in bereg' },
