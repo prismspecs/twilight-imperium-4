@@ -206,4 +206,21 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('player-2')).toBeTruthy()
     expect(screen.getByTestId('tile-mecatol')).toBeTruthy()
   })
+
+  it('launches into the interactive Milty draft screen when Milty draft is selected', () => {
+    renderApp()
+    fireEvent.click(screen.getByTestId('btn-milty-draft'))
+    expect(screen.getByTestId('btn-start').textContent).toContain('Milty draft')
+
+    fireEvent.click(screen.getByTestId('btn-start'))
+    expect(screen.getByTestId('milty-draft-screen')).toBeTruthy()
+    expect(screen.getByTestId('draft-factions-pool')).toBeTruthy()
+    expect(screen.getByTestId('draft-slices-pool')).toBeTruthy()
+    expect(screen.getByTestId('draft-positions-pool')).toBeTruthy()
+
+    // Can return back to setup
+    fireEvent.click(screen.getByTestId('btn-back-to-setup'))
+    expect(screen.getByTestId('setup-screen')).toBeTruthy()
+  })
 })
+

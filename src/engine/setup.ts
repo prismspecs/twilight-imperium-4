@@ -110,9 +110,12 @@ export function createGame(config: GameConfig, seed: number): GameState {
   const order = shuffledObjectives(seed)
   const secretDeck = shuffledSecretObjectives(seed)
   // Two players use the curated duel map; three to six generate a full galaxy from the tile catalogue.
-  const defs: SystemDef[] = config.players.length <= 2
-    ? SYSTEMS
-    : generateGalaxy(config.players.map((p, seat) => ({ seat, faction: p.faction })), seed)
+  // Custom maps (e.g. drafted galaxy) supply config.systems directly.
+  const defs: SystemDef[] = config.systems
+    ? config.systems
+    : config.players.length <= 2
+      ? SYSTEMS
+      : generateGalaxy(config.players.map((p, seat) => ({ seat, faction: p.faction })), seed)
   const systems: Record<string, System> = {}
   for (const def of defs) {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, trait: p.trait ?? null, techSkip: p.techSkip ?? null, owner: def.home, exhausted: false, ground: [], structures: [] }))

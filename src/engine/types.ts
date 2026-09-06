@@ -275,6 +275,7 @@ export interface PlayerConfig {
 export interface GameConfig {
   players: PlayerConfig[]
   speaker: Seat
+  systems?: import('../data/map').SystemDef[]
 }
 export function isAi(config: GameConfig | undefined, seat: Seat): boolean {
   return config?.players[seat].playerType === 'ai'

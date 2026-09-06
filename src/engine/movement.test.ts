@@ -201,11 +201,13 @@ describe('Anomalies & Gravity Drive legality (JVBR8F regression)', () => {
     // First ship uses Gravity Drive to reach starpoint (distance 2)
     const first = move(gd, ids[0], 'home-n')
     expect(first.ok).toBe(true)
+    if (!first.ok) throw new Error(first.error)
     expect(first.value.tactical?.gravityDriveUsed).toBe(true)
 
     // Second ship attempts to also use Gravity Drive in the same activation
     const second = move(first.value, ids[1], 'home-n')
     expect(second.ok).toBe(false)
+    if (second.ok) throw new Error('expected second move to fail')
     expect(second.error).toContain('cannot reach starpoint')
   })
 

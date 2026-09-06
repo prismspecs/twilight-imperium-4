@@ -14,6 +14,7 @@ import type { CSSProperties, ReactElement } from 'react'
 import type { Color, FactionId, PlayerType, Seat, UnitType } from '../../engine/types'
 import { SpaceBackdrop } from '../SpaceBackdrop'
 import { MusicButton } from '../music'
+import { MiltyDraftScreen } from './MiltyDraftScreen'
 
 const COLOURS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink']
 const COLOUR_NAMES: Record<Color, string> = {
@@ -204,6 +205,8 @@ export function SetupScreen() {
   const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
   const [minutes, setMinutes] = useState(15)
   const [useMiltyDraft, setUseMiltyDraft] = useState(false)
+  const [isDrafting, setIsDrafting] = useState(false)
+  const [draftSeed, setDraftSeed] = useState(0)
   // the seat the pointer or the keyboard is in, so its home system flares on the plot
   const [litSeat, setLitSeat] = useState<number | null>(null)
 
@@ -260,24 +263,18 @@ export function SetupScreen() {
     })
     // Reset draft mode when player count changes
     if (useMiltyDraft) setUseMiltyDraft(false)
+    if (isDrafting) setIsDrafting(false)
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
-    const playerFactions = useMiltyDraft
-      ? (() => {
-          const allFactionIds = Object.keys(FACTIONS) as FactionId[]
-          // Fisher-Yates shuffle: pick playerCount distinct factions from the full pool
-          const shuffled = [...allFactionIds]
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1))
-            ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-          }
-          return shuffled.slice(0, playerCount)
-        })()
-      : factions
+    if (useMiltyDraft) {
+      setDraftSeed(seed)
+      setIsDrafting(true)
+      return
+    }
     start({
       players: Array.from({ length: playerCount }, (_, seat) => ({
-        faction: playerFactions[seat],
+        faction: factions[seat],
         color: colours[seat],
         name: names[seat].trim() || `Player ${String(seat + 1)}`,
         playerType: playerTypes[seat],
@@ -294,7 +291,32 @@ export function SetupScreen() {
   const allAi = live.every(pt => pt === 'ai')
   const anyAi = live.some(pt => pt === 'ai')
   const systems = playerCount === 3 ? 34 : 37
-  const startLabel = allAi ? 'Watch AI game' : anyAi ? 'Launch vs AI' : 'Launch hot-seat'
+
+  if (isDrafting) {
+    return (
+      <MiltyDraftScreen
+        playerCount={playerCount}
+        players={Array.from({ length: playerCount }, (_, seat) => ({
+          name: names[seat].trim() || `Player ${String(seat + 1)}`,
+          color: colours[seat],
+          playerType: playerTypes[seat],
+        }))}
+        seed={draftSeed}
+        minutes={minutes}
+        onBackToSetup={() => { setIsDrafting(false) }}
+        onStartGame={(config, gameSeed, gameMinutes) => {
+          start(config, gameSeed, gameMinutes)
+        }}
+      />
+    )
+  }
+
+  const startLabel = useMiltyDraft
+    ? (allAi ? 'Draft AI game' : anyAi ? 'Begin Milty draft' : 'Draft hot-seat')
+    : (allAi ? 'Watch AI game' : anyAi ? 'Launch vs AI' : 'Launch hot-seat')
+  const startSub = useMiltyDraft
+    ? 'Snake draft: choose factions, map slices, and table positions.'
+    : `Hot-seat, pass the tablet, chess clock ${String(minutes)} minutes each.`
 
   return (
     <div className="preflight" data-testid="setup-screen">
@@ -591,7 +613,7 @@ export function SetupScreen() {
               Milty draft
             </button>
           </div>
-          <span className="pf-set-sub">{useMiltyDraft ? 'Randomised balanced factions' : 'The factions on the manifest'}</span>
+          <span className="pf-set-sub">{useMiltyDraft ? 'Snake draft: factions, slices & speaker' : 'The factions on the manifest'}</span>
         </div>
 
         <div className="pf-set" data-testid="setup-clock">
@@ -614,7 +636,7 @@ export function SetupScreen() {
 
         <div className="pf-go" data-testid="landing-hotseat">
           <button type="button" className="pf-launch-btn" data-testid="btn-start" onClick={onStart}>{startLabel}</button>
-          <span className="pf-set-sub">{`Hot-seat, pass the tablet, chess clock ${String(minutes)} minutes each.`}</span>
+          <span className="pf-set-sub">{startSub}</span>
         </div>
       </footer>
 

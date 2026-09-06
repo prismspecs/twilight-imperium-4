@@ -63,6 +63,14 @@ export { legalMoves, validateMove } from './legalMoves'
 export { isAi } from './types'
 export type * from './types'
 
+// Milty Draft
+export { generateSlices, calculateSliceMetrics } from './draft/sliceGenerator'
+export type { DraftSlice, DraftSliceMetrics } from './draft/sliceGenerator'
+export { createDraftState, applyDraftPick, availablePicksFor, aiDraftPick } from './draft/miltyDraft'
+export type { MiltyDraftState, MiltyDraftConfig, DraftPick, DraftPlayer, DraftPosition, PlayerPicks } from './draft/miltyDraft'
+export { assembleDraftedGame } from './draft/assembleMap'
+export type { AssembledDraftGame } from './draft/assembleMap'
+
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
 export { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, actionCardName } from './actionCards'
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
