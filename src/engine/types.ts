@@ -17,6 +17,7 @@ export type TechSkip = 'red' | 'blue' | 'green' | 'yellow'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
 export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock'
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
+export type Anomaly = 'asteroid_field' | 'nebula' | 'gravity_rift' | 'supernova'
 export type StrategyCardId = 'leadership' | 'diplomacy' | 'politics' | 'construction' | 'trade' | 'warfare' | 'technology' | 'imperial'
 export type Phase = 'strategy' | 'action' | 'status' | 'ended'
 export type PlayerType = 'human' | 'ai'
@@ -35,6 +36,7 @@ export interface System {
   tile?: string
   q?: number
   r?: number
+  anomalies?: Anomaly[]
   planets: Planet[]
   wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]             // hex-adjacent system ids; wormhole links are added on top by adjacency.ts
@@ -70,6 +72,7 @@ export interface TacticalContext {
   step: 'movement' | 'spaceCombat' | 'invasion' | 'production' | 'done'
   combat?: CombatState
   invasion?: InvasionState
+  gravityDriveUsed?: boolean
 }
 /** How a batch of hits may be assigned: `noFighters` is Graviton Laser System, `preferNonFighters` is [0.0.1]. */
 export type HitMode = 'any' | 'noFighters' | 'preferNonFighters'

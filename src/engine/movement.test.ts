@@ -193,3 +193,100 @@ describe('R3.2 reachability, so the interface can say why nothing moves', () => 
     expect(movementObstacle(s, 0, 'home-n')).toBe('none')
   })
 })
+
+describe('Anomalies & Gravity Drive legality (JVBR8F regression)', () => {
+  it('Gravity Drive cannot be used by a second ship in a subsequent moveShips call in the same activation', () => {
+    const gd = activate(withUnits(withTechs(toActionPhase(), 0, ['gravity_drive']), 'home-n', 0, ['carrier', 'carrier']), 0, 'starpoint')
+    const ids = gd.systems['home-n'].space.filter(u => u.type === 'carrier' && u.owner === 0).map(u => u.id)
+    // First ship uses Gravity Drive to reach starpoint (distance 2)
+    const first = move(gd, ids[0], 'home-n')
+    expect(first.ok).toBe(true)
+    expect(first.value.tactical?.gravityDriveUsed).toBe(true)
+
+    // Second ship attempts to also use Gravity Drive in the same activation
+    const second = move(first.value, ids[1], 'home-n')
+    expect(second.ok).toBe(false)
+    expect(second.error).toContain('cannot reach starpoint')
+  })
+
+  it('ships cannot move into or through an asteroid field without Antimass Deflectors', () => {
+    const base = toActionPhase()
+    const withAsteroid: GameState = {
+      ...base,
+      systems: {
+        ...base.systems,
+        bereg: { ...base.systems.bereg, anomalies: ['asteroid_field'] },
+      },
+    }
+    // Attempt to enter asteroid field without Antimass Deflectors
+    const activated = activate(withAsteroid, 0, 'bereg')
+    const carrier = shipId(activated, 'home-n', 'carrier')
+    const enterRes = move(activated, carrier, 'home-n')
+    expect(enterRes.ok).toBe(false)
+
+    // Attempt to pass through asteroid field to quann when it is the only path
+    const gdState = withUnits(withUnits(withTechs(withAsteroid, 0, ['gravity_drive']), 'sakulag', 1, ['cruiser']), 'mecatol', 1, ['cruiser'])
+    const toQuann = activate(gdState, 0, 'quann')
+    const passRes = move(toQuann, carrier, 'home-n')
+    expect(passRes.ok).toBe(false)
+
+    // With Antimass Deflectors, both succeed
+    const withTech = withTechs(withAsteroid, 0, ['antimass_deflectors'])
+    const allowed = activate(withTech, 0, 'bereg')
+    const allowedRes = move(allowed, carrier, 'home-n')
+    expect(allowedRes.ok).toBe(true)
+  })
+
+  it('ships cannot move into or through a supernova under any circumstances', () => {
+    const base = toActionPhase()
+    const withSupernova: GameState = {
+      ...base,
+      systems: {
+        ...base.systems,
+        bereg: { ...base.systems.bereg, anomalies: ['supernova'] },
+      },
+    }
+    const withAllTechs = withTechs(withSupernova, 0, ['antimass_deflectors', 'gravity_drive'])
+    const activated = activate(withAllTechs, 0, 'bereg')
+    const carrier = shipId(activated, 'home-n', 'carrier')
+    expect(move(activated, carrier, 'home-n').ok).toBe(false)
+  })
+
+  it('ships can enter a nebula as destination, but cannot pass through it as a waypoint', () => {
+    const base = toActionPhase()
+    const withNebula: GameState = {
+      ...base,
+      systems: {
+        ...base.systems,
+        bereg: { ...base.systems.bereg, anomalies: ['nebula'] },
+      },
+    }
+    const gdState = withUnits(withUnits(withTechs(withNebula, 0, ['gravity_drive']), 'sakulag', 1, ['cruiser']), 'mecatol', 1, ['cruiser'])
+    const carrier = shipId(gdState, 'home-n', 'carrier')
+
+    // Entering nebula as destination: allowed
+    const destActive = activate(gdState, 0, 'bereg')
+    expect(move(destActive, carrier, 'home-n').ok).toBe(true)
+
+    // Passing through nebula to quann: blocked
+    const throughActive = activate(gdState, 0, 'quann')
+    expect(move(throughActive, carrier, 'home-n').ok).toBe(false)
+  })
+
+  it('prevents Creuss from illegally reaching home-4 in game JVBR8F through tile-45 asteroid field', async () => {
+    const { createGame } = await import('./setup')
+    const config = {
+      players: [
+        { faction: 'xxcha' as const, color: 'green' as const, name: 'P1', playerType: 'human' as const },
+        { faction: 'yin' as const, color: 'red' as const, name: 'P2', playerType: 'ai' as const },
+        { faction: 'yssaril' as const, color: 'yellow' as const, name: 'P3', playerType: 'ai' as const },
+        { faction: 'creuss' as const, color: 'purple' as const, name: 'P4', playerType: 'ai' as const },
+        { faction: 'naalu' as const, color: 'blue' as const, name: 'P5', playerType: 'ai' as const },
+        { faction: 'jolnar' as const, color: 'orange' as const, name: 'P6', playerType: 'ai' as const },
+      ],
+      speaker: 0,
+    }
+    const state = createGame(config, 776489084)
+    expect(shipsThatCanReach(state, 3, 'home-4')).toHaveLength(0)
+  })
+})

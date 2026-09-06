@@ -217,7 +217,8 @@ describe('legal moves in every phase', () => {
 // 19 came in with Politics and Construction: eight cards in the pool means a different draft and a
 // different path again, and 19 is the seed that still reaches `groundCombatRound` and an accepted Trade
 // secondary.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
+// 9 came in when Gravity Drive was strictly limited to 1 ship per activation: seed 9 exercises `groundCombatRound`.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

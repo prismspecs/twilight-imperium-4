@@ -1,4 +1,4 @@
-import type { PlanetTrait, Seat, TechSkip } from '../engine/types'
+import type { Anomaly, PlanetTrait, Seat, TechSkip } from '../engine/types'
 
 export interface PlanetDef { id: string; name: string; resources: number; influence: number; trait?: PlanetTrait | null; techSkip?: TechSkip | null }
 export interface SystemDef {
@@ -7,6 +7,7 @@ export interface SystemDef {
   wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]
   home: Seat | null
+  anomalies?: Anomaly[]
   q?: number
   r?: number
 }

@@ -1,16 +1,44 @@
+import { tileByNumber } from '../data/tiles'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, statsOwner, trimCargo } from './board'
 import { afterSpaceCannonOnly, spaceCannonOffense } from './combat'
 import { afterSpaceStep } from './invasion'
-import type { CombatState, GameState, Result, Seat, System, Unit } from './types'
+import type { Anomaly, CombatState, GameState, Result, Seat, System, Unit } from './types'
 
 export interface MoveSpec { unitId: number; from: string; carrying: number[] }
 
-/** R1: the duel map carries no anomalies, so the only thing that stops a ship short is a fleet in the way. */
+export function anomaliesOf(sys: System): Anomaly[] {
+  if (sys.anomalies && sys.anomalies.length > 0) return sys.anomalies
+  if (sys.tile) {
+    const num = Number(sys.tile)
+    if (!Number.isNaN(num) && num > 0) {
+      try {
+        return tileByNumber(num).anomalies
+      } catch {
+        return []
+      }
+    }
+  }
+  return []
+}
+
+/**
+ * R1/LRR 10/57/81: Anomaly and fleet restrictions on movement.
+ * - Asteroid fields require Antimass Deflectors to enter or pass through.
+ * - Supernovas cannot be entered or passed through.
+ * - Nebulae can be entered as destinations, but cannot be passed through as waypoints.
+ * - Enemy or guardian ships block movement through waypoints.
+ */
 function passable(state: GameState, seat: Seat, id: string, destination: boolean, ignoreFleets: boolean): boolean {
+  const sys = state.systems[id]
+  if (!sys) return false
+  const anoms = anomaliesOf(sys)
+  if (anoms.includes('supernova')) return false
+  if (anoms.includes('asteroid_field') && !state.players[seat].techs.includes('antimass_deflectors')) return false
+  if (!destination && anoms.includes('nebula')) return false
   if (destination || ignoreFleets) return true
-  return !state.systems[id].space.some(u => u.owner !== seat && isShip(u.type))   // R3.2: no moving through enemy or guardian ships
+  return !sys.space.some(u => u.owner !== seat && isShip(u.type))   // R3.2: no moving through enemy or guardian ships
 }
 
 /**
@@ -43,7 +71,8 @@ function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
 
 /** Every ship of the seat that could reach `systemId`, whether or not that system is activated yet. */
 export function shipsThatCanReach(state: GameState, seat: Seat, systemId: string): { unitId: number; from: string }[] {
-  const bonus = state.players[seat].techs.includes('gravity_drive') ? 1 : 0
+  const gdAvailable = state.players[seat].techs.includes('gravity_drive') && !state.tactical?.gravityDriveUsed
+  const bonus = gdAvailable ? 1 : 0
   const out: { unitId: number; from: string }[] = []
   for (const sys of Object.values(state.systems)) {
     if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
@@ -72,7 +101,14 @@ export function movableShips(state: GameState, seat: Seat): { unitId: number; fr
 export type MovementObstacle = 'blocked' | 'range' | 'none'
 export function movementObstacle(state: GameState, seat: Seat, systemId: string): MovementObstacle | null {
   if (shipsThatCanReach(state, seat, systemId).length > 0) return null
-  const bonus = state.players[seat].techs.includes('gravity_drive') ? 1 : 0
+  const targetSys = state.systems[systemId]
+  if (targetSys) {
+    const anoms = anomaliesOf(targetSys)
+    if (anoms.includes('supernova')) return 'range'
+    if (anoms.includes('asteroid_field') && !state.players[seat].techs.includes('antimass_deflectors')) return 'blocked'
+  }
+  const gdAvailable = state.players[seat].techs.includes('gravity_drive') && !state.tactical?.gravityDriveUsed
+  const bonus = gdAvailable ? 1 : 0
   let anyShip = false
   let blocked = false
   for (const sys of Object.values(state.systems)) {
@@ -95,7 +131,8 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   const seat = state.active
   const player = state.players[seat]
   const stats: StatsOwner = { faction: player.faction, techs: player.techs }
-  let gravityDrive = player.techs.includes('gravity_drive')
+  let gravityDrive = player.techs.includes('gravity_drive') && !tac.gravityDriveUsed
+  let gravityDriveUsedThisCall = false
   const taken = new Set<number>()
   const arriving: Unit[] = []
   for (const spec of specs) {
@@ -110,7 +147,10 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     let steps = pathLength(state, seat, spec.from, tac.systemId, value)
     if (steps === null && gravityDrive) {
       steps = pathLength(state, seat, spec.from, tac.systemId, value + 1)
-      if (steps !== null) gravityDrive = false     // R3.2: Gravity Drive helps one ship per activation
+      if (steps !== null) {
+        gravityDrive = false     // R3.2: Gravity Drive helps one ship per activation
+        gravityDriveUsedThisCall = true
+      }
     }
     if (steps === null) return { ok: false, error: `${ship.type} ${ship.id} cannot reach ${tac.systemId}` }
     taken.add(ship.id)
@@ -135,7 +175,14 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   }
   const dest = systems[tac.systemId]
   systems[tac.systemId] = { ...dest, space: [...dest.space, ...arriving] }
-  let next: GameState = { ...state, systems }
+  let next: GameState = {
+    ...state,
+    systems,
+    tactical: {
+      ...tac,
+      gravityDriveUsed: Boolean(tac.gravityDriveUsed || gravityDriveUsedThisCall),
+    },
+  }
   // R3.2/16.2: fighters or infantry left behind by a departing ship are excess if the origin's remaining
   // ships can no longer carry them; trim them the same way a combat or retreat does.
   for (const from of new Set(specs.map(s => s.from))) next = trimCargo(next, from, seat)
