@@ -127,7 +127,7 @@ export function SliceHexView({
           x={130}
           y={10}
           textAnchor="middle"
-          fill="#ffd700"
+          fill="#eab308"
           fontSize="9"
           fontWeight="700"
           letterSpacing="0.05em"
@@ -211,7 +211,7 @@ export function SliceHexView({
                   y="-7"
                   width="26"
                   height="12"
-                  rx="3"
+                  rx="0"
                   fill="rgba(10, 15, 26, 0.85)"
                   stroke="rgba(255, 255, 255, 0.2)"
                   strokeWidth="0.75"
@@ -219,7 +219,7 @@ export function SliceHexView({
                 <text
                   textAnchor="middle"
                   y="2.5"
-                  fill="#ffd700"
+                  fill="#eab308"
                   fontSize="8"
                   fontWeight="bold"
                 >
@@ -234,7 +234,7 @@ export function SliceHexView({
                   y="-5"
                   width="46"
                   height="10"
-                  rx="2"
+                  rx="0"
                   fill="rgba(0, 0, 0, 0.65)"
                 />
                 <text
@@ -258,7 +258,7 @@ export function SliceHexView({
                       y="-7"
                       width={techSkip || wormhole ? '48' : '38'}
                       height="13"
-                      rx="3"
+                      rx="0"
                       fill="rgba(15, 23, 42, 0.9)"
                       stroke="rgba(255, 255, 255, 0.25)"
                       strokeWidth="0.75"
@@ -314,7 +314,7 @@ export function SliceHexView({
                     y="-7"
                     width="44"
                     height="13"
-                    rx="3"
+                    rx="0"
                     fill="rgba(239, 68, 68, 0.25)"
                     stroke="rgba(239, 68, 68, 0.5)"
                     strokeWidth="0.75"
@@ -353,7 +353,7 @@ export function SliceHexView({
             x={HOME_HEX.cx}
             y={HOME_HEX.cy - 2}
             textAnchor="middle"
-            fill="#ffd700"
+            fill="#eab308"
             fontSize="10"
             fontWeight="bold"
             letterSpacing="0.05em"

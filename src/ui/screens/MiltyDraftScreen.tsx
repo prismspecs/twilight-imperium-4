@@ -10,22 +10,12 @@ import {
   type MiltyDraftState,
 } from '../../engine/draft/miltyDraft'
 import { assembleDraftedGame } from '../../engine/draft/assembleMap'
-import type { Color, FactionId, GameConfig } from '../../engine/types'
+import type { FactionId, GameConfig } from '../../engine/types'
+import { COLOUR_INK } from '../art'
 import { MusicButton } from '../music'
 import { SpaceBackdrop } from '../SpaceBackdrop'
 import { SliceHexView } from '../draft/SliceHexView'
 import '../draft.css'
-
-const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> = {
-  red: { accent: '#d63b3b', tint: '#f09a9a', glow: 'rgba(214,59,59,.16)' },
-  blue: { accent: '#3d7be8', tint: '#8fb4ff', glow: 'rgba(61,123,232,.16)' },
-  green: { accent: '#3aa655', tint: '#84d69d', glow: 'rgba(58,166,85,.16)' },
-  yellow: { accent: '#e5c531', tint: '#f0dc86', glow: 'rgba(229,197,49,.16)' },
-  purple: { accent: '#8a47c9', tint: '#c39bf0', glow: 'rgba(138,71,201,.16)' },
-  black: { accent: '#7d8494', tint: '#b9bfcc', glow: 'rgba(125,132,148,.16)' },
-  orange: { accent: '#e8842a', tint: '#f2ac6f', glow: 'rgba(232,132,42,.16)' },
-  pink: { accent: '#e067b0', tint: '#f3a3d0', glow: 'rgba(224,103,176,.16)' },
-}
 
 export interface MiltyDraftScreenProps {
   playerCount: number
@@ -145,7 +135,7 @@ export function MiltyDraftScreen({
         <div className="draft-brand">
           <button
             type="button"
-            className="pf-btn sm"
+            className="btn quiet small"
             data-testid="btn-back-to-setup"
             onClick={onBackToSetup}
           >
@@ -157,13 +147,11 @@ export function MiltyDraftScreen({
 
         <div className="draft-turn-banner" data-testid="draft-turn-banner">
           {draftState.isComplete ? (
-            <span style={{ color: '#ffd700', fontWeight: 700 }}>
-              Draft Complete! Assemble Galaxy below.
-            </span>
+            <span className="draft-turn-complete">Draft complete — assemble galaxy below</span>
           ) : (
             <>
-              <span style={{ color: '#8da0bf', fontSize: '0.85rem' }}>
-                Round {currentRound} of 3 • Pick {draftState.turnIndex + 1} of {totalPicks}
+              <span className="draft-turn-meta">
+                Round {currentRound}/3 · Pick {draftState.turnIndex + 1}/{totalPicks}
               </span>
               <div className="draft-turn-player">
                 <span
@@ -174,8 +162,8 @@ export function MiltyDraftScreen({
                   }}
                 />
                 <span>{activePlayer!.name}</span>
-                <span style={{ fontSize: '0.8rem', color: '#8da0bf' }}>
-                  {isAiThinking ? '(AI deciding...)' : activePlayer!.playerType === 'ai' ? '(AI)' : '(Your pick)'}
+                <span className="draft-turn-status">
+                  {isAiThinking ? 'AI deciding…' : activePlayer!.playerType === 'ai' ? 'AI' : 'Your pick'}
                 </span>
               </div>
             </>
@@ -183,7 +171,7 @@ export function MiltyDraftScreen({
         </div>
 
         <div className="draft-header-end">
-          <MusicButton className="pf-btn quiet sm" />
+          <MusicButton />
         </div>
       </header>
 
@@ -237,14 +225,14 @@ export function MiltyDraftScreen({
                 style={cardStyle}
               >
                 <div className="roster-head">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="roster-name">
                     <span
                       className="player-dot"
                       style={{ backgroundColor: ink.accent, color: ink.accent }}
                     />
                     <span>{p.name}</span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#8da0bf' }}>
+                  <span className="roster-type-tag">
                     {p.playerType === 'ai' ? 'AI' : 'Human'}
                   </span>
                 </div>
@@ -336,7 +324,7 @@ export function MiltyDraftScreen({
                   ) : (
                     <button
                       type="button"
-                      className="draft-btn-pick"
+                      className="btn primary small"
                       data-testid={`draft-pick-faction-${fId}`}
                       aria-label={`Draft faction ${faction.name}`}
                       disabled={!canDraft}
@@ -397,7 +385,7 @@ export function MiltyDraftScreen({
                     ) : (
                       <button
                         type="button"
-                        className="draft-btn-pick"
+                        className="btn primary small"
                         data-testid={`draft-pick-slice-${slice.id}`}
                         aria-label={`Draft ${slice.name}`}
                         disabled={!canDraft}
@@ -414,31 +402,38 @@ export function MiltyDraftScreen({
                     )}
                   </div>
 
-                  <SliceHexView slice={slice} />
+                  <div className="slice-viewport">
+                    <span className="slice-corner tl" />
+                    <span className="slice-corner tr" />
+                    <span className="slice-corner bl" />
+                    <span className="slice-corner br" />
+                    <SliceHexView slice={slice} />
+                  </div>
+
+                  <div className="slice-readout">
+                    <span className="readout-value res">{slice.optimalResources}</span>
+                    <span className="readout-unit">res</span>
+                    <span className="readout-slash">/</span>
+                    <span className="readout-value inf">{slice.optimalInfluence}</span>
+                    <span className="readout-unit">inf</span>
+                    <span className="readout-caption">
+                      optimal · {slice.totalResources}r/{slice.totalInfluence}i total
+                    </span>
+                  </div>
 
                   <div className="slice-metrics-row">
-                    <span className="metric-badge optimal">
-                      {slice.optimalResources}r / {slice.optimalInfluence}i opt
-                    </span>
-                    <span className="metric-sep">•</span>
-                    <span className="metric-badge total">
-                      {slice.totalResources}r / {slice.totalInfluence}i tot
-                    </span>
-                    {slice.techSkips.map((skip, i) => (
-                      <span key={i} className={`metric-badge skip-${skip}`}>
-                        <span className="metric-sep">•</span>
+                    {slice.techSkips.map(skip => (
+                      <span key={skip} className={`metric-badge skip-${skip}`}>
                         {skip.toUpperCase()} skip
                       </span>
                     ))}
-                    {slice.wormholes.map((wh, i) => (
-                      <span key={i} className="metric-badge wormhole">
-                        <span className="metric-sep">•</span>
-                        {wh} WH
+                    {slice.wormholes.map(wh => (
+                      <span key={wh} className="metric-badge wormhole">
+                        {wh} wormhole
                       </span>
                     ))}
-                    {slice.anomalies.map((anom, i) => (
-                      <span key={i} className="metric-badge anomaly">
-                        <span className="metric-sep">•</span>
+                    {slice.anomalies.map(anom => (
+                      <span key={anom} className="metric-badge anomaly">
                         {anom.replace('_', ' ')}
                       </span>
                     ))}
@@ -446,8 +441,8 @@ export function MiltyDraftScreen({
 
                   <div className="slice-planets-list">
                     {slice.tiles.map((tile, i) => (
-                      <span key={tile.tile} className="slice-planet-tag">
-                        {i > 0 && <span className="planet-sep">•</span>}
+                      <span key={tile.tile}>
+                        {i > 0 && <span className="planet-sep">·</span>}
                         {tile.planets.length > 0
                           ? tile.planets.map(p => `${p.name} (${String(p.resources)}/${String(p.influence)})`).join(', ')
                           : tile.name}
@@ -487,7 +482,13 @@ export function MiltyDraftScreen({
                 >
                   <div>
                     <div className="pos-title">
-                      {isSpeaker ? '⭐ Speaker (Position 1)' : `Position ${String(pos.position)}`}
+                      {isSpeaker ? (
+                        <>
+                          <span className="speaker-star">⭐</span> Speaker (Position 1)
+                        </>
+                      ) : (
+                        `Position ${String(pos.position)}`
+                      )}
                     </div>
                     <div className="pos-sub">
                       {isSpeaker ? 'Picks strategy card 1st in round 1' : `Picks strategy card ${String(pos.position)}th`}
@@ -508,7 +509,7 @@ export function MiltyDraftScreen({
                   ) : (
                     <button
                       type="button"
-                      className="draft-btn-pick"
+                      className="btn primary small"
                       data-testid={`draft-pick-position-${String(pos.position)}`}
                       aria-label={`Draft ${isSpeaker ? 'Speaker (Position 1)' : `Position ${String(pos.position)}`}`}
                       disabled={!canDraft}
@@ -534,9 +535,9 @@ export function MiltyDraftScreen({
       {draftState.isComplete && (
         <div className="draft-complete-modal-overlay">
           <div className="draft-complete-card">
-            <h2 className="complete-title">Draft Complete!</h2>
-            <p style={{ color: '#9bb0cf', margin: 0 }}>
-              All players have drafted their Faction, Map Slice, and Speaker/Seat Position.
+            <h2 className="complete-title">Draft Complete</h2>
+            <p className="complete-body">
+              All players have drafted their faction, map slice, and speaker/seat position.
               The galaxy is ready to assemble.
             </p>
 
@@ -553,11 +554,11 @@ export function MiltyDraftScreen({
 
                 return (
                   <div key={seat} className="complete-seat-row">
-                    <span style={{ fontWeight: 600, color: COLOUR_INK[player.color].tint }}>
-                      Seat {seat + 1} {pos === 1 ? '⭐ (Speaker)' : ''}: {player.name}
+                    <span className="complete-seat-name" style={{ color: COLOUR_INK[player.color].tint }}>
+                      Seat {seat + 1} {pos === 1 ? '⭐ ' : ''}{player.name}
                     </span>
-                    <span style={{ color: '#fff' }}>
-                      {faction?.name} • {slice?.name}
+                    <span className="complete-seat-picks">
+                      {faction?.name} · {slice?.name}
                     </span>
                   </div>
                 )
@@ -566,7 +567,7 @@ export function MiltyDraftScreen({
 
             <button
               type="button"
-              className="complete-launch-btn"
+              className="btn primary"
               data-testid="btn-launch-drafted-game"
               onClick={handleLaunch}
             >
