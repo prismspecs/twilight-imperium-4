@@ -67,6 +67,7 @@ function CompactPlayer({
               key={sc.id}
               className={`sc-mini-badge sc-init-${INITIATIVE[sc.id]}${sc.used ? ' spent' : ''}`}
               title={`${CARD_NAME[sc.id]} (${sc.used ? 'played' : 'ready'})`}
+              aria-label={`${CARD_NAME[sc.id]} (${sc.used ? 'played' : 'ready'})`}
             >
               <span className="sc-mini-num">{INITIATIVE[sc.id]}</span>
             </span>
@@ -81,7 +82,7 @@ function CompactPlayer({
 
       <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
 
-      <span className={`chip ${player.color}${active ? ' is-active' : ''} vis`} data-testid={`turn-${seat}`}>
+      <span className="vis" data-testid={`turn-${seat}`}>
         {active ? 'Your turn' : 'Waiting'}
       </span>
     </div>

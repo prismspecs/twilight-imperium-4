@@ -98,12 +98,12 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
           </div>
           <div className="tot">
             <span className="k">Ready:</span>
-            <span className="econ-badge-val" title="Ready Resources">
-              <span className="badge res" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
+            <span className="econ-badge-val" title="Ready Resources" aria-label={`Ready Resources: ${readyResources(state, seat)}`}>
+              <span className="badge res" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
               <b data-testid={`economy-${seat}-resources`}>{readyResources(state, seat)}</b>
             </span>
-            <span className="econ-badge-val" title="Ready Influence">
-              <span className="badge inf" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
+            <span className="econ-badge-val" title="Ready Influence" aria-label={`Ready Influence: ${readyInfluence(state, seat)}`}>
+              <span className="badge inf" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
               <b data-testid={`economy-${seat}-influence`}>{readyInfluence(state, seat)}</b>
             </span>
           </div>
