@@ -105,6 +105,12 @@ export function generateSlices(count: number, seed: number): DraftSlice[] {
     const sliceBlues = shuffledBlues.slice(i * 3, i * 3 + 3)
     const sliceReds = shuffledReds.slice(i * 2, i * 2 + 2)
     const sliceTiles = [...sliceBlues, ...sliceReds]
+    for (let k = sliceTiles.length - 1; k > 0; k--) {
+      const j = Math.floor(rng() * (k + 1))
+      const temp = sliceTiles[k]
+      sliceTiles[k] = sliceTiles[j]
+      sliceTiles[j] = temp
+    }
 
     const metrics = calculateSliceMetrics(sliceTiles)
     const id = `slice-${labels[i] ?? String(i + 1)}`

@@ -45,11 +45,11 @@ const rotateN = (pt: readonly [number, number], n: number): [number, number] => 
 }
 
 const BASE_SECTOR: readonly (readonly [number, number])[] = [
-  [2, 0],   // Front
-  [1, 0],   // Facing Mecatol
-  [3, -1],  // Ring 3 adjacent
-  [2, -1],  // Ring 2 adjacent
-  [3, -2],  // Ring 3 equidistant
+  [2, 1],   // Left (Ring 3 adjacent to home)
+  [2, 0],   // Front (Ring 2 towards Mecatol)
+  [3, -1],  // Right (Ring 3 adjacent to home)
+  [1, 1],   // Equidistant (Ring 2 between players)
+  [1, 0],   // Mecatol-Adjacent (Ring 1 towards Mecatol)
 ]
 
 function allCells(radius: number): [number, number][] {

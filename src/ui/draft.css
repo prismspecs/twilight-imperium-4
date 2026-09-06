@@ -272,6 +272,47 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.draft-slice-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.slice-hex-container {
+  background: radial-gradient(circle at 50% 50%, rgba(18, 24, 42, 0.85) 0%, rgba(10, 14, 24, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem 0.6rem;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6);
+  margin: 0.2rem 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.draft-slice-card:hover .slice-hex-container {
+  border-color: rgba(255, 215, 0, 0.25);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 215, 0, 0.08);
+}
+
+.slice-hex-cell {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.slice-hex-cell:hover .slice-border-poly {
+  stroke: #ffd700;
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.7));
+}
+
+.slice-home-hex polygon {
+  transition: stroke 0.2s ease;
+}
+
+.slice-home-hex:hover polygon {
+  stroke: #ffd700;
+  stroke-dasharray: none;
 }
 
 .draft-slice-card.claimed {

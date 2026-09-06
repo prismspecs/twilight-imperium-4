@@ -13,6 +13,7 @@ import { assembleDraftedGame } from '../../engine/draft/assembleMap'
 import type { Color, FactionId, GameConfig } from '../../engine/types'
 import { MusicButton } from '../music'
 import { SpaceBackdrop } from '../SpaceBackdrop'
+import { SliceHexView } from '../draft/SliceHexView'
 import '../draft.css'
 
 const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> = {
@@ -412,6 +413,8 @@ export function MiltyDraftScreen({
                       </button>
                     )}
                   </div>
+
+                  <SliceHexView slice={slice} />
 
                   <div className="slice-metrics-row">
                     <span className="metric-badge optimal">
