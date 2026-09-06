@@ -159,7 +159,7 @@ export function checkFleet(state: GameState, seat: Seat, systemId: string): Resu
  * planet, not in the system's space. Mirrors `checkFleet`'s math exactly, so a production order trimmed to
  * this room always passes the final `checkFleet` call.
  */
-export function maxFightersAllowed(state: GameState, seat: Seat, systemId: string, extraShips: Unit[]): number {
+export function maxFightersAllowed(state: GameState, seat: Seat, systemId: string, extraShips: Unit[] = []): number {
   const player = state.players[seat]
   const stats: StatsOwner = { faction: player.faction, techs: player.techs }
   const space = [...state.systems[systemId].space, ...extraShips]

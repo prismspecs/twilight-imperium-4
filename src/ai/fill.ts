@@ -1,8 +1,10 @@
 import { NON_FIGHTER_SHIPS, unitStats, type StatsOwner } from '../data/units'
-import { checkFleet } from '../engine/board'
-import { cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
+import { checkFleet, maxFightersAllowed } from '../engine/board'
+import { fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
 import { movableShips, pathLength } from '../engine/movement'
-import type { GameState, Seat, Unit, UnitType } from '../engine/types'
+import { tokensGained } from '../engine/statusPhase'
+import type { GameState, Player, Seat, Unit, UnitType } from '../engine/types'
+import { getFactionUnitAffinity, getTargetFleetTokens } from './calibrationData'
 
 export type MoveShipSpec = { unitId: number; from: string; carrying: number[] }
 export type ProducePlan = { units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number }
@@ -151,29 +153,206 @@ function trimToFleet(state: GameState, seat: Seat, destId: string, moves: MoveSh
 
 /**
  * Fill the `produce` template with a concrete order the seat can actually pay for from its ready planets and
- * trade goods. Prefers the ship that strengthens the fleet when there is fleet-pool headroom, otherwise leans
- * on infantry and fighters, which build up cheaply.
+ * trade goods. Calibrated against AsyncTI4 competitive play: builds capital ships (Dreadnoughts, Carriers),
+ * planetary garrisons (infantry), screens (fighters, destroyers), and fulfills active economic objectives.
  */
 export function fillProduce(state: GameState, seat: Seat, systemId: string): ProducePlan {
   const player = state.players[seat]
   const stats: StatsOwner = { faction: player.faction, techs: player.techs }
   const dest = state.systems[systemId]
-  const existing = dest.space.filter(u => u.owner === seat && NON_FIGHTER_SHIPS.includes(u.type)).length
-  const fleetRoom = fleetPoolLimit(player) - existing
+  const existingNonFighters = dest.space.filter(u => u.owner === seat && NON_FIGHTER_SHIPS.includes(u.type)).length
+  let remainingFleetRoom = fleetPoolLimit(player) - existingNonFighters
   const budget = readyResources(state, seat) + player.tradeGoods
-  const limit = Math.min(productionLimit(state, seat, systemId), budget)
+  const maxLimit = productionLimit(state, seat, systemId)
+  let remainingUnitsCount = maxLimit
+  const hasSarween = player.techs.includes('sarween_tools')
 
   const units: Partial<Record<UnitType, number>> = {}
-  if (limit >= 4 && fleetRoom > 0 && player.reinforcements.destroyer > 0) {
-    units.destroyer = 1
-  } else if (limit >= 2 && player.reinforcements.infantry >= 2) {
-    units.infantry = 2
+  const remainingPlastic = { ...player.reinforcements }
+
+  const canAffordWith = (candidate: Partial<Record<UnitType, number>>): boolean => {
+    const totalCount = Object.values(candidate).reduce((sum, n) => (sum ?? 0) + (n ?? 0), 0) ?? 0
+    if (totalCount > maxLimit) return false
+    const cost = productionCost(candidate, stats, hasSarween)
+    if (cost > budget) return false
+
+    // Check fighter capacity using engine's maxFightersAllowed
+    const extraShips: Unit[] = (Object.entries(candidate) as [UnitType, number][])
+      .filter(([type, n]) => (n ?? 0) > 0 && type !== 'fighter' && type !== 'infantry')
+      .flatMap(([type, n]) => Array.from({ length: n ?? 0 }, (): Unit => ({ id: -1, type, owner: seat, damaged: false })))
+    const fighterRoom = maxFightersAllowed(state, seat, systemId, extraShips)
+    if ((candidate.fighter ?? 0) > fighterRoom) return false
+
+    // Verify checkFleet passes
+    const probeShips: Unit[] = (Object.entries(candidate) as [UnitType, number][])
+      .filter(([type, n]) => (n ?? 0) > 0 && type !== 'infantry')
+      .flatMap(([type, n]) => Array.from({ length: n ?? 0 }, (): Unit => ({ id: -1, type, owner: seat, damaged: false })))
+    const probeState: GameState = {
+      ...state,
+      systems: {
+        ...state.systems,
+        [systemId]: {
+          ...dest,
+          space: [...dest.space, ...probeShips],
+        },
+      },
+    }
+    if (!checkFleet(probeState, seat, systemId).ok) return false
+
+    return true
   }
-  if (units.destroyer === undefined && units.infantry === undefined) return { units, planets: [], tradeGoods: 0 }
-  const cost = productionCost(units, stats, player.techs.includes('sarween_tools'))
-  const planets = cheapestPlanets(state, seat, cost) ?? []
-  let tradeGoods = 0
-  const need = cost - readyResources(state, seat)
-  if (need > 0) tradeGoods = Math.min(need, player.tradeGoods)
-  return { units, planets, tradeGoods }
+
+  const tryAdd = (type: UnitType, count: number): boolean => {
+    if ((remainingPlastic[type] ?? 0) < count) return false
+    if (remainingUnitsCount < count) return false
+    const isNonFighter = NON_FIGHTER_SHIPS.includes(type)
+    if (isNonFighter && remainingFleetRoom < count) return false
+
+    const nextUnits = { ...units, [type]: (units[type] ?? 0) + count }
+    if (!canAffordWith(nextUnits)) return false
+
+    units[type] = (units[type] ?? 0) + count
+    remainingPlastic[type] = (remainingPlastic[type] ?? 0) - count
+    remainingUnitsCount -= count
+    if (isNonFighter) remainingFleetRoom -= count
+    return true
+  }
+
+  // 1. Planetary Garrison: ensure at least 2 infantry on own planets in system
+  const localInfantry = dest.planets
+    .filter(p => p.owner === seat)
+    .reduce((sum, p) => sum + p.ground.filter(g => g.owner === seat && g.type === 'infantry').length, 0)
+  if (localInfantry < 2) {
+    tryAdd('infantry', 2)
+  }
+
+  // 2. Capital Ships / Carrier transport:
+  const existingCarriers = dest.space.filter(u => u.owner === seat && u.type === 'carrier').length
+  const carrierAffinity = getFactionUnitAffinity(player.faction, 'carrier')
+  const dreadAffinity = getFactionUnitAffinity(player.faction, 'dreadnought')
+  const cruiserAffinity = getFactionUnitAffinity(player.faction, 'cruiser')
+
+  if (dreadAffinity >= 1.4) {
+    tryAdd('dreadnought', 1)
+    if (existingCarriers === 0) tryAdd('carrier', 1)
+  } else if (carrierAffinity >= 1.4 || existingCarriers === 0) {
+    tryAdd('carrier', 1)
+    tryAdd('dreadnought', 1)
+  } else if (cruiserAffinity >= 1.4) {
+    tryAdd('cruiser', 1)
+    tryAdd('cruiser', 1)
+  } else {
+    tryAdd('dreadnought', 1)
+  }
+
+  // 3. Objective Synergies:
+  const needsSpend8 = state.publicObjectives.includes('erect_a_monument') && !player.scoredObjectives.includes('erect_a_monument')
+  const needsSpend6 = state.publicObjectives.includes('spend_6_resources') && !player.scoredObjectives.includes('spend_6_resources')
+  if (needsSpend8 || needsSpend6) {
+    tryAdd('dreadnought', 1)
+    tryAdd('carrier', 1)
+    tryAdd('cruiser', 1)
+  }
+
+  // 4. Fill remaining production limit and budget with fighters and infantry
+  let tries = 0
+  while (remainingUnitsCount >= 2 && tries++ < 4) {
+    const addedFighters = tryAdd('fighter', 2)
+    const addedInfantry = tryAdd('infantry', 2)
+    if (!addedFighters && !addedInfantry) break
+  }
+
+  // 5. If odd capacity / fleet room and single resource remains, try destroyer
+  if (remainingUnitsCount >= 1 && remainingFleetRoom >= 1) {
+    const destroyerAffinity = getFactionUnitAffinity(player.faction, 'destroyer')
+    if (destroyerAffinity >= 1.0) {
+      tryAdd('destroyer', 1)
+    }
+  }
+
+  // Fallback if nothing could be added above (e.g. tight budget)
+  if (Object.keys(units).length === 0) {
+    if (remainingUnitsCount >= 1 && remainingFleetRoom > 0 && (remainingPlastic.destroyer ?? 0) > 0) {
+      tryAdd('destroyer', 1)
+    }
+    if (Object.keys(units).length === 0 && remainingUnitsCount >= 2 && (remainingPlastic.infantry ?? 0) >= 2) {
+      tryAdd('infantry', 2)
+    }
+  }
+
+  if (Object.keys(units).length === 0) {
+    return { units: {}, planets: [], tradeGoods: 0 }
+  }
+
+  const cost = productionCost(units, stats, hasSarween)
+  const payment = findCheapestPayment(state, seat, cost)
+  if (!payment) return { units: {}, planets: [], tradeGoods: 0 }
+  return { units, planets: payment.planets, tradeGoods: payment.tradeGoods }
+}
+
+/** The cheapest set of ready planets and trade goods that legally covers `cost`. */
+function findCheapestPayment(state: GameState, seat: Seat, cost: number): { planets: string[]; tradeGoods: number } | null {
+  if (cost <= 0) return { planets: [], tradeGoods: 0 }
+  const ready: { id: string; resources: number }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat && !p.exhausted && p.resources > 0) ready.push({ id: p.id, resources: p.resources })
+  }
+  const tg = state.players[seat].tradeGoods
+  let best: { planets: string[]; tradeGoods: number; total: number } | null = null
+  for (let mask = 0; mask < (1 << ready.length); mask++) {
+    let res = 0
+    const ids: string[] = []
+    for (let i = 0; i < ready.length; i++) {
+      if (mask & (1 << i)) {
+        res += ready[i].resources
+        ids.push(ready[i].id)
+      }
+    }
+    const neededTg = Math.max(0, cost - res)
+    if (neededTg > tg) continue
+    const total = res + neededTg
+    if (!best || total < best.total || (total === best.total && (neededTg < best.tradeGoods || (neededTg === best.tradeGoods && ids.length < best.planets.length)))) {
+      best = { planets: ids, tradeGoods: neededTg, total }
+    }
+  }
+  return best ? { planets: best.planets, tradeGoods: best.tradeGoods } : null
+}
+
+/**
+ * Distribute gained command tokens in the status phase using empirical targets from AsyncTI4 winners.
+ * Allocates tokens to the fleet pool when below the faction's target, ensures a buffer for strategy,
+ * and feeds the remaining tokens into tactic.
+ */
+export function fillStatusTokens(state: GameState, seat: Seat): Player['tokens'] {
+  const current = state.players[seat].tokens
+  const gained = tokensGained(state, seat)
+  const targetFleet = getTargetFleetTokens(state.players[seat].faction)
+
+  let toFleet = 0
+  let toStrategy = 0
+  let toTactic = 0
+
+  let remaining = gained
+
+  // 1. If fleet is below empirical target, allocate up to 2 tokens to fleet
+  if (current.fleet < targetFleet && remaining > 0) {
+    const deficit = targetFleet - current.fleet
+    toFleet = Math.min(remaining, Math.min(2, deficit))
+    remaining -= toFleet
+  }
+
+  // 2. If strategy tokens are low (< 2), allocate 1 token to strategy
+  if (current.strategy < 2 && remaining > 0) {
+    toStrategy = 1
+    remaining -= 1
+  }
+
+  // 3. Remainder goes to tactic
+  toTactic = remaining
+
+  return {
+    tactic: current.tactic + toTactic,
+    fleet: current.fleet + toFleet,
+    strategy: current.strategy + toStrategy,
+  }
 }

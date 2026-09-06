@@ -10,7 +10,7 @@ import { postAbilityOptions } from './postAbilities'
 import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
-import { homeSystemOf } from './board'
+import { homeSystemOf, maxFightersAllowed } from './board'
 import { isShip } from '../data/units'
 import { constructionPlanets, diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { MECATOL_ID } from '../data/map'
@@ -181,6 +181,7 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
       const stats = { faction: player.faction, techs: player.techs }
       for (const type of PRODUCIBLE) {
         if (player.reinforcements[type] < 1) continue
+        if (type === 'fighter' && maxFightersAllowed(state, seat, home.id) < 1) continue
         const cost = productionCost({ [type]: 1 }, stats, player.techs.includes('sarween_tools'))
         const planets = cheapestPlanets(state, seat, cost)
         if (planets) return [{ type: 'secondary', card, accept: true, params: { units: { [type]: 1 }, planets, tradeGoods: 0 } }]

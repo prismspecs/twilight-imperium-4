@@ -1,7 +1,8 @@
 import { applyMove, createGame, legalMoves } from '../engine'
+import { homeSystemOf } from '../engine/board'
 import { deriveSeed, mulberry32 } from '../engine/rng'
 import type { GameState, Move, Seat } from '../engine/types'
-import { fillMoveShips, fillProduce } from './fill'
+import { fillMoveShips, fillProduce, fillStatusTokens } from './fill'
 import { playerView } from './fog'
 import { DEFAULT_WEIGHTS, scoreMove } from './score'
 import type { ScoreWeights } from './score'
@@ -23,6 +24,26 @@ function fillTemplate(state: GameState, move: Move, seat: Seat): Move {
       const plan = fillProduce(state, seat, tac.systemId)
       return { type: 'produce', units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods }
     }
+    case 'status': {
+      const tokens = fillStatusTokens(state, seat)
+      return { type: 'status', params: { tokens } }
+    }
+    case 'secondary': {
+      if (move.card === 'warfare' && move.accept) {
+        const homeId = homeSystemOf(state, seat)
+        const plan = fillProduce(state, seat, homeId)
+        if (Object.keys(plan.units).length === 0) {
+          return { type: 'secondary', card: 'warfare', accept: false }
+        }
+        return {
+          type: 'secondary',
+          card: 'warfare',
+          accept: true,
+          params: { units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods },
+        }
+      }
+      return move
+    }
     default:
       return move
   }
@@ -40,7 +61,7 @@ interface Candidate { move: Move; score: number }
  */
 export function aiChoose(state: GameState, moves: Move[], seat: Seat, weights: Readonly<ScoreWeights> = DEFAULT_WEIGHTS): Move {
   if (moves.length === 0) throw new Error(`no legal moves for seat ${seat}`)
-  if (moves.length === 1) return moves[0]
+  if (moves.length === 1) return fillTemplate(state, moves[0], seat)
   const view = playerView(state, seat)
   const candidates: Candidate[] = moves.map(move => ({ move: fillTemplate(state, move, seat), score: 0 }))
   for (const c of candidates) c.score = scoreMove(view, c.move, seat, weights)

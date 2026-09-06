@@ -25,3 +25,7 @@ dist-ssr
 .vercel
 .superpowers/
 .worktrees/
+data/asyncti4/
+.cache/
+scratch/
+coverage/

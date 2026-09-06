@@ -1,6 +1,7 @@
 import { FACTIONS } from '../data/factions'
 import { findTech } from '../data/techs'
 import type { Move, PlanetTrait, Seat, StrategyCardId, TechColor } from '../engine/types'
+import { getCalibratedStrategyCardAffinity, getCalibratedTechBonus } from './calibrationData'
 import type { GameStateView } from './fog'
 
 /** Tuneable weights per concern; a difficulty dial can scale these later. */
@@ -67,7 +68,7 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'endTurn': return w.priority
     case 'strategic': return scoreStrategic(view, move, seat, w)
     case 'secondary': return scoreSecondary(view, move, seat, w)
-    case 'research': return scoreResearch(view, seat, w)
+    case 'research': return scoreResearch(view, move, seat, w)
     case 'shipyard': return scoreShipyard(view, seat, w)
     case 'tradePost': return scoreTradePost(view, seat, w)
     case 'postAbility': return w.economy
@@ -152,14 +153,8 @@ function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w:
 
   let s = w.priority
 
-  // Faction affinities
-  const faction = me.faction
-  if (faction === 'jolnar' && card === 'technology') s += 30
-  if (faction === 'hacan' && card === 'trade') s += 30
-  if (faction === 'letnev' && (card === 'warfare' || card === 'trade')) s += 25
-  if (faction === 'sol' && (card === 'leadership' || card === 'warfare')) s += 25
-  if (faction === 'xxcha' && (card === 'diplomacy' || card === 'politics')) s += 25
-  if (faction === 'l1z1x' && (card === 'warfare' || card === 'technology')) s += 25
+  // Calibrated strategy card affinities from AsyncTI4 competitive play
+  s += getCalibratedStrategyCardAffinity(me.faction, card, view.round)
 
   // Imperial pays a VP now when we control Mecatol or can score an open objective.
   if (card === 'imperial') {
@@ -485,7 +480,12 @@ function scoreStrategic(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   }
 
   if (card === 'leadership') s += w.tempo
-  if (card === 'technology') s += w.economy * 1.5
+  if (card === 'technology') {
+    s += w.economy * 1.5
+    const params = move.params
+    if (params?.techId) s += scoreTech(view, seat, params.techId, w)
+    if (params?.secondTechId) s += scoreTech(view, seat, params.secondTechId, w)
+  }
   if (card === 'trade') s += w.economy * 2
 
   if (card === 'warfare') {
@@ -519,7 +519,11 @@ function scoreSecondary(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   const card = move.card
   let s = w.priority
   if (card === 'imperial') s += w.economy * 2 // 2 trade goods for a strategy token
-  if (card === 'technology') s += w.economy * (view.players[seat].techs.length ? 1 : 2)
+  if (card === 'technology') {
+    s += w.economy * (view.players[seat].techs.length ? 1 : 2)
+    const params = move.params as { techId?: string } | undefined
+    if (params?.techId) s += scoreTech(view, seat, params.techId, w)
+  }
   if (card === 'leadership') s += w.tempo
   if (card === 'warfare') s += w.military
   if (card === 'diplomacy') s += w.military * 0.5
@@ -529,7 +533,48 @@ function scoreSecondary(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   return s
 }
 
-function scoreResearch(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
+export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Readonly<ScoreWeights>): number {
+  const me = view.players[seat]
+  let s = w.economy
+
+  // 1. Empirical faction tech bonus from AsyncTI4 data
+  const calibratedBonus = getCalibratedTechBonus(me.faction, techId)
+  s += calibratedBonus * (w.priority / 40)
+
+  const tech = findTech(techId)
+  if (!tech) return Math.round(s)
+
+  // 2. Active Public Objective Synergies:
+  const isUpgrade = tech.kind === 'upgrade' || tech.unit !== undefined
+
+  // Objective: develop_weaponry (2 unit upgrades) or revolutionize_warfare (3 unit upgrades)
+  const hasUpgradeObjective = view.publicObjectives.some(
+    id => (id === 'develop_weaponry' || id === 'revolutionize_warfare') && !me.scoredObjectives.includes(id),
+  )
+  if (hasUpgradeObjective && isUpgrade) {
+    s += w.objective * 1.5
+  }
+
+  // Objective: diversify_research (2 in 2 colours) or master_the_sciences (2 in 4 colours)
+  const hasColourObjective = view.publicObjectives.some(
+    id => (id === 'diversify_research' || id === 'master_the_sciences') && !me.scoredObjectives.includes(id),
+  )
+  if (hasColourObjective && tech.colour) {
+    const existingInColour = me.techs.filter(t => findTech(t)?.colour === tech.colour).length
+    if (existingInColour === 1) {
+      s += w.objective * 1.2
+    } else if (existingInColour === 0) {
+      s += w.objective * 0.4
+    }
+  }
+
+  return Math.round(s)
+}
+
+function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {
+  if (move.type === 'research' && move.techId) {
+    return scoreTech(view, seat, move.techId, w)
+  }
   return w.economy
 }
 

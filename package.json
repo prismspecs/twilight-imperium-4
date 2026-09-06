@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ai:match": "tsx scripts/ai-match.ts",
-    "ai:stress": "tsx scripts/ai-stress.ts"
+    "ai:stress": "tsx scripts/ai-stress.ts",
+    "ai:calibrate": "tsx scripts/calibrate-asyncti4.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
