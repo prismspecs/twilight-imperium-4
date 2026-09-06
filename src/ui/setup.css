@@ -1694,8 +1694,15 @@
   font-family: var(--font-data);
   font-size: var(--text-data);
   font-weight: var(--weight-rail);
+  text-align: center;
+  -moz-appearance: textfield;
 }
 .preflight .pf-min:focus { border-color: var(--accent-blue); outline: none; }
+.preflight .pf-min::-webkit-outer-spin-button,
+.preflight .pf-min::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 .preflight .pf-go {
   display: flex;
