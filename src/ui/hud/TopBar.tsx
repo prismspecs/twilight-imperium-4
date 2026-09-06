@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
-import { MISC, PORTRAIT, SIGIL } from '../art'
+import { MISC, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
 import type { GameState, Seat } from '../../engine/types'
 
@@ -44,9 +44,10 @@ function CompactPlayer({
       title={`${player.name} (${FACTIONS[player.faction].name})`}
     >
       <div className="portrait mini" style={{ borderColor: `var(--player-${seat})` }}>
-        <div
+        <img
           className="face"
-          style={{ backgroundImage: `url(${SIGIL[player.faction] || PORTRAIT[player.faction]})` }}
+          src={tokenUrl(player.faction, 'control')}
+          alt={FACTIONS[player.faction].name}
         />
         {active ? <span className="active-dot" aria-hidden="true" /> : null}
       </div>
@@ -61,11 +62,6 @@ function CompactPlayer({
         <div className="subrow">
           <span className="pnick">{player.name}</span>
           <span className="vp-chip">{player.vp} VP</span>
-        </div>
-      </div>
-
-      {player.strategyCards.length > 0 ? (
-        <div className="player-scs">
           {player.strategyCards.map(sc => (
             <span
               key={sc.id}
@@ -73,11 +69,10 @@ function CompactPlayer({
               title={`${CARD_NAME[sc.id]} (${sc.used ? 'played' : 'ready'})`}
             >
               <span className="sc-mini-num">{INITIATIVE[sc.id]}</span>
-              <span className="sc-mini-name">{CARD_NAME[sc.id]}</span>
             </span>
           ))}
         </div>
-      ) : null}
+      </div>
 
       <div className="clock mini">
         <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
@@ -86,7 +81,7 @@ function CompactPlayer({
 
       <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
 
-      <span className={`chip ${player.color}${active ? ' is-active' : ''}`} data-testid={`turn-${seat}`}>
+      <span className={`chip ${player.color}${active ? ' is-active' : ''} vis`} data-testid={`turn-${seat}`}>
         {active ? 'Your turn' : 'Waiting'}
       </span>
     </div>

@@ -97,10 +97,15 @@ export function SidePanel({ state, seat, onSelectSeat }: SidePanelProps) {
             ))}
           </div>
           <div className="tot">
-            <span className="k">Ready</span>
-            <span data-testid={`economy-${seat}-resources`}>{readyResources(state, seat)}</span>r
-            {' '}
-            <span data-testid={`economy-${seat}-influence`}>{readyInfluence(state, seat)}</span>i
+            <span className="k">Ready:</span>
+            <span className="econ-badge-val" title="Ready Resources">
+              <span className="badge res" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
+              <b data-testid={`economy-${seat}-resources`}>{readyResources(state, seat)}</b>
+            </span>
+            <span className="econ-badge-val" title="Ready Influence">
+              <span className="badge inf" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
+              <b data-testid={`economy-${seat}-influence`}>{readyInfluence(state, seat)}</b>
+            </span>
           </div>
           <div className="econ-row">
             <span className="econ"><img src={MISC.tradeGood} alt="" /> <b data-testid={`economy-${seat}-tradegoods`}>{player.tradeGoods}</b></span>
