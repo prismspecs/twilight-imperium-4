@@ -170,8 +170,16 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
           data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id, system.home !== null)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
       ) : null}
       {system.home !== null ? (
-        <img className="sigil" src={SIGIL[state.players[system.home].faction]} alt="" data-testid={`sigil-${system.id}`}
-          style={{ left: SIGIL_SPOT.left, top: SIGIL_SPOT.top }} width={SIGIL_SIZE} height={SIGIL_SIZE} />
+        <img
+          className="sigil"
+          src={SIGIL[state.players[system.home].faction]}
+          alt=""
+          data-testid={`sigil-${system.id}`}
+          style={{ left: SIGIL_SPOT.left, top: SIGIL_SPOT.top }}
+          width={SIGIL_SIZE}
+          height={SIGIL_SIZE}
+          onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }}
+        />
       ) : null}
       {state.custodiansToken && (system.id === 'mecatol' || system.planets.some(p => p.id === 'mecatol-rex' || p.id === 'mecatolrex')) ? (
         <img

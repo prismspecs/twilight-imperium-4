@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
-import { MISC, tokenUrl } from '../art'
+import { MISC, SIGIL, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
 import type { GameState, Seat } from '../../engine/types'
 
@@ -46,8 +46,9 @@ function CompactPlayer({
       <div className="portrait mini" style={{ borderColor: `var(--player-${seat})` }}>
         <img
           className="face"
-          src={tokenUrl(player.faction, 'control')}
+          src={SIGIL[player.faction] || tokenUrl(player.faction, 'control')}
           alt={FACTIONS[player.faction].name}
+          onError={e => { (e.currentTarget as HTMLImageElement).src = tokenUrl(player.faction, 'control') }}
         />
         {active ? <span className="active-dot" aria-hidden="true" /> : null}
       </div>
