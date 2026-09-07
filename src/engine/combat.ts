@@ -30,6 +30,7 @@ const canSustain = (u: Unit, owner: StatsOwner): boolean => !u.damaged && unitSt
  */
 const AFB_SALT_BASE = 3
 const SPACE_CANNON_SALT_BASE = 5
+const AMBUSH_SALT_BASE = 7
 
 interface Ctx { systemId: string; attacker: Seat; defender: Owner; round: number }
 
@@ -363,12 +364,21 @@ function resumeAfterAssignment(state: GameState, context: string, seed: number):
   const ctx: Ctx = { systemId: tac.systemId, attacker: tac.combat.attacker, defender: tac.combat.defender, round: tac.combat.round }
   if (tac.step === 'movement') return afterSpaceCannonOnly(state, ctx.systemId, ctx.attacker)
   if (isRoundContext(context)) return finish(state, ctx)
-  return preCombat(state, context === 'space cannon offense' ? 'assault cannon' : 'anti-fighter barrage', ctx, seed)
+  const from = context === 'space cannon offense' ? 'ambush'
+    : context === 'Mentak Ambush' ? 'assault cannon'
+    : context === 'assault cannon' ? 'anti-fighter barrage'
+    : 'anti-fighter barrage'
+  return preCombat(state, from, ctx, seed)
 }
 
 /** The round 0 steps after space cannon offense; each one may pause the sequence on a pending assignment. */
-function preCombat(state: GameState, from: 'assault cannon' | 'anti-fighter barrage', ctx: Ctx, seed: number): GameState {
+function preCombat(state: GameState, from: 'ambush' | 'assault cannon' | 'anti-fighter barrage', ctx: Ctx, seed: number): GameState {
   let next = state
+  if (from === 'ambush') {
+    if (bothAlive(next, ctx)) next = mentakAmbush(next, ctx, seed)
+    if (pendingFor(next)) return next
+    from = 'assault cannon'
+  }
   if (from === 'assault cannon') {
     if (bothAlive(next, ctx)) next = assaultCannon(next, ctx)
     if (pendingFor(next)) return next
@@ -477,6 +487,60 @@ export function spaceCannonOffense(state: GameState, systemId: string, attacker:
     groups.push({ count: hits, mode: hasTech(next, owner, 'graviton_laser_system') ? 'noFighters' : 'any' })
   }
   return resolveHits(next, systemId, attacker, groups, 'space cannon offense')
+}
+
+/**
+ * Mentak faction ability Ambush:
+ * "At the start of a space combat, you may roll 2 dice for each of up to 2 of your cruisers or destroyers
+ * in the system. For each result equal to or greater than that ship's combat value, produce 1 hit;
+ * your opponent must assign these hits to their ships."
+ */
+function mentakAmbush(state: GameState, ctx: Ctx, seed: number): GameState {
+  let next = state
+  let salt = AMBUSH_SALT_BASE
+  for (const [side, foe] of [[ctx.attacker, ctx.defender], [ctx.defender, ctx.attacker]] as [Owner, Owner][]) {
+    if (side === 'guardian') continue
+    const player = next.players[side]
+    if (player.faction !== 'mentak') continue
+    const sys = next.systems[ctx.systemId]
+    if (!shipsOf(sys, foe).length) continue
+
+    const candidates = shipsOf(sys, side)
+      .filter(u => u.type === 'cruiser' || u.type === 'destroyer')
+      .sort((a, b) => (a.type === 'cruiser' ? 0 : 1) - (b.type === 'cruiser' ? 0 : 1))
+      .slice(0, 2)
+
+    if (!candidates.length) continue
+
+    const sOwner = statsOwner(next, side)
+    const rng = mulberry32(deriveSeed(seed, salt++))
+    const bonus = combatBonus(next, side)
+    const rolls: DieRoll[] = []
+    let hits = 0
+
+    for (const ship of candidates) {
+      const stats = unitStats(ship.type, sOwner)
+      const value = (stats.combat ?? 10) - bonus
+      const roll = rollHits(rng, 2, value, false)
+      rolls.push(...dieRolls(side, ship.type, roll.rolls, value))
+      hits += roll.hits
+    }
+
+    next = {
+      ...next,
+      log: [
+        ...next.log,
+        { t: 'info', text: `${player.name} (Mentak) triggers Ambush with ${candidates.length} ship${candidates.length === 1 ? '' : 's'}` },
+        { t: 'roll', owner: side, rolls, context: 'Mentak Ambush' },
+      ],
+    }
+
+    if (hits > 0) {
+      next = resolveHits(next, ctx.systemId, foe, [{ count: hits, mode: 'any' }], 'Mentak Ambush')
+      if (pendingFor(next)) return next
+    }
+  }
+  return next
 }
 
 /**
@@ -642,7 +706,7 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
     const opened = withLastRolls(state, [])
     const next = spaceCannonOffense(opened, ctx.systemId, ctx.attacker, seed)
     if (pendingFor(next)) return { ok: true, value: next }
-    return { ok: true, value: preCombat(next, 'assault cannon', ctx, seed) }
+    return { ok: true, value: preCombat(next, 'ambush', ctx, seed) }
   }
   if (wantAttacker && !canMunitions(state, ctx.attacker)) return { ok: false, error: 'Munitions Reserves is not available to the attacker' }
   if (wantDefender && !canMunitions(state, ctx.defender)) return { ok: false, error: 'Munitions Reserves is not available to the defender' }

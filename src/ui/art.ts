@@ -267,7 +267,10 @@ export function tileNumberLabel(q: number | undefined, r: number | undefined): s
 export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
   return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`
 }
-const KNOWN_TOKEN_FACTIONS = new Set<FactionId>(['l1z1x', 'letnev'])
+const KNOWN_TOKEN_FACTIONS = new Set<FactionId>([
+  'l1z1x', 'letnev', 'arborec', 'saar', 'muaat', 'hacan', 'sol', 'creuss',
+  'mentak', 'naalu', 'nekro', 'sardakk', 'jolnar', 'winnu', 'xxcha', 'yin', 'yssaril',
+])
 export function tokenUrl(faction: FactionId, kind: 'command' | 'command-fleet' | 'control'): string {
   const f = KNOWN_TOKEN_FACTIONS.has(faction) ? faction : 'l1z1x'
   return `/assets/tokens/${f}_${kind}.png`

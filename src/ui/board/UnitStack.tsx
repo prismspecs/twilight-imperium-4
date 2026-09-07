@@ -35,10 +35,17 @@ export function UnitStack({ group, colour, testId, scale, alwaysCount = false }:
   const { style } = useModelStyle()
   const size = spriteSize(group.type, scale, style)
   return (
-    <span className="stk" data-testid={`stack-${testId}`}>
+    <span className="stk" data-testid={`stack-${testId}`} title={`${colour} ${group.type}${group.count > 1 ? ` (x${group.count})` : ''}`}>
       <img
-        src={spriteUrl(colour, group.type, style)} alt={group.type}
+        src={spriteUrl(colour, group.type, style)} alt=""
+        aria-label={`${colour} ${group.type}`}
         width={size.width} height={size.height} data-testid={`sprite-${testId}`}
+        onError={e => {
+          const target = e.currentTarget as HTMLImageElement
+          if (style !== 'models') {
+            target.src = spriteUrl(colour, group.type, 'models')
+          }
+        }}
       />
       {group.count > 1 || alwaysCount ? <span className="cnt">{group.count}</span> : null}
     </span>

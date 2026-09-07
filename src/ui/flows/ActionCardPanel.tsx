@@ -10,10 +10,34 @@ export interface ActionCardPanelProps {
   viewingSeat?: Seat
 }
 
+function findPlanetInState(state: GameState, planetId: string) {
+  for (const sys of Object.values(state.systems)) {
+    const p = sys.planets.find(pl => pl.id === planetId)
+    if (p) return p
+  }
+  return undefined
+}
+
 /** What one enumerated play of a card actually does, in words: the card names its own target. */
-function offerLabel(state: GameState, params: ActionCardParams | undefined): string {
+function offerLabel(state: GameState, params: ActionCardParams | undefined, cardId?: string): string {
   if (!params) return 'Play it'
-  if (params.planetId !== undefined) return planetLabel(state, params.planetId)
+  if (params.planetId !== undefined) {
+    const planet = findPlanetInState(state, params.planetId)
+    if (!planet) return planetLabel(state, params.planetId)
+    const baseCard = cardId ? cardId.replace(/_\d+$/, '') : ''
+    if (baseCard === 'uprising' || baseCard === 'mining_initiative') {
+      return `${planet.name} (${planet.resources} res → +${planet.resources} TG)`
+    }
+    if (baseCard === 'plague') {
+      const infCount = planet.ground.filter(u => u.type === 'infantry').length
+      return `${planet.name} (${infCount} inf)`
+    }
+    if (baseCard === 'cripple_defenses') {
+      const pdsCount = planet.structures.filter(u => u.type === 'pds').length
+      return `${planet.name} (${pdsCount} PDS)`
+    }
+    return `${planet.name} (${planet.resources}R, ${planet.influence}I)`
+  }
   if (params.systemId !== undefined) return systemLabel(params.systemId, state)
   if (params.techId !== undefined) return techLabel(params.techId)
   if (params.seat !== undefined) return state.players[params.seat].name
@@ -71,7 +95,7 @@ export function ActionCardPanel({ onClose, viewingSeat }: ActionCardPanelProps) 
                 <button key={`${cardId}-${String(i)}`} type="button" className="pay"
                   data-testid={`play-${cardId}-${String(i)}`}
                   onClick={() => { if (apply(move)) onClose() }}>
-                  {offerLabel(state, move.params)}
+                  {offerLabel(state, move.params, cardId)}
                 </button>
               ))}
             </div>

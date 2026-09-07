@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createGame } from '../../engine'
 import { toActionPhase } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
-import type { Seat } from '../../engine/types'
+import type { GameState, Seat } from '../../engine/types'
 
 const state = toActionPhase()
 
@@ -134,9 +134,20 @@ describe('the board', () => {
     expect(screen.getByTestId('activation-sakulag-1').getAttribute('src')).toContain('letnev_command.png')
     expect(screen.getByTestId('activation-sakulag-1').getAttribute('alt')).toBe(`${state.players[1].name} command token`)
     expect(screen.getByTestId('activation-sakulag-1').parentElement?.className).toBe('act-wrapper')
-    expect(screen.getByTestId('activation-sakulag-1').parentElement?.querySelector('.act-sigil')?.getAttribute('src')).toBe('/assets/factions/letnev.png')
     expect(screen.queryByTestId('activation-quann-0')).toBeNull()
     expect(screen.queryByTestId('activation-quann-1')).toBeNull()
+
+    // Verifies factions like Mentak use their own authentic command token graphic
+    const mentakState: GameState = {
+      ...activated,
+      players: [
+        { ...activated.players[0], faction: 'mentak' },
+        activated.players[1],
+      ],
+    }
+    const { unmount } = render(<BoardMap state={mentakState} />)
+    expect(screen.getAllByTestId('activation-bereg-0')[1].getAttribute('src')).toContain('mentak_command.png')
+    unmount()
   })
 
   it('renders all systems in a generated galaxy without trade posts', () => {

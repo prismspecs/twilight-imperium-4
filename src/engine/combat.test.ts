@@ -5,7 +5,7 @@ import { checkFleet, trimCargo } from './board'
 import { applyCombatHits, assignmentComplete, assignmentTargets, autoAssign, isForcedAssignment, pendingFor, type HitGroup, type MunitionsRequest } from './combat'
 import { applyMove, legalMoves, validateMove } from './index'
 import { deepFreeze, hitsIn, shipId, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
-import type { GameState, Move, Owner, Seat, Unit, UnitType } from './types'
+import type { DieRoll, GameState, Move, Owner, Seat, Unit, UnitType } from './types'
 
 const letnev = { faction: 'letnev' as const, techs: [] as string[] }
 
@@ -442,5 +442,69 @@ describe('trimCargo (cargo above capacity at combat end)', () => {
     expect(mine.filter(u => u.type === 'infantry')).toHaveLength(0)
     expect(trimmed.players[0].reinforcements.infantry).toBe(s.players[0].reinforcements.infantry + 2)
     expect(checkFleet(trimmed, 0, 'bereg').ok).toBe(true)
+  })
+})
+
+describe('Mentak faction ability: Ambush', () => {
+  it('rolls 2 dice per cruiser/destroyer for up to 2 ships at the start of space combat', () => {
+    const base = combat('bereg', ['cruiser', 'cruiser', 'carrier'], ['fighter', 'fighter', 'fighter', 'fighter'], 0)
+    const mentakState: GameState = {
+      ...base,
+      players: [
+        { ...base.players[0], faction: 'mentak' },
+        base.players[1],
+      ],
+    }
+    const after = fight(mentakState, 100)
+    const ambushRoll = after.log.find(e => e.t === 'roll' && e.context === 'Mentak Ambush') as { t: 'roll'; owner: Owner; rolls: DieRoll[]; context: string } | undefined
+    expect(ambushRoll).toBeDefined()
+    expect(ambushRoll?.owner).toBe(0)
+    // 2 cruisers * 2 dice = 4 dice
+    expect(ambushRoll?.rolls).toHaveLength(4)
+    expect(ambushRoll?.rolls.every(r => r.unit === 'cruiser')).toBe(true)
+    expect(ambushRoll?.rolls.every(r => typeof r.hit === 'boolean')).toBe(true)
+    expect(after.log.some(e => e.t === 'info' && e.text.includes('Mentak') && e.text.includes('Ambush'))).toBe(true)
+  })
+
+  it('caps at 2 ships even with 3 cruisers and 1 destroyer in the system', () => {
+    const base = combat('bereg', ['cruiser', 'cruiser', 'cruiser', 'destroyer'], ['dreadnought', 'dreadnought'], 0)
+    const mentakState: GameState = {
+      ...base,
+      players: [
+        { ...base.players[0], faction: 'mentak' },
+        base.players[1],
+      ],
+    }
+    const after = fight(mentakState, 100)
+    const ambushRoll = after.log.find(e => e.t === 'roll' && e.context === 'Mentak Ambush') as { t: 'roll'; rolls: unknown[] } | undefined
+    expect(ambushRoll).toBeDefined()
+    // Exactly 2 ships * 2 dice = 4 dice max
+    expect(ambushRoll?.rolls).toHaveLength(4)
+  })
+
+  it('prioritizes cruisers over destroyers when selecting the 2 ships to ambush with', () => {
+    const base = combat('bereg', ['cruiser', 'destroyer', 'destroyer'], ['carrier', 'fighter'], 0)
+    const mentakState: GameState = {
+      ...base,
+      players: [
+        { ...base.players[0], faction: 'mentak' },
+        base.players[1],
+      ],
+    }
+    const after = fight(mentakState, 100)
+    const ambushRoll = after.log.find(e => e.t === 'roll' && e.context === 'Mentak Ambush') as { t: 'roll'; rolls: { unit: string }[] } | undefined
+    expect(ambushRoll).toBeDefined()
+    // 1 cruiser (2 dice) + 1 destroyer (2 dice)
+    const cruiserDice = ambushRoll?.rolls.filter(r => r.unit === 'cruiser')
+    const destroyerDice = ambushRoll?.rolls.filter(r => r.unit === 'destroyer')
+    expect(cruiserDice).toHaveLength(2)
+    expect(destroyerDice).toHaveLength(2)
+  })
+
+  it('does not trigger Ambush for non-Mentak factions', () => {
+    const base = combat('bereg', ['cruiser', 'cruiser'], ['fighter', 'fighter'], 0)
+    const after = fight(base, 100)
+    const ambushRoll = after.log.find(e => e.t === 'roll' && e.context === 'Mentak Ambush')
+    expect(ambushRoll).toBeUndefined()
   })
 })
