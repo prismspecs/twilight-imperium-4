@@ -102,7 +102,7 @@ describe('R9 playing an action card', () => {
 
   it('offers every enumerated play already playable, for every card in the deck', () => {
     // one seat holding the whole deck: every move the enumerator offers has to be accepted by the handler
-    const rich = withPlayer(withHand(toActionPhase(), 0, [...PLAYABLE_ACTION_CARDS]), 0, { tradeGoods: 8 })
+    const rich = withHand(withPlayer(withHand(toActionPhase(), 0, [...PLAYABLE_ACTION_CARDS]), 0, { tradeGoods: 8 }), 1, ['plague'])
     const withPds = withUnits(withPlanetOwner(rich, 'bereg', 'bereg', 1), 'bereg', 1, ['pds', 'infantry'], 'bereg')
     const withDock = withUnits(withPds, 'quann', 1, ['spacedock'], 'quann')
     const withEnemy = withUnits(withDock, 'home-n', 1, ['cruiser'])
@@ -239,6 +239,22 @@ describe('R9 the printed abilities', () => {
     if (!played.ok) throw new Error(played.error)
     expect(played.value.players[1].tokens.tactic).toBe(base.players[1].tokens.tactic - 1)
     expect(playActionCard(base, 'insubordination', { seat: 0 }).ok).toBe(false)
+  })
+
+  it('Spy takes a random card from another player\'s hand and never targets an empty-handed or your own', () => {
+    const base = withHand(withHand(toActionPhase(), 0, ['spy']), 1, ['uprising', 'plague', 'lucky_shot'])
+    const played = playActionCard(base, 'spy', { seat: 1 }, 5)
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.players[1].actionCards).toHaveLength(2)
+    // the acting seat's hand loses 'spy' (removed centrally after resolve) and gains exactly the stolen card
+    const stolen = base.players[1].actionCards.filter(c => !played.value.players[1].actionCards.includes(c))
+    expect(stolen).toHaveLength(1)
+    expect(played.value.players[0].actionCards).toEqual(stolen)
+
+    expect(playActionCard(base, 'spy', { seat: 0 }).ok).toBe(false)
+    const emptyHanded = withHand(base, 2, [])
+    expect(playActionCard(emptyHanded, 'spy', { seat: 2 }).ok).toBe(false)
+    expect(actionCardMoves(emptyHanded, 0)).not.toContainEqual({ type: 'playActionCard', cardId: 'spy', params: { seat: 2 } })
   })
 
   it('Uprising exhausts another player\'s ready non-home planet and pays you its resources', () => {

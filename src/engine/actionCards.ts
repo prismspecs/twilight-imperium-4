@@ -30,6 +30,7 @@ export const PLAYABLE_ACTION_CARDS: readonly string[] = [
   'plague',
   'reactor_meltdown',
   'rise_of_a_messiah',
+  'spy',
   'tactical_bombardment',
   'unexpected_action_1', 'unexpected_action_2',
   'unstable_planet',
@@ -45,6 +46,7 @@ export function effectOf(cardId: string): string {
 }
 
 const DISCARD_RESHUFFLE_SALT = 97
+const SPY_SALT = 151
 
 /** R9: the deck ran out, so the discard pile is shuffled into a new one. An empty discard leaves it empty. */
 function reshuffle(state: GameState, seed: number): GameState {
@@ -197,6 +199,11 @@ function controlledPlanetIds(state: GameState, seat: Seat): string[] {
   return planetsOnBoard(state).filter(({ planet }) => planet.owner === seat).map(({ planet }) => planet.id)
 }
 
+/** R9 Spy: another player who actually holds a card to take. */
+export function spyTargets(state: GameState, seat: Seat): Seat[] {
+  return state.players.filter(p => p.seat !== seat && p.actionCards.length > 0).map(p => p.seat)
+}
+
 /**
  * Resolve the printed effect of one action card. Every branch is the whole printed ability; a card whose
  * ability the engine cannot express is not in `PLAYABLE_ACTION_CARDS` and never reaches this switch.
@@ -294,6 +301,21 @@ function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCar
       if (victim.tokens.tactic < 1) return { ok: false, error: `R9: seat ${target} has no token in their tactic pool` }
       const players = [...state.players] as GameState['players']
       players[target] = { ...victim, tokens: { ...victim.tokens, tactic: victim.tokens.tactic - 1 } }
+      return { ok: true, value: { ...state, players } }
+    }
+    case 'spy': {
+      // "Choose 1 player. That player gives you 1 random action card from their hand."
+      const target = params.seat
+      if (target === undefined || !spyTargets(state, seat).includes(target)) {
+        return { ok: false, error: 'R9: name another player holding an action card' }
+      }
+      const victim = state.players[target]
+      const rng = mulberry32(deriveSeed(seed, SPY_SALT))
+      const index = Math.floor(rng() * victim.actionCards.length)
+      const stolen = victim.actionCards[index]
+      const players = [...state.players] as GameState['players']
+      players[target] = { ...victim, actionCards: victim.actionCards.filter((_, i) => i !== index) }
+      players[seat] = { ...players[seat], actionCards: [...players[seat].actionCards, stolen] }
       return { ok: true, value: { ...state, players } }
     }
     case 'uprising': {
@@ -490,6 +512,8 @@ export function actionCardMoves(state: GameState, seat: Seat): Move[] {
           return state.players
             .filter(p => p.seat !== seat && p.tokens.tactic > 0)
             .map((p): Move => ({ type: 'playActionCard', cardId, params: { seat: p.seat } }))
+        case 'spy':
+          return spyTargets(state, seat).map((target): Move => ({ type: 'playActionCard', cardId, params: { seat: target } }))
         case 'uprising':
           return uprisingPlanets(state, seat).map((planetId): Move => ({ type: 'playActionCard', cardId, params: { planetId } }))
         case 'unstable_planet':

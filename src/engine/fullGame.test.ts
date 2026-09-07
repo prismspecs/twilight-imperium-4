@@ -219,7 +219,9 @@ describe('legal moves in every phase', () => {
 // secondary.
 // 9 came in when Gravity Drive was strictly limited to 1 ship per activation: seed 9 exercises `groundCombatRound`.
 // 11 exercises `groundCombatRound`.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 11, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
+// 18 came in with the Spy action card: one more legal move on turns where an opponent holds a card reshuffled
+// the paths again and none of 9, 11, 19 or 24 still reached `groundCombatRound`; 18 does.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 11, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19, 18]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
