@@ -103,6 +103,20 @@ describe('the setup screen', () => {
     expect(humanControllers.filter(c => c.getAttribute('aria-pressed') === 'true')).toHaveLength(1)
   })
 
+  it('defaults human seat to "Player" and AI seats to their faction names', () => {
+    renderApp()
+    for (let s = 0; s < 6; s++) {
+      const isHuman = screen.getByTestId(`controller-${s}-human`).getAttribute('aria-pressed') === 'true'
+      const nameInput = screen.getByTestId(`seat-name-${s}`) as HTMLInputElement
+      if (isHuman) {
+        expect(nameInput.value).toBe('Player')
+      } else {
+        const faction = (screen.getByTestId(`select-faction-${s}`) as HTMLSelectElement).value as FactionId
+        expect(nameInput.value).toBe(FACTIONS[faction].name)
+      }
+    }
+  })
+
   it('shows a leader portrait and a faction symbol for each seat', () => {
     renderApp()
     fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'l1z1x' } })
@@ -143,34 +157,36 @@ describe('the setup screen', () => {
 
   it('keeps the hot-seat blurb in step with the clock', () => {
     renderApp()
+    fireEvent.click(screen.getByTestId('btn-clock-on'))
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 15 minutes each')
     fireEvent.change(screen.getByTestId('minutes'), { target: { value: '20' } })
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 20 minutes each')
   })
 
-  it('supports toggling the clock on and off', () => {
+  it('supports toggling the clock on and off, defaulting to off', () => {
     renderApp()
     const onBtn = screen.getByTestId('btn-clock-on')
     const offBtn = screen.getByTestId('btn-clock-off')
     const minInput = screen.getByTestId('minutes') as HTMLInputElement
 
-    expect(onBtn.getAttribute('aria-pressed')).toBe('true')
-    expect(offBtn.getAttribute('aria-pressed')).toBe('false')
-    expect(minInput.disabled).toBe(false)
-
-    // Toggle off
-    fireEvent.click(offBtn)
     expect(onBtn.getAttribute('aria-pressed')).toBe('false')
     expect(offBtn.getAttribute('aria-pressed')).toBe('true')
     expect(minInput.disabled).toBe(true)
     expect(screen.getByTestId('setup-clock').textContent).toContain('Untimed play (no chess clock)')
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('untimed play')
 
-    // Toggle back on
+    // Toggle on
     fireEvent.click(onBtn)
     expect(onBtn.getAttribute('aria-pressed')).toBe('true')
+    expect(offBtn.getAttribute('aria-pressed')).toBe('false')
     expect(minInput.disabled).toBe(false)
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 15 minutes each')
+
+    // Toggle back off
+    fireEvent.click(offBtn)
+    expect(offBtn.getAttribute('aria-pressed')).toBe('true')
+    expect(minInput.disabled).toBe(true)
+    expect(screen.getByTestId('landing-hotseat').textContent).toContain('untimed play')
   })
 
   it('has no saved-games block until this browser holds a game', () => {

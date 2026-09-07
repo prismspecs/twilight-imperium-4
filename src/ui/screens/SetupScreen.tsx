@@ -39,7 +39,14 @@ const POSITIONS: Record<number, string[]> = {
   5: ['East', 'North-East', 'North-West', 'West', 'South-West'],
   6: ['East', 'North-East', 'North-West', 'West', 'South-West', 'South-East'],
 }
-const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6']
+export function getDefaultName(playerType: PlayerType, factionId: FactionId): string {
+  if (playerType === 'human') return 'Player'
+  return FACTIONS[factionId]?.name || 'Unknown'
+}
+
+export function generateDefaultNames(playerTypes: PlayerType[], factions: FactionId[]): string[] {
+  return playerTypes.map((type, i) => getDefaultName(type, factions[i]))
+}
 
 export function generateRandomSetup(count: number = 6): {
   factions: FactionId[]
@@ -225,12 +232,12 @@ export function SetupScreen() {
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
   const [initialSetup] = useState(() => generateRandomSetup(6))
   const [playerCount, setPlayerCount] = useState<number>(6)
-  const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
   const [factions, setFactions] = useState<FactionId[]>(() => initialSetup.factions)
   const [colours, setColours] = useState<Color[]>(() => initialSetup.colours)
   const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(() => initialSetup.playerTypes)
+  const [names, setNames] = useState<string[]>(() => generateDefaultNames(initialSetup.playerTypes, initialSetup.factions))
   const [minutes, setMinutes] = useState(15)
-  const [clockEnabled, setClockEnabled] = useState(true)
+  const [clockEnabled, setClockEnabled] = useState(false)
   const [useMiltyDraft, setUseMiltyDraft] = useState(false)
   const [isDrafting, setIsDrafting] = useState(false)
   const [draftSeed, setDraftSeed] = useState(0)
@@ -257,8 +264,19 @@ export function SetupScreen() {
       next[seat] = value
       return next
     })
+    setNames(prev => {
+      const next = [...prev]
+      const cur = next[seat]?.trim()
+      if (value === 'human' && (!cur || cur === FACTIONS[factions[seat]]?.name || cur.startsWith('Player '))) {
+        next[seat] = 'Player'
+      } else if (value === 'ai' && (!cur || cur === 'Player' || cur.startsWith('Player '))) {
+        next[seat] = FACTIONS[factions[seat]]?.name || 'Unknown'
+      }
+      return next
+    })
   }
   function setFaction(seat: number, value: FactionId) {
+    const oldFaction = factions[seat]
     setFactions(prev => {
       const next = [...prev]
       const duplicateSeat = next.indexOf(value)
@@ -268,9 +286,21 @@ export function SetupScreen() {
       next[seat] = value
       return next
     })
+    setNames(prev => {
+      const next = [...prev]
+      if (playerTypes[seat] === 'ai') {
+        const oldName = FACTIONS[oldFaction]?.name
+        const cur = next[seat]?.trim()
+        if (!cur || cur === oldName || cur.startsWith('Player ')) {
+          next[seat] = FACTIONS[value]?.name || 'Unknown'
+        }
+      }
+      return next
+    })
   }
   function handleSetPlayerCount(newCount: number) {
     setPlayerCount(newCount)
+    let updatedFactions = factions
     setFactions(prev => {
       const next = [...prev]
       const allFactionIds = Object.keys(FACTIONS) as FactionId[]
@@ -280,6 +310,7 @@ export function SetupScreen() {
           if (available) next[s] = available
         }
       }
+      updatedFactions = next
       return next
     })
     setColours(prev => {
@@ -301,6 +332,16 @@ export function SetupScreen() {
           next[s] = s === randomSeat ? 'human' : 'ai'
         }
       }
+      setNames(namesPrev => {
+        const nextNames = [...namesPrev]
+        for (let s = 0; s < newCount; s++) {
+          const cur = nextNames[s]?.trim()
+          if (!cur || cur.startsWith('Player ') || cur === 'Player' || Object.values(FACTIONS).some(f => f.name === cur)) {
+            nextNames[s] = getDefaultName(next[s], updatedFactions[s] ?? factions[s])
+          }
+        }
+        return nextNames
+      })
       return next
     })
     // Reset draft mode when player count changes
@@ -312,6 +353,7 @@ export function SetupScreen() {
     setFactions(random.factions)
     setColours(random.colours)
     setPlayerTypes(random.playerTypes)
+    setNames(generateDefaultNames(random.playerTypes, random.factions))
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
@@ -324,7 +366,7 @@ export function SetupScreen() {
       players: Array.from({ length: playerCount }, (_, seat) => ({
         faction: factions[seat],
         color: colours[seat],
-        name: names[seat].trim() || `Player ${String(seat + 1)}`,
+        name: names[seat].trim() || getDefaultName(playerTypes[seat], factions[seat]),
         playerType: playerTypes[seat],
       })),
       speaker: 0,
@@ -345,7 +387,7 @@ export function SetupScreen() {
       <MiltyDraftScreen
         playerCount={playerCount}
         players={Array.from({ length: playerCount }, (_, seat) => ({
-          name: names[seat].trim() || `Player ${String(seat + 1)}`,
+          name: names[seat].trim() || getDefaultName(playerTypes[seat], factions[seat]),
           color: colours[seat],
           playerType: playerTypes[seat],
         }))}

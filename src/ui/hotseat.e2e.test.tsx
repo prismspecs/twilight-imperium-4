@@ -37,6 +37,7 @@ describe('a scripted hot-seat game', () => {
     click('controller-0-human')
     click('controller-1-human')
     click('controller-2-human')
+    click('btn-clock-on')
     click('btn-start')
     expect(text('round')).toBe('Round 1 of 8, strategy phase')
     expect(text('clock-0')).toBe('15:00')
