@@ -178,5 +178,40 @@ describe('CombatDialog and combat outcome visibility', () => {
     expect(screen.getByTestId('turn-action-hud')).toBeTruthy()
     expect(screen.getByTestId('turn-action-hud').textContent).toContain('Space Combat in [104] Bereg')
   })
+
+  it('does not display casualties from previous battles when a new combat begins at round 0', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = withUnits(s, 'bereg', 1, ['destroyer'])
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 0,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [],
+        pending: [],
+      },
+    })
+    // Simulate previous battle casualties from another system/players in game log
+    s = {
+      ...s,
+      log: [
+        ...s.log,
+        { t: 'info', text: 'seat 4 loses: 1 cruiser destroyed in quann' },
+        { t: 'info', text: '1 hits assigned automatically in quann' },
+        { t: 'info', text: 'seat 5 loses: 1 cruiser destroyed in quann' },
+      ],
+    }
+
+    renderWithSession(s, <BoardScreen />)
+
+    expect(screen.getByTestId('combat-dialog')).toBeTruthy()
+    // Casualties & Hit Assignments should NOT appear for past battles in round 0
+    expect(screen.queryByText(/Casualties & Hit Assignments/i)).toBeNull()
+    expect(screen.queryByText(/cruiser destroyed in quann/i)).toBeNull()
+  })
 })
 

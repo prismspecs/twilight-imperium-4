@@ -336,33 +336,6 @@ export function BoardScreen() {
             onInspect={setInspecting}
           />
           {inspecting ? <SystemInfo state={state} systemId={inspecting} onClose={() => setInspecting(null)} /> : null}
-          {/* tactical flows (Task 4a) */}
-          {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
-          {combatOutcome && state.tactical?.step !== 'spaceCombat' ? (
-            <div className="dialog" data-testid="combat-outcome-banner" style={{ zIndex: 120, maxWidth: 460 }}>
-              <div className="in">
-                <div className="dhead">
-                  <span className="tab" style={{ color: 'var(--gold)' }}>Space Combat Decided</span>
-                  <div className="right">
-                    <button type="button" className="btn gold" data-testid="btn-dismiss-combat-outcome" onClick={() => setDismissedWinIndex(combatOutcome.winIndex)}>
-                      Continue
-                    </button>
-                  </div>
-                </div>
-                <div className="rowline" style={{ fontWeight: 600, fontSize: '13px' }}>
-                  {combatOutcome.winner === 'guardian' ? 'The guardian fleet' : state.players[combatOutcome.winner].name} victorious in {systemLabel(combatOutcome.systemId, state)}!
-                </div>
-                {combatOutcome.notes.length > 0 ? (
-                  <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(0,0,0,0.35)', borderRadius: '4px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--ink-muted)', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.05em' }}>Casualties</div>
-                    {combatOutcome.notes.map((note, idx) => (
-                      <div key={idx} style={{ color: '#e2e8f0' }}>• {note}</div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
           {!isAiTurn ? (
             <>
               {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
@@ -420,6 +393,35 @@ export function BoardScreen() {
           isMyTurn={isMyTurn}
         />
       </div>
+      {/* Tactical space combat modal (rendered at screen root above side decks) */}
+      {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+      {combatOutcome && state.tactical?.step !== 'spaceCombat' ? (
+        <div className="combat-modal-overlay" style={{ zIndex: 950 }}>
+          <div className="dialog combat-outcome-modal" data-testid="combat-outcome-banner" style={{ maxWidth: 460, margin: 'auto' }}>
+            <div className="in">
+              <div className="dhead">
+                <span className="tab" style={{ color: 'var(--gold)' }}>Space Combat Decided</span>
+                <div className="right">
+                  <button type="button" className="btn gold" data-testid="btn-dismiss-combat-outcome" onClick={() => setDismissedWinIndex(combatOutcome.winIndex)}>
+                    Continue
+                  </button>
+                </div>
+              </div>
+              <div className="rowline" style={{ fontWeight: 600, fontSize: '13px' }}>
+                {combatOutcome.winner === 'guardian' ? 'The guardian fleet' : state.players[combatOutcome.winner].name} victorious in {systemLabel(combatOutcome.systemId, state)}!
+              </div>
+              {combatOutcome.notes.length > 0 ? (
+                <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(0,0,0,0.35)', borderRadius: '4px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--ink-muted)', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.05em' }}>Casualties</div>
+                  {combatOutcome.notes.map((note, idx) => (
+                    <div key={idx} style={{ color: '#e2e8f0' }}>• {note}</div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <HandoffOverlay />
     </>
   )

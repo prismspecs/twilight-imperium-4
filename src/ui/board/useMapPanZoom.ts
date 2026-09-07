@@ -4,6 +4,7 @@ export interface PanZoomState {
   pan: { x: number; y: number }
   zoom: number
   isDragging: boolean
+  isWheeling: boolean
   zoomIn: () => void
   zoomOut: () => void
   resetView: () => void
@@ -40,6 +41,17 @@ export function useMapPanZoom(): PanZoomState {
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState<number>(1)
   const [isDragging, setIsDragging] = useState<boolean>(false)
+  const [isWheeling, setIsWheeling] = useState<boolean>(false)
+
+  const panRef = useRef(pan)
+  const zoomRef = useRef(zoom)
+  useEffect(() => {
+    panRef.current = pan
+  }, [pan])
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+  const wheelTimeoutRef = useRef<number | null>(null)
 
   const dragStartRef = useRef<{
     startX: number
@@ -131,9 +143,44 @@ export function useMapPanZoom(): PanZoomState {
   }, [])
 
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    // Zoom in on negative delta, out on positive
-    const factor = e.deltaY < 0 ? 1.12 : 0.89
-    setZoom(z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * factor * 100) / 100)))
+    let delta = e.deltaY
+    if (e.deltaMode === 1) delta *= 20
+    else if (e.deltaMode === 2) delta *= 60
+
+    // Filter sub-pixel micro-jitter from trackpads during deceleration
+    if (Math.abs(delta) < 1) return
+
+    setIsWheeling(true)
+    if (wheelTimeoutRef.current !== null) {
+      window.clearTimeout(wheelTimeoutRef.current)
+    }
+    wheelTimeoutRef.current = window.setTimeout(() => {
+      setIsWheeling(false)
+      wheelTimeoutRef.current = null
+    }, 150)
+
+    const currentZoom = zoomRef.current
+    const currentPan = panRef.current
+
+    // Smooth continuous exponential scaling proportional to scroll delta
+    const factor = Math.min(1.25, Math.max(0.8, Math.exp(-delta * 0.002)))
+    const targetZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * factor))
+    const nextZoom = Math.round(targetZoom * 1000) / 1000
+
+    if (Math.abs(nextZoom - currentZoom) < 0.001) return
+
+    // Anchor zoom to cursor position if available
+    const rect = e.currentTarget?.getBoundingClientRect?.()
+    if (rect) {
+      const cx = e.clientX - (rect.left + rect.width / 2)
+      const cy = e.clientY - (rect.top + rect.height / 2)
+      const k = nextZoom / currentZoom
+      const nextPanX = Math.round((currentPan.x - (cx - currentPan.x) * (k - 1)) * 10) / 10
+      const nextPanY = Math.round((currentPan.y - (cy - currentPan.y) * (k - 1)) * 10) / 10
+      setPan({ x: nextPanX, y: nextPanY })
+    }
+
+    setZoom(nextZoom)
   }, [])
 
   // Clear drag state if window loses focus or pointer is released globally
@@ -147,6 +194,9 @@ export function useMapPanZoom(): PanZoomState {
     return () => {
       window.removeEventListener('pointerup', handleGlobalUp)
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current)
+      if (wheelTimeoutRef.current !== null) {
+        window.clearTimeout(wheelTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -154,6 +204,7 @@ export function useMapPanZoom(): PanZoomState {
     pan,
     zoom,
     isDragging,
+    isWheeling,
     zoomIn,
     zoomOut,
     resetView,

@@ -78,7 +78,9 @@ export function shipsThatCanReach(state: GameState, seat: Seat, systemId: string
     if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
     for (const u of sys.space) {
       if (u.owner !== seat || !isShip(u.type)) continue
-      if (pathLength(state, seat, sys.id, systemId, moveValueOf(state, seat, u) + bonus) !== null) {
+      const baseMove = moveValueOf(state, seat, u)
+      if (baseMove < 1) continue
+      if (pathLength(state, seat, sys.id, systemId, baseMove + bonus) !== null) {
         out.push({ unitId: u.id, from: sys.id })
       }
     }
@@ -115,9 +117,11 @@ export function movementObstacle(state: GameState, seat: Seat, systemId: string)
     if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
     for (const u of sys.space) {
       if (u.owner !== seat || !isShip(u.type)) continue
+      const baseMove = moveValueOf(state, seat, u)
+      if (baseMove < 1) continue
       anyShip = true
       // the same search once more, but with hostile fleets ignored: a path that only appears then was blocked
-      const reach = moveValueOf(state, seat, u) + bonus
+      const reach = baseMove + bonus
       if (pathLength(state, seat, sys.id, systemId, reach, true) !== null) blocked = true
     }
   }

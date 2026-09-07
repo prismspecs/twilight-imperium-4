@@ -34,6 +34,7 @@ describe('a scripted hot-seat game', () => {
     fireEvent.change(screen.getByTestId('seat-name-0'), { target: { value: 'Despot' } })
     fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
     fireEvent.change(screen.getByTestId('seat-name-2'), { target: { value: 'Soran' } })
+    click('controller-0-human')
     click('controller-1-human')
     click('controller-2-human')
     click('btn-start')

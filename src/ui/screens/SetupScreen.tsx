@@ -40,10 +40,35 @@ const POSITIONS: Record<number, string[]> = {
   6: ['East', 'North-East', 'North-West', 'West', 'South-West', 'South-East'],
 }
 const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6']
-const DEFAULT_FACTIONS: FactionId[] = ['l1z1x', 'letnev', 'sol', 'hacan', 'jolnar', 'xxcha']
-const DEFAULT_COLOURS: Color[] = ['blue', 'red', 'green', 'yellow', 'purple', 'black']
-// All but the first seat default to AI: a new game starts as one human vs the rest of the table.
-const DEFAULT_TYPES: PlayerType[] = ['human', 'ai', 'ai', 'ai', 'ai', 'ai']
+
+export function generateRandomSetup(count: number = 6): {
+  factions: FactionId[]
+  colours: Color[]
+  playerTypes: PlayerType[]
+} {
+  const allFactionIds = Object.keys(FACTIONS) as FactionId[]
+  const shuffledFactions = [...allFactionIds]
+  for (let i = shuffledFactions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffledFactions[i], shuffledFactions[j]] = [shuffledFactions[j], shuffledFactions[i]]
+  }
+
+  const shuffledColours = [...COLOURS]
+  for (let i = shuffledColours.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffledColours[i], shuffledColours[j]] = [shuffledColours[j], shuffledColours[i]]
+  }
+
+  const validCount = Math.min(6, Math.max(2, count))
+  const humanSeat = Math.floor(Math.random() * validCount)
+  const playerTypes: PlayerType[] = Array.from({ length: 6 }, (_, i) => (i === humanSeat ? 'human' : 'ai'))
+
+  return {
+    factions: shuffledFactions.slice(0, 6),
+    colours: shuffledColours.slice(0, 6),
+    playerTypes,
+  }
+}
 
 // Display order for the fleet row; only the types a starting fleet can actually contain matter here.
 const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
@@ -198,11 +223,12 @@ export function SetupScreen() {
   const route = useHashRoute()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
+  const [initialSetup] = useState(() => generateRandomSetup(6))
   const [playerCount, setPlayerCount] = useState<number>(6)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
-  const [factions, setFactions] = useState<FactionId[]>(DEFAULT_FACTIONS)
-  const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
-  const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
+  const [factions, setFactions] = useState<FactionId[]>(() => initialSetup.factions)
+  const [colours, setColours] = useState<Color[]>(() => initialSetup.colours)
+  const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(() => initialSetup.playerTypes)
   const [minutes, setMinutes] = useState(15)
   const [clockEnabled, setClockEnabled] = useState(true)
   const [useMiltyDraft, setUseMiltyDraft] = useState(false)
@@ -235,6 +261,10 @@ export function SetupScreen() {
   function setFaction(seat: number, value: FactionId) {
     setFactions(prev => {
       const next = [...prev]
+      const duplicateSeat = next.indexOf(value)
+      if (duplicateSeat !== -1 && duplicateSeat !== seat) {
+        next[duplicateSeat] = next[seat]
+      }
       next[seat] = value
       return next
     })
@@ -262,9 +292,26 @@ export function SetupScreen() {
       }
       return next
     })
+    setPlayerTypes(prev => {
+      const next = [...prev]
+      const humanIdx = next.slice(0, newCount).findIndex(pt => pt === 'human')
+      if (humanIdx === -1) {
+        const randomSeat = Math.floor(Math.random() * newCount)
+        for (let s = 0; s < 6; s++) {
+          next[s] = s === randomSeat ? 'human' : 'ai'
+        }
+      }
+      return next
+    })
     // Reset draft mode when player count changes
     if (useMiltyDraft) setUseMiltyDraft(false)
     if (isDrafting) setIsDrafting(false)
+  }
+  function handleRandomize() {
+    const random = generateRandomSetup(playerCount)
+    setFactions(random.factions)
+    setColours(random.colours)
+    setPlayerTypes(random.playerTypes)
   }
   function onStart() {
     const seed = seedFromRoute(route, Math.floor(Math.random() * 0x7fffffff))
@@ -439,6 +486,12 @@ export function SetupScreen() {
               onClick={() => { setFactions(prev => { const next = [...prev]; [next[0], next[1]] = [next[1], next[0]]; return next }) }}
             >
               Swap seats 1 and 2
+            </button>
+            <button
+              type="button" className="pf-btn sm" data-testid="btn-randomize"
+              onClick={handleRandomize}
+            >
+              🎲 Randomize
             </button>
           </div>
 

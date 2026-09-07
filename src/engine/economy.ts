@@ -178,3 +178,55 @@ export function cheapestPlanets(state: GameState, seat: Seat, cost: number): str
   }
   return best ? best.ids : null
 }
+
+/**
+ * The cheapest combination of ready planets and trade goods of the seat that covers `cost`.
+ * Minimizes total resources committed, then minimizes trade goods spent, then minimizes planet count.
+ */
+export function cheapestPayment(
+  state: GameState,
+  seat: Seat,
+  cost: number
+): { planets: string[]; tradeGoods: number } | null {
+  if (cost <= 0) return { planets: [], tradeGoods: 0 }
+  const player = state.players[seat]
+  if (!player) return null
+  if (readyResources(state, seat) + player.tradeGoods < cost) return null
+
+  const ready: { id: string; resources: number }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) {
+      if (p.owner === seat && !p.exhausted && p.resources > 0) {
+        ready.push({ id: p.id, resources: p.resources })
+      }
+    }
+  }
+
+  let best: { planets: string[]; tradeGoods: number; total: number } | null = null
+
+  const maxMask = 1 << ready.length
+  for (let mask = 0; mask < maxMask; mask++) {
+    let planetRes = 0
+    const ids: string[] = []
+    for (let i = 0; i < ready.length; i++) {
+      if (mask & (1 << i)) {
+        planetRes += ready[i].resources
+        ids.push(ready[i].id)
+      }
+    }
+    const tgNeeded = Math.max(0, cost - planetRes)
+    if (tgNeeded <= player.tradeGoods) {
+      const total = planetRes + tgNeeded
+      if (
+        !best ||
+        total < best.total ||
+        (total === best.total && tgNeeded < best.tradeGoods) ||
+        (total === best.total && tgNeeded === best.tradeGoods && ids.length < best.planets.length)
+      ) {
+        best = { planets: ids, tradeGoods: tgNeeded, total }
+      }
+    }
+  }
+
+  return best ? { planets: best.planets, tradeGoods: best.tradeGoods } : null
+}

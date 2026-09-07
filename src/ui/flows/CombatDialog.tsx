@@ -102,6 +102,50 @@ export function CombatDialog() {
     ? 'Open fire'
     : `Roll combat dice (Round ${combat.round})`
 
+  const currentSystemId = state.tactical?.systemId ?? ''
+  const combatEvents = (() => {
+    // If round is 0 and no rolls or pending hits exist, combat just started: no events have occurred yet
+    if (combat.round === 0 && combat.lastRolls.length === 0 && combat.pending.length === 0) {
+      return []
+    }
+    let startIndex = -1
+    for (let i = state.log.length - 1; i >= 0; i--) {
+      const entry = state.log[i]
+      if (entry.t === 'move' && (entry.move.type === 'endMovement' || (entry.move.type === 'startTactical' && entry.move.systemId === currentSystemId))) {
+        startIndex = i
+        break
+      }
+    }
+    const pool = startIndex >= 0 ? state.log.slice(startIndex) : state.log
+    return pool
+      .filter((e): e is Extract<typeof e, { t: 'info' }> => {
+        if (e.t !== 'info') return false
+        const text = e.text
+        const isCombatInfo =
+          text.includes('loses:') ||
+          text.includes('fighter') ||
+          text.includes('hits assigned') ||
+          text.includes('assigns') ||
+          text.includes('retreats') ||
+          text.includes('Assault Cannon') ||
+          text.includes('Ambush') ||
+          text.includes('Mentak')
+        if (!isCombatInfo) return false
+        // Exclude events explicitly mentioning another system
+        for (const sys of Object.values(state.systems)) {
+          if (sys.id !== currentSystemId && text.includes(`in ${sys.id}`)) return false
+        }
+        // Exclude events explicitly naming third-party players not involved in this battle
+        for (const p of state.players) {
+          if (p.seat !== combat.attacker && p.seat !== combat.defender) {
+            if (text.includes(`seat ${p.seat}`) || text.includes(p.name)) return false
+          }
+        }
+        return true
+      })
+      .slice(-6)
+  })()
+
   return (
     <div className="combat-modal-overlay" data-testid="combat-modal-overlay">
       <div className="dialog combat-dialog-modal" data-testid="combat-dialog">
@@ -237,45 +281,25 @@ export function CombatDialog() {
           </div>
 
           {/* Casualties & Events History */}
-          {state.log
-            .filter((e): e is Extract<typeof e, { t: 'info' }> => e.t === 'info' && (
-              e.text.includes('loses:') ||
-              e.text.includes('fighter') ||
-              e.text.includes('hits assigned') ||
-              e.text.includes('assigns') ||
-              e.text.includes('retreats') ||
-              e.text.includes('Assault Cannon')
-            ))
-            .slice(-6)
-            .length > 0 ? (
+          {combatEvents.length > 0 ? (
             <div className="combat-events-box">
               <div className="events-title">
                 Casualties & Hit Assignments
               </div>
-              {state.log
-                .filter((e): e is Extract<typeof e, { t: 'info' }> => e.t === 'info' && (
-                  e.text.includes('loses:') ||
-                  e.text.includes('fighter') ||
-                  e.text.includes('hits assigned') ||
-                  e.text.includes('assigns') ||
-                  e.text.includes('retreats') ||
-                  e.text.includes('Assault Cannon')
-                ))
-                .slice(-6)
-                .map((evt, idx) => {
-                  let text = evt.text
-                  for (const player of state.players) {
-                    text = text.replaceAll(`seat ${player.seat}`, player.name)
-                  }
-                  for (const sys of Object.values(state.systems)) {
-                    text = text.replaceAll(`in ${sys.id}`, `in ${systemLabel(sys.id, state)}`)
-                  }
-                  return (
-                    <div key={idx} className="event-line">
-                      • {text}
-                    </div>
-                  )
-                })}
+              {combatEvents.map((evt, idx) => {
+                let text = evt.text
+                for (const player of state.players) {
+                  text = text.replaceAll(`seat ${player.seat}`, player.name)
+                }
+                for (const sys of Object.values(state.systems)) {
+                  text = text.replaceAll(`in ${sys.id}`, `in ${systemLabel(sys.id, state)}`)
+                }
+                return (
+                  <div key={idx} className="event-line">
+                    • {text}
+                  </div>
+                )
+              })}
             </div>
           ) : null}
 

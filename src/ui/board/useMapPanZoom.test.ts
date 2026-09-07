@@ -44,4 +44,24 @@ describe('useMapPanZoom', () => {
     })
     expect(result.current.zoom).toBeLessThanOrEqual(1.15)
   })
+
+  it('sets isWheeling during wheel events and anchors zoom to cursor position', () => {
+    const { result } = renderHook(() => useMapPanZoom())
+    expect(result.current.isWheeling).toBe(false)
+
+    act(() => {
+      result.current.onWheel({
+        deltaY: -100,
+        clientX: 300,
+        clientY: 200,
+        currentTarget: {
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 400 } as DOMRect),
+        } as unknown as HTMLDivElement,
+      } as React.WheelEvent<HTMLDivElement>)
+    })
+
+    expect(result.current.isWheeling).toBe(true)
+    expect(result.current.zoom).toBeGreaterThan(1.0)
+    expect(result.current.pan.x).toBeLessThan(0)
+  })
 })

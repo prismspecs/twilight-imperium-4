@@ -3,7 +3,7 @@ import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, homeSystemOf } from './board'
-import { cheapestPlanets, distributeTokens, exhaustPlanets, payCost } from './economy'
+import { cheapestPayment, distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch } from './research'
@@ -323,8 +323,10 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
   }
   if (params.secondTechId !== undefined) {
     if (params.techId === undefined) return { ok: false, error: 'R5: the second technology needs the first' }
-    const planets = params.planets !== undefined ? params.planets : (cheapestPlanets(next, seat, 6) ?? [])
-    const paid = payCost(next, seat, 6, planets, params.tradeGoods ?? 0)
+    const payment = cheapestPayment(next, seat, 6)
+    const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
+    const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
+    const paid = payCost(next, seat, 6, planets, tradeGoods)
     if (!paid.ok) return paid
     const second = grantTech(paid.value, seat, params.secondTechId, false)
     if (!second.ok) return second
@@ -335,8 +337,10 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
 
 function technologySecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   if (params.techId === undefined) return { ok: false, error: 'R5: name the technology to research' }
-  const planets = params.planets !== undefined ? params.planets : (cheapestPlanets(state, seat, 4) ?? [])
-  const paid = payCost(state, seat, 4, planets, params.tradeGoods ?? 0)
+  const payment = cheapestPayment(state, seat, 4)
+  const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
+  const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
+  const paid = payCost(state, seat, 4, planets, tradeGoods)
   if (!paid.ok) return paid
   return grantTech(paid.value, seat, params.techId, false)
 }

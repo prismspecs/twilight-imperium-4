@@ -291,4 +291,29 @@ describe('Anomalies & Gravity Drive legality (JVBR8F regression)', () => {
     const state = createGame(config, 776489084)
     expect(shipsThatCanReach(state, 3, 'home-4')).toHaveLength(0)
   })
+
+  it('Fighter I cannot move on its own even when player has gravity_drive (baseMove < 1)', () => {
+    // Only fighters in home-n, with gravity drive
+    let s = toActionPhase()
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        'home-n': {
+          ...s.systems['home-n'],
+          space: s.systems['home-n'].space.filter(u => u.type === 'fighter'),
+        },
+      },
+    }
+    s = withTechs(s, 0, ['gravity_drive'])
+
+    // Fighter I has baseMove 0, cannot move on its own even with gravity drive bonus
+    const reachable = shipsThatCanReach(s, 0, 'bereg')
+    expect(reachable).toHaveLength(0)
+
+    // With fighter_ii, baseMove is 2, so it CAN move on its own
+    const withFighter2 = withTechs(s, 0, ['fighter_ii'])
+    const reachableWithFighter2 = shipsThatCanReach(withFighter2, 0, 'bereg')
+    expect(reachableWithFighter2.length).toBeGreaterThan(0)
+  })
 })

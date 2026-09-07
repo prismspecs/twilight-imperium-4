@@ -398,7 +398,7 @@ button { font-family: inherit; }
 /* ---- Side panel (single, left) --------------------------------------- */
 .side-panel {
   position: fixed;
-  left: 0; top: 54px; bottom: 64px;
+  left: 0; top: 54px; bottom: 56px;
   width: 272px;
   zoom: var(--k);
   z-index: 2;
@@ -465,7 +465,7 @@ button { font-family: inherit; }
 /* ---- Stage (board + overlays) ---------------------------------------- */
 .stage {
   position: fixed;
-  left: 280px; right: 8px; top: 54px; bottom: 64px;
+  left: 280px; right: 8px; top: 54px; bottom: 56px;
   zoom: var(--k);
   display: flex;
   align-items: center;
@@ -920,7 +920,7 @@ button { font-family: inherit; }
 
 /* ---- Side panel sections (collapsible) ------------------------------- */
 .pcontent {
-  padding: 4px 0;
+  padding: 4px 0 16px;
   overflow-y: auto;
   flex: 1;
   overscroll-behavior: contain;
@@ -2147,7 +2147,7 @@ button { font-family: inherit; }
     stroke-width: 4.5px;
   }
 }
-.tile.active svg.line polygon {
+.tile.active svg.line > polygon:first-child {
   stroke: var(--active-hex-stroke, var(--accent-blue));
   stroke-width: 2.8;
   filter: drop-shadow(0 0 8px var(--active-hex-glow, rgba(59, 130, 246, 0.6)));
@@ -2487,7 +2487,7 @@ button { font-family: inherit; }
 .drawer.full > .in {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 .dhead {
   display: flex;

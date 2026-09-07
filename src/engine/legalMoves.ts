@@ -2,7 +2,7 @@ import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
-import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
+import { cheapestPayment, cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
@@ -87,14 +87,25 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
       return systems.map((systemId): Move => ({ type: 'strategic', card, params: { systemId } }))
     }
     case 'technology': {
-      const techs = researchable(state.players[seat])
+      const player = state.players[seat]
+      const techs = researchable(player)
       if (!techs.length) return [{ type: 'strategic', card, params: {} }]
       const out: Move[] = techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } }))
-      const affordSecond = cheapestPlanets(state, seat, 6)
-      if (affordSecond && techs.length >= 2) {
-        for (let i = 0; i < techs.length; i++) {
-          for (let j = i + 1; j < techs.length; j++) {
-            out.push({ type: 'strategic', card, params: { techId: techs[i], secondTechId: techs[j], planets: affordSecond } })
+      const affordSecond = cheapestPayment(state, seat, 6)
+      if (affordSecond) {
+        for (const first of techs) {
+          const secondTechs = researchable({ ...player, techs: [...player.techs, first] }).filter(id => id !== first)
+          for (const second of secondTechs) {
+            out.push({
+              type: 'strategic',
+              card,
+              params: {
+                techId: first,
+                secondTechId: second,
+                planets: affordSecond.planets,
+                tradeGoods: affordSecond.tradeGoods,
+              },
+            })
           }
         }
       }
@@ -189,9 +200,14 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
       return []
     }
     case 'technology': {
-      const planets = cheapestPlanets(state, seat, 4)
-      if (!planets) return []
-      return researchable(state.players[seat]).map((techId): Move => ({ type: 'secondary', card, accept: true, params: { techId, planets } }))
+      const payment = cheapestPayment(state, seat, 4)
+      if (!payment) return []
+      return researchable(state.players[seat]).map((techId): Move => ({
+        type: 'secondary',
+        card,
+        accept: true,
+        params: { techId, planets: payment.planets, tradeGoods: payment.tradeGoods },
+      }))
     }
     case 'imperial':
       return [{ type: 'secondary', card, accept: true, params }]

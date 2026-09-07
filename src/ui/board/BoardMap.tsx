@@ -51,7 +51,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
             ['--map-h' as string]: `${mapSize.height}px`,
             transform: `translate(${panZoom.pan.x}px, ${panZoom.pan.y}px) scale(${panZoom.zoom})`,
             transformOrigin: 'center center',
-            transition: panZoom.isDragging ? 'none' : 'transform 0.08s ease-out',
+            transition: (panZoom.isDragging || panZoom.isWheeling) ? 'none' : 'transform 0.12s ease-out',
           }}
         >
           {Object.values(state.systems).map(system => (

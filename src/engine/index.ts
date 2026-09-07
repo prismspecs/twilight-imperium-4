@@ -77,7 +77,7 @@ export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPh
 export { homeSystemOf } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
 export { canInheritance, canShipyard, inheritanceTechs, postDef, postLinked, shipyardPlanets, tradePostOptions } from './componentActions'
-export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
+export { capacity, cheapestPayment, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets, removeCustodians } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
 export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady } from './postAbilities'

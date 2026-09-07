@@ -95,11 +95,13 @@ export function MovementPanel() {
   const totalPicked = origins.reduce((sum, from) => sum + Object.values(pickedAt(from)).reduce((a, b) => a + b, 0), 0)
   const canProduceHere = productionLimit(state, seat, target) > 0
   const obstacle = origins.length === 0 && !canProduceHere ? movementObstacle(state, seat, target) : null
-  const lockedSystemsWithShips = Object.values(state.systems).filter(sys =>
-    sys.id !== target &&
-    sys.activatedBy.includes(seat) &&
-    sys.space.some(u => u.owner === seat && isShip(u.type))
-  )
+  const lockedSystemsWithShips = origins.length === 0
+    ? Object.values(state.systems).filter(sys =>
+        sys.id !== target &&
+        sys.activatedBy.includes(seat) &&
+        sys.space.some(u => u.owner === seat && isShip(u.type))
+      )
+    : []
 
   return (
     <div className="drawer bottom" data-testid="movement-panel">

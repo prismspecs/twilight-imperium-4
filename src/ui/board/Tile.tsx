@@ -134,7 +134,7 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const box = getSpaceBox(system.id, system.planets.length)
   const fleet = groupUnits(system.space)
   const scale = fleetScale(fleet.length, box)
-  const isHomeTurn = system.home !== null && system.home === state.active
+  const isHomeTurn = system.home !== null && system.home === state.active && state.winner === null
   const homeOwner = system.home !== null ? state.players[system.home] : undefined
   const homeInk = homeOwner ? COLOUR_INK[homeOwner.color] : undefined
   const home = system.home === null ? '' : ` home-${system.home}`

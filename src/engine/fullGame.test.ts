@@ -218,7 +218,8 @@ describe('legal moves in every phase', () => {
 // different path again, and 19 is the seed that still reaches `groundCombatRound` and an accepted Trade
 // secondary.
 // 9 came in when Gravity Drive was strictly limited to 1 ship per activation: seed 9 exercises `groundCombatRound`.
-const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
+// 11 exercises `groundCombatRound`.
+const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 11, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

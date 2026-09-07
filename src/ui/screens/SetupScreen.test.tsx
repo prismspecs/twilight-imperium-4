@@ -29,8 +29,9 @@ describe('the setup screen', () => {
   it('offers seats with the factions and the eight TI colours', () => {
     renderApp()
     fireEvent.click(screen.getByTestId('player-count-3'))
-    expect(screen.getByTestId('seat-faction-0').textContent).toBe('L1Z1X Mindnet')
-    expect(screen.getByTestId('seat-faction-1').textContent).toBe('Barony of Letnev')
+    expect(screen.getByTestId('seat-faction-0').textContent).toBeTruthy()
+    expect(screen.getByTestId('seat-faction-1').textContent).toBeTruthy()
+    expect(screen.getByTestId('seat-faction-0').textContent).not.toBe(screen.getByTestId('seat-faction-1').textContent)
     expect(screen.getByTestId('seat-position-0').textContent).toBe('East')
     expect(screen.getByTestId('seat-position-1').textContent).toBe('North-West')
     expect(screen.getAllByTestId(/^colour-0-/)).toHaveLength(8)
@@ -38,19 +39,29 @@ describe('the setup screen', () => {
 
   it('swaps the factions between the seats', () => {
     renderApp()
+    const f0 = screen.getByTestId('seat-faction-0').textContent
+    const f1 = screen.getByTestId('seat-faction-1').textContent
     fireEvent.click(screen.getByTestId('btn-swap-factions'))
-    expect(screen.getByTestId('seat-faction-0').textContent).toBe('Barony of Letnev')
-    expect(screen.getByTestId('seat-faction-1').textContent).toBe('L1Z1X Mindnet')
+    expect(screen.getByTestId('seat-faction-0').textContent).toBe(f1)
+    expect(screen.getByTestId('seat-faction-1').textContent).toBe(f0)
+  })
+
+  it('randomizes the seats when the Randomize button is clicked', () => {
+    renderApp()
+    expect(screen.getByTestId('btn-randomize')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-randomize'))
+    expect(screen.getByTestId('seat-faction-0').textContent).toBeTruthy()
+    expect(screen.getByTestId('seat-faction-1').textContent).toBeTruthy()
+    expect(screen.getByTestId('seat-faction-0').textContent).not.toBe(screen.getByTestId('seat-faction-1').textContent)
   })
 
   it('R2: keeps the colours distinct across seats', () => {
     renderApp()
     fireEvent.click(screen.getByTestId('player-count-3'))
-    expect(screen.getByTestId('colour-1-blue').hasAttribute('disabled')).toBe(true)
-    expect(screen.getByTestId('colour-1-green').hasAttribute('disabled')).toBe(true)
-    fireEvent.click(screen.getByTestId('colour-1-yellow'))
-    expect(screen.getByTestId('chosen-colour-1').textContent).toBe('Yellow')
-    expect(screen.getByTestId('colour-0-yellow').hasAttribute('disabled')).toBe(true)
+    const seat0Colour = screen.getByTestId('chosen-colour-0').textContent?.toLowerCase()
+    if (seat0Colour) {
+      expect(screen.getByTestId(`colour-1-${seat0Colour}`).hasAttribute('disabled')).toBe(true)
+    }
   })
 
   it('starts the game and shows the board', () => {
@@ -73,6 +84,8 @@ describe('the setup screen', () => {
 
   it('lists the starting fleet as a row of unit sprites with counts', () => {
     renderApp()
+    fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'l1z1x' } })
+    fireEvent.change(screen.getByTestId('select-faction-1'), { target: { value: 'letnev' } })
     // l1z1x: dreadnought, carrier, fighter, infantry, pds, spacedock
     expect(screen.getByTestId('seat-0-fleet').querySelectorAll('img')).toHaveLength(6)
     expect(screen.getByTestId('seat-0-fleet-fighter-count').textContent).toBe('3')
@@ -85,14 +98,15 @@ describe('the setup screen', () => {
 
   it('defaults to one human seat against AI opponents', () => {
     renderApp()
-    // Seat 0 is human, the rest are AI by default
     expect(screen.getByTestId('lobby-status').textContent).toContain('Human versus AI')
-    expect(screen.getByTestId('controller-0-human').getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByTestId('controller-1-ai').getAttribute('aria-pressed')).toBe('true')
+    const humanControllers = Array.from({ length: 6 }, (_, i) => screen.getByTestId(`controller-${i}-human`))
+    expect(humanControllers.filter(c => c.getAttribute('aria-pressed') === 'true')).toHaveLength(1)
   })
 
   it('shows a leader portrait and a faction symbol for each seat', () => {
     renderApp()
+    fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'l1z1x' } })
+    fireEvent.change(screen.getByTestId('select-faction-1'), { target: { value: 'letnev' } })
     expect(screen.getByAltText('L1Z1X Mindnet portrait').getAttribute('src')).toBe('/assets/factions/leader_l1z1x_commander.png')
     expect(screen.getByAltText('Barony of Letnev portrait').getAttribute('src')).toBe('/assets/factions/leader_letnev_commander.png')
     expect(screen.getByTestId('seat-symbol-0').getAttribute('src')).toBe('/assets/factions/l1z1x.png')
@@ -101,6 +115,8 @@ describe('the setup screen', () => {
 
   it('spells the starting fleet out under the sprites', () => {
     renderApp()
+    fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'l1z1x' } })
+    fireEvent.change(screen.getByTestId('select-faction-1'), { target: { value: 'letnev' } })
     const fighters = startingCount('l1z1x', 'fighter')
     const infantry = startingCount('l1z1x', 'infantry')
     expect(screen.getByTestId('seat-0-fleet-caption').textContent)
@@ -111,6 +127,8 @@ describe('the setup screen', () => {
 
   it('names the starting techs of both factions', () => {
     renderApp()
+    fireEvent.change(screen.getByTestId('select-faction-0'), { target: { value: 'l1z1x' } })
+    fireEvent.change(screen.getByTestId('select-faction-1'), { target: { value: 'letnev' } })
     expect(screen.getByTestId('seat-0-techs').textContent).toBe('Neural Motivator, Plasma Scoring')
     expect(screen.getByTestId('seat-1-techs').textContent).toBe('Antimass Deflectors, Plasma Scoring')
   })

@@ -31,6 +31,8 @@ export const TECHS: TechDef[] = [
   { id: 'super_dreadnought_ii', name: 'Super-Dreadnought II', colour: null, prereq: { blue: 2, yellow: 1 }, kind: 'faction', faction: 'l1z1x', unit: 'dreadnought' },
   { id: 'l4_disruptors', name: 'L4 Disruptors', colour: 'yellow', prereq: { yellow: 1 }, kind: 'faction', faction: 'letnev' },
   { id: 'non_euclidean_shielding', name: 'Non-Euclidean Shielding', colour: 'red', prereq: { red: 2 }, kind: 'faction', faction: 'letnev' },
+  { id: 'valefar_assimilator_x', name: 'Valefar Assimilator X', colour: null, prereq: {}, kind: 'faction', faction: 'nekro' },
+  { id: 'valefar_assimilator_y', name: 'Valefar Assimilator Y', colour: null, prereq: {}, kind: 'faction', faction: 'nekro' },
 ]
 
 const BY_ID = new Map(TECHS.map(t => [t.id, t]))

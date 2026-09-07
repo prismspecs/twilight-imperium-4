@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { agendaDef } from '../../data/agendas'
 import { objectiveDef } from '../../data/objectives'
-import { controlsMecatol, isAi } from '../../engine'
+import { cheapestPayment, controlsMecatol, isAi, readyResources, researchable } from '../../engine'
 import { BADGE, MISC, spriteUrl, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
@@ -29,6 +29,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [secondTechId, setSecondTechId] = useState<string | null>(null)
   const [secondPlanets, setSecondPlanets] = useState<string[]>([])
   const [secondTradeGoods, setSecondTradeGoods] = useState(0)
+  const [activeSlot, setActiveSlot] = useState<'first' | 'second'>('first')
   const [objectiveId, setObjectiveId] = useState<string | null>(null)
   const [shared, setShared] = useState<Seat[]>([])
   const [speakerTo, setSpeakerTo] = useState<Seat | null>(null)
@@ -101,6 +102,33 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
 
   const secondPaidResources = secondPlanets.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + secondTradeGoods
   const secondTechBlocked = card === 'technology' && secondTechEnabled && (secondTechId === null || secondPaidResources < 6)
+
+  const totalResourcesAvailable = readyResources(state, seat) + player.tradeGoods
+  const canAffordSecondTech = totalResourcesAvailable >= 6
+
+  const playerWithFirstTech: Player = techId
+    ? { ...player, techs: [...player.techs, techId] }
+    : player
+  const secondAllowedTechs = researchable(playerWithFirstTech).filter(id => id !== techId)
+
+  function handleToggleSecondTech(checked: boolean) {
+    setSecondTechEnabled(checked)
+    if (checked) {
+      if (secondPaidResources < 6) {
+        const autoPay = cheapestPayment(state, seat, 6)
+        if (autoPay) {
+          setSecondPlanets(autoPay.planets)
+          setSecondTradeGoods(autoPay.tradeGoods)
+        }
+      }
+      if (techId) {
+        setActiveSlot('second')
+      }
+    } else {
+      setActiveSlot('first')
+      setSecondTechId(null)
+    }
+  }
 
   const missing =
     card === 'technology' ? techOptions.length > 0 && techId === null
@@ -276,22 +304,49 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
               { icon: techId ? techArtUrl(techId) : strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Tech #1' },
               ...(secondTechEnabled && secondTechId ? [{ icon: techArtUrl(secondTechId), alt: techLabel(secondTechId), count: 1, label: techLabel(secondTechId) }] : []),
             ]} />
-            <div className="tab" style={{ margin: '12px 0 6px' }}>Technology #1 (Free)</div>
-            <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId} onSelect={setTechId} />
-            <div style={{ marginTop: 16 }}>
-              <label className="pay" style={{ cursor: 'pointer' }}>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px', margin: '10px 0 8px' }}>
+              <label className="pay" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
                 <input
                   type="checkbox"
                   data-testid="chk-second-tech"
                   checked={secondTechEnabled}
-                  onChange={e => setSecondTechEnabled(e.target.checked)}
+                  disabled={!canAffordSecondTech && !secondTechEnabled}
+                  onChange={e => handleToggleSecondTech(e.target.checked)}
                 />
-                Research additional technology (Costs 6 resources)
+                <span>Research 2nd technology (Costs 6 resources)</span>
+                {!canAffordSecondTech && !secondTechEnabled && (
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>— need 6 resources; have {totalResourcesAvailable}</span>
+                )}
               </label>
+
+              {secondTechEnabled ? (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    className={`btn ${activeSlot === 'first' ? 'gold' : 'quiet'}`}
+                    data-testid="tab-tech-1"
+                    onClick={() => setActiveSlot('first')}
+                  >
+                    1. Free: <b>{techId ? techLabel(techId) : '(choose)'}</b>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${activeSlot === 'second' ? 'gold' : 'quiet'}`}
+                    data-testid="tab-tech-2"
+                    onClick={() => setActiveSlot('second')}
+                  >
+                    2. Cost 6: <b>{secondTechId ? techLabel(secondTechId) : '(choose)'}</b>
+                  </button>
+                </div>
+              ) : null}
             </div>
+
             {secondTechEnabled ? (
-              <div style={{ marginTop: 12 }}>
-                <div className="tab" style={{ marginBottom: 6 }}>Technology #2 (Costs 6 resources)</div>
+              <div style={{ margin: '6px 0 10px', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', border: '1px solid var(--alpha-border)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Pay 6 resources ({secondPaidResources} / 6 paid)
+                </div>
                 <PayRow
                   state={state}
                   seat={seat}
@@ -301,15 +356,36 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
                   tradeGoods={secondTradeGoods}
                   onTradeGoods={setSecondTradeGoods}
                 />
-                <TechDrawer
-                  state={state}
-                  seat={seat}
-                  allowed={techOptions.filter(id => id !== techId)}
-                  selected={secondTechId}
-                  onSelect={setSecondTechId}
-                />
               </div>
             ) : null}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 6px' }}>
+              <span className="tab" style={{ fontSize: '12px' }}>
+                {activeSlot === 'first' ? 'Choose Technology #1 (Free)' : 'Choose Technology #2 (Costs 6 resources)'}
+              </span>
+              {secondTechEnabled && (
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                  {activeSlot === 'first' ? 'Click "2. Cost 6" tab above to choose second tech' : 'Prerequisites include Tech #1'}
+                </span>
+              )}
+            </div>
+
+            <TechDrawer
+              state={state}
+              seat={seat}
+              allowed={activeSlot === 'first' ? techOptions : secondAllowedTechs}
+              selected={activeSlot === 'first' ? techId : secondTechId}
+              onSelect={id => {
+                if (activeSlot === 'first') {
+                  setTechId(id)
+                  if (secondTechEnabled && !secondTechId) {
+                    setActiveSlot('second')
+                  }
+                } else {
+                  setSecondTechId(id)
+                }
+              }}
+            />
           </>
         ) : null}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capacity, fleetPoolLimit, nonFighterShips, payCost, productionCost, productionLimit, readyResources } from './economy'
+import { capacity, cheapestPayment, fleetPoolLimit, nonFighterShips, payCost, productionCost, productionLimit, readyResources } from './economy'
 import { applyMove } from './index'
 import { createGame } from './setup'
 import { deepFreeze, toActionPhase, withCards, withPlanetOwner, withPlayer, withTactical } from './testUtils'
@@ -28,6 +28,33 @@ describe('R4.4 economy helpers', () => {
     if (!exhausted.ok) throw new Error(exhausted.error)
     expect(payCost(exhausted.value, 1, 1, ['arc-prime'], 0).ok).toBe(false)
     expect(payCost(g, 0, 1, ['arc-prime'], 0).ok).toBe(false)   // not controlled by seat 0
+  })
+  it('cheapestPayment finds combinations of planets and trade goods', () => {
+    // Seat 0 starts with '000' (5 resources). Cost 6 is not coverable by planets alone.
+    expect(cheapestPayment(g, 0, 6)).toBeNull()
+    // With 1 trade good, 5 + 1 = 6 resources:
+    const withTg = withPlayer(g, 0, { tradeGoods: 1 })
+    const pay = cheapestPayment(withTg, 0, 6)
+    expect(pay).not.toBeNull()
+    expect(pay?.planets).toEqual(['000'])
+    expect(pay?.tradeGoods).toBe(1)
+
+    // With 6 trade goods and exhausted planet, covers purely with trade goods:
+    const exhausted000 = {
+      ...g,
+      systems: {
+        ...g.systems,
+        'home-n': {
+          ...g.systems['home-n'],
+          planets: g.systems['home-n'].planets.map(p => ({ ...p, exhausted: true })),
+        },
+      },
+    }
+    const with6Tg = withPlayer(exhausted000, 0, { tradeGoods: 6 })
+    const payTgOnly = cheapestPayment(with6Tg, 0, 6)
+    expect(payTgOnly).not.toBeNull()
+    expect(payTgOnly?.planets).toEqual([])
+    expect(payTgOnly?.tradeGoods).toBe(6)
   })
   it('productionCost pairs fighters and infantry and applies Sarween Tools', () => {
     const owner = { faction: 'letnev' as const, techs: [] as string[] }

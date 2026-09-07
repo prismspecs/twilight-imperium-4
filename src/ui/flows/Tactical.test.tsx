@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from '../../engine/testUtils'
+import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withTechs, withUnits } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
@@ -211,6 +211,7 @@ describe('the tactical action', () => {
       ...s,
       systems: {
         ...s.systems,
+        'home-n': { ...s.systems['home-n'], activatedBy: [0] as Seat[] },
         sakulag: { ...s.systems.sakulag, activatedBy: [0] as Seat[] },
       },
     }
@@ -220,6 +221,54 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('locked-system-sakulag')).toBeTruthy()
     expect(screen.getByTestId('locked-system-sakulag').textContent).toContain('1 Carrier I cannot move because this system already contains your command token')
     expect(screen.getByTestId('locked-system-sakulag').textContent).toContain('LRR 49.5')
+  })
+
+  it('does not display locked system notice for other systems when movable ships exist in an origin', () => {
+    let s = toActionPhase()
+    // home-n has starting ships that can reach bereg
+    // quann is activated and has ships, but is not being moved from
+    s = withUnits(s, 'quann', 0, ['carrier', 'fighter'])
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        quann: { ...s.systems.quann, activatedBy: [0] as Seat[] },
+      },
+    }
+    s = withTactical(s, { systemId: 'bereg', step: 'movement' })
+    renderWithSession(s, <BoardScreen />)
+
+    // Movable ships from home-n should be present
+    expect(screen.getByTestId('origin-home-n')).toBeTruthy()
+    // Locked system notice for quann should NOT be displayed when origins exist
+    expect(screen.queryByTestId('locked-system-quann')).toBeNull()
+  })
+
+  it('does not list Fighter I under ships even with gravity_drive, but shows it under carried units with correct capacity math', () => {
+    let s = toActionPhase()
+    s = withTechs(s, 0, ['gravity_drive'])
+    s = withTactical(s, { systemId: 'bereg', step: 'movement' })
+    renderWithSession(s, <BoardScreen />)
+
+    // home-n origin
+    expect(screen.getByTestId('origin-home-n')).toBeTruthy()
+    // Fighter I should NOT appear as an independent ship card under ships
+    expect(screen.queryByTestId('ship-card-home-n-fighter')).toBeNull()
+    // Fighter I SHOULD appear under carried units ("Needs a ride")
+    expect(screen.getByTestId('cargo-card-home-n-fighter')).toBeTruthy()
+    expect(screen.getByTestId('cargo-card-home-n-fighter').textContent).toContain('Needs a ride')
+
+    // Initial capacity: 0 carrying, 0 of 0 places free
+    expect(screen.getByTestId('capacity-home-n').textContent).toContain('Capacity 0, carrying 0')
+
+    // Pick 1 carrier (capacity 4)
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
+    expect(screen.getByTestId('capacity-home-n').textContent).toContain('Capacity 4, carrying 0')
+
+    // Pick 2 fighters to ride
+    fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
+    fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
+    expect(screen.getByTestId('capacity-home-n').textContent).toContain('Capacity 4, carrying 2')
   })
 })
 

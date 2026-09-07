@@ -194,6 +194,14 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(played.players[0].tradeGoods).toBe(0)
     expect(played.systems['home-n'].planets[0].exhausted).toBe(true)
   })
+  it('R5/R6 Technology primary: fallback payment covers with trade goods if planets are insufficient', () => {
+    const s = withPlayer(holder('technology'), 0, { tradeGoods: 2 })
+    const played = value(play(s, 'technology', { techId: 'antimass_deflectors', secondTechId: 'gravity_drive' }))
+    expect(played.players[0].techs).toContain('antimass_deflectors')
+    expect(played.players[0].techs).toContain('gravity_drive')
+    expect(played.players[0].tradeGoods).toBe(1)
+    expect(played.systems['home-n'].planets[0].exhausted).toBe(true)
+  })
   it('R5: the second technology needs the first, the payment and a met prerequisite', () => {
     const s = holder('technology')
     expect(play(s, 'technology', { secondTechId: 'sarween_tools', planets: ['000'], tradeGoods: 1 }).ok).toBe(false)
