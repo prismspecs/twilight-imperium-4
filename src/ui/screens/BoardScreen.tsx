@@ -411,7 +411,7 @@ export function BoardScreen() {
                 {combatOutcome.winner === 'guardian' ? 'The guardian fleet' : state.players[combatOutcome.winner].name} victorious in {systemLabel(combatOutcome.systemId, state)}!
               </div>
               {combatOutcome.notes.length > 0 ? (
-                <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(0,0,0,0.35)', borderRadius: '4px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(0,0,0,0.35)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <div style={{ fontWeight: 600, color: 'var(--ink-muted)', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.05em' }}>Casualties</div>
                   {combatOutcome.notes.map((note, idx) => (
                     <div key={idx} style={{ color: '#e2e8f0' }}>• {note}</div>

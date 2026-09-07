@@ -9,6 +9,7 @@ import { techDef } from '../../data/techs'
 import { unitStats } from '../../data/units'
 import { BADGE, MISC, SIGIL, spriteUrl, strategyCardUrl, tokenUrl, unitCardUrl } from '../art'
 import { CARD_NAME, ownedPlanets, readyInfluence, unitLabel } from '../format'
+import { CloseIcon } from '../icons'
 import { TechIcon } from '../TechIcon'
 import { PANEL_SCALE, spriteSize } from '../sprites'
 import { useModelStyle } from '../modelStyle'
@@ -75,7 +76,6 @@ export function FloatingRightDeck({
             data-testid="tab-btn-faction"
             onClick={() => onTabChange('faction')}
           >
-            <span className="frd-tab-icon" aria-hidden="true">🛡️</span>
             <span className="frd-tab-title">My Faction</span>
           </button>
           <button
@@ -88,7 +88,6 @@ export function FloatingRightDeck({
             data-testid="tab-btn-objectives"
             onClick={() => onTabChange('objectives')}
           >
-            <span className="frd-tab-icon" aria-hidden="true">🎯</span>
             <span className="frd-tab-title">Objectives</span>
             <span className="frd-tab-count">{state.publicObjectives.length + MANDATES.length}</span>
           </button>
@@ -102,7 +101,6 @@ export function FloatingRightDeck({
             data-testid="tab-btn-strategy"
             onClick={() => onTabChange('strategy')}
           >
-            <span className="frd-tab-icon" aria-hidden="true">👑</span>
             <span className="frd-tab-title">Strategy</span>
             <span className="frd-tab-count">8</span>
           </button>
@@ -115,7 +113,7 @@ export function FloatingRightDeck({
           aria-label="Collapse side deck"
           title="Collapse side deck"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
@@ -141,7 +139,13 @@ export function FloatingRightDeck({
             <div className="frd-faction-info">
               <div className="frd-faction-name">{myFaction.name}</div>
               <div className="frd-player-name">
-                {myPlayer.name} {state.speaker === safeSeat ? '⭐ Speaker' : ''}
+                {myPlayer.name}
+                {state.speaker === safeSeat ? (
+                  <span className="frd-speaker-tag">
+                    <img src={MISC.speaker} alt="" />
+                    Speaker
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="frd-vp-chip" data-testid={`frd-vp-${safeSeat}`}>

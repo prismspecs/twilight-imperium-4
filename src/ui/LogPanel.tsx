@@ -60,7 +60,7 @@ export function LogPanel({ state, onClose }: { state: GameState; onClose?: () =>
                 <select
                   value={filter}
                   onChange={e => setFilter(e.target.value as typeof filter)}
-                  style={{ background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: '3px', fontSize: '11px', padding: '2px 4px' }}
+                  style={{ background: '#222', color: '#ccc', border: '1px solid #444', fontSize: '11px', padding: '2px 4px' }}
                   data-testid="debug-filter-select"
                 >
                   <option value="ALL">All Levels</option>
@@ -125,7 +125,6 @@ export function LogPanel({ state, onClose }: { state: GameState; onClose?: () =>
                           margin: '2px 0 0 48px',
                           padding: '4px 6px',
                           background: 'rgba(0,0,0,0.3)',
-                          borderRadius: '2px',
                           color: '#aaa',
                           fontSize: '10px',
                           whiteSpace: 'pre-wrap',

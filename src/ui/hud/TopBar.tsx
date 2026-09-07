@@ -4,6 +4,7 @@ import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { MISC, SIGIL, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
+import { ChevronIcon } from '../icons'
 import { isAi } from '../../engine'
 import type { GameConfig, GameState, Seat } from '../../engine/types'
 
@@ -175,7 +176,6 @@ export function TopBar({
             onClick={() => onToggleDeck?.('faction')}
             title="Toggle My Faction Deck"
           >
-            <span className="deck-icon" aria-hidden="true">🛡️</span>
             <span className="deck-label">Faction</span>
           </button>
           <button
@@ -185,7 +185,6 @@ export function TopBar({
             onClick={() => onToggleDeck?.('objectives')}
             title="Toggle Objectives Deck"
           >
-            <span className="deck-icon" aria-hidden="true">🎯</span>
             <span className="deck-label">Objectives</span>
             <span className="deck-count">{state.publicObjectives.length + MANDATES.length}</span>
           </button>
@@ -196,7 +195,6 @@ export function TopBar({
             onClick={() => onToggleDeck?.('strategy')}
             title="Toggle Strategy Cards Deck"
           >
-            <span className="deck-icon" aria-hidden="true">👑</span>
             <span className="deck-label">Strategy</span>
             <span className="deck-count">8</span>
           </button>
@@ -208,7 +206,7 @@ export function TopBar({
             title={isDeckOpen ? 'Collapse side deck' : 'Expand side deck'}
             aria-label={isDeckOpen ? 'Collapse side deck' : 'Expand side deck'}
           >
-            <span className="deck-icon" aria-hidden="true">{isDeckOpen ? '⇥' : '⇤'}</span>
+            <ChevronIcon direction={isDeckOpen ? 'right' : 'left'} />
           </button>
         </div>
       </div>

@@ -225,36 +225,12 @@ export function CombatDialog() {
           </div>
 
           {isPdsDefense && combat.round === 1 && attackerShips === 0 ? (
-            <div
-              className="info-callout"
-              data-testid="pds-defense-destroyed-notice"
-              style={{
-                margin: '8px 0',
-                padding: '8px 14px',
-                background: 'rgba(34, 197, 94, 0.15)',
-                border: '1px solid rgba(34, 197, 94, 0.35)',
-                borderRadius: '6px',
-                color: '#86efac',
-                fontSize: '13px',
-              }}
-            >
-              🛡️ <strong>Defense Successful:</strong> All invading ships were destroyed by Space Cannon fire! The tactical action has been repelled.
+            <div className="info-callout good" data-testid="pds-defense-destroyed-notice">
+              <strong>Defense successful:</strong> all invading ships were destroyed by space cannon fire. The tactical action has been repelled.
             </div>
           ) : isPdsDefense && combat.round === 1 ? (
-            <div
-              className="info-callout"
-              data-testid="pds-defense-resolved-notice"
-              style={{
-                margin: '8px 0',
-                padding: '8px 14px',
-                background: 'rgba(59, 130, 246, 0.15)',
-                border: '1px solid rgba(59, 130, 246, 0.35)',
-                borderRadius: '6px',
-                color: '#93c5fd',
-                fontSize: '13px',
-              }}
-            >
-              🎯 <strong>Space Cannon Resolved:</strong> Defense fire complete. Click &quot;Proceed to Invasion&quot; to continue.
+            <div className="info-callout" data-testid="pds-defense-resolved-notice">
+              <strong>Space cannon resolved:</strong> defense fire is complete. Click &quot;Proceed to Invasion&quot; to continue.
             </div>
           ) : null}
 
