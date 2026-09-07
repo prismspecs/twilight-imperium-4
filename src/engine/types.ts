@@ -64,6 +64,7 @@ export interface Player {
   trades: number                         // R7: trade post uses plus trades with the opponent, over the game
   tradedThisRound: { west: boolean; east: boolean }
   inheritanceExhausted: boolean; shipyardUsed: boolean
+  productionBiomesExhausted: boolean   // Hacan faction tech: readies with every other exhausted card
   pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
   reinforcements: Record<UnitType, number>
 }
@@ -159,6 +160,8 @@ export type Move =
   | { type: 'declineReaction' }                          // R9: play nothing into the open reaction window
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
+  // Hacan faction tech Production Biomes: exhaust + 1 strategy token for 4 trade goods, `target` gets 2
+  | { type: 'productionBiomes'; target: Seat }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
   | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }   // R8: the post's own ability, a free move like the sale
   | { type: 'pass' }

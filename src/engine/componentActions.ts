@@ -119,6 +119,46 @@ export function shipyard(state: GameState, planetId: string, planets: string[], 
   }
 }
 
+export function canProductionBiomes(state: GameState, seat: Seat): boolean {
+  const player = state.players[seat]
+  return player.techs.includes('production_biomes') && !player.productionBiomesExhausted && player.tokens.strategy >= 1
+}
+
+/** Hacan faction tech Production Biomes: every other seat is a legal choice for the 2-trade-good gift. */
+export function productionBiomesTargets(state: GameState, seat: Seat): Seat[] {
+  return state.players.map((_, i) => i as Seat).filter(i => i !== seat)
+}
+
+/**
+ * Hacan faction tech Production Biomes: "Action: Exhaust this card and spend 1 token from your strategy pool
+ * to gain 4 trade goods and choose 1 other player; that player gains 2 trade goods."
+ */
+export function productionBiomes(state: GameState, target: Seat): Result<GameState> {
+  const ready = actionReady(state)
+  if (!ready.ok) return ready
+  const seat = ready.value
+  const player = state.players[seat]
+  if (!canProductionBiomes(state, seat)) return { ok: false, error: 'R6: Production Biomes is not available' }
+  if (!productionBiomesTargets(state, seat).includes(target)) return { ok: false, error: 'R6: name another player' }
+  const players = [...state.players] as GameState['players']
+  players[seat] = {
+    ...player,
+    productionBiomesExhausted: true,
+    tokens: { ...player.tokens, strategy: player.tokens.strategy - 1 },
+    tokensSpentThisRound: player.tokensSpentThisRound + 1,
+    tradeGoods: player.tradeGoods + 4,
+  }
+  players[target] = { ...players[target], tradeGoods: players[target].tradeGoods + 2 }
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
+  return {
+    ok: true,
+    value: {
+      ...state, players, turnDone: true,
+      log: [...state.log, { t: 'info', text: `seat ${seat} uses Production Biomes: gains 4 trade goods, seat ${target} gains 2` }],
+    },
+  }
+}
+
 /** R8: the post in play on that side this round. */
 export function postDef(state: GameState, post: 'west' | 'east'): PostDef {
   return POSTS[state.posts[post]]

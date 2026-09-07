@@ -1,4 +1,4 @@
-import type { Move, StatusParams, StrategicParams, StrategyCardId } from '../engine/types'
+import type { Move, Seat, StatusParams, StrategicParams, StrategyCardId } from '../engine/types'
 
 export function hasMove(legal: Move[], type: Move['type']): boolean {
   return legal.some(m => m.type === type)
@@ -62,6 +62,10 @@ export function shipyardOffers(legal: Move[]): { planetId: string; planets: stri
 
 export function tradePostOffers(legal: Move[]): { post: 'west' | 'east'; commodities: number }[] {
   return legal.flatMap(m => m.type === 'tradePost' ? [{ post: m.post, commodities: m.commodities }] : [])
+}
+
+export function productionBiomesTargets(legal: Move[]): Seat[] {
+  return legal.flatMap(m => m.type === 'productionBiomes' ? [m.target] : [])
 }
 
 export function statusTemplate(legal: Move[]): StatusParams | null {

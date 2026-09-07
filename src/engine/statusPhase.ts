@@ -80,7 +80,7 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   const players = [...next.players] as GameState['players']
   for (const seat of state.players.map((_, i) => i)) {
     players[seat] = {
-      ...players[seat], strategyCards: [], passed: false, inheritanceExhausted: false,
+      ...players[seat], strategyCards: [], passed: false, inheritanceExhausted: false, productionBiomesExhausted: false,
       resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
       tradedThisRound: { west: false, east: false },
     }

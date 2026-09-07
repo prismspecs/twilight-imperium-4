@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canShipyard, tradePostOptions } from './componentActions'
+import { canProductionBiomes, canShipyard, tradePostOptions } from './componentActions'
 import { applyMove, legalMoves } from './index'
 import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withPosts, withTechs } from './testUtils'
 import type { GameState, Result } from './types'
@@ -13,6 +13,7 @@ const build = (state: GameState, planetId: string, planets: string[], tradeGoods
   applyMove(deepFreeze(state), { type: 'shipyard', planetId, planets, tradeGoods }, 0)
 const sell = (state: GameState, post: 'west' | 'east', commodities: number) =>
   applyMove(deepFreeze(state), { type: 'tradePost', post, commodities }, 0)
+const gift = (state: GameState, target: 0 | 1) => applyMove(deepFreeze(state), { type: 'productionBiomes', target }, 0)
 
 /** Takes every space dock of the seat off the board, the precondition of the emergency shipyard. */
 function withoutDocks(state: GameState, seat: 0 | 1): GameState {
@@ -60,6 +61,20 @@ describe('R6/R8 component actions', () => {
     expect(build(withPlayer(s, 0, { tokens: { tactic: 3, fleet: 3, strategy: 0 } }), '000', ['000']).ok).toBe(false)
     expect(build(s, 'arc-prime', ['000']).ok).toBe(false)           // not controlled
     expect(build(s, '000', []).ok).toBe(false)                      // 0 of 4 resources
+  })
+  it('Hacan Production Biomes: 1 strategy token for 4 trade goods, the chosen player gets 2, once per round', () => {
+    const s = withTechs(toActionPhase(), 0, ['production_biomes'])
+    expect(canProductionBiomes(toActionPhase(), 0)).toBe(false)   // no tech
+    expect(canProductionBiomes(s, 0)).toBe(true)
+    const done = value(gift(s, 1))
+    expect(done.players[0]).toMatchObject({ tradeGoods: 4, productionBiomesExhausted: true, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
+    expect(done.players[1].tradeGoods).toBe(2)
+    // R3.2: the action is spent, the turn is not; `endTurn` hands it over
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(canProductionBiomes(done, 0)).toBe(false)   // exhausted for the round
+    expect(gift(s, 0).ok).toBe(false)                  // cannot target yourself
+    expect(gift(withPlayer(s, 0, { tokens: { tactic: 3, fleet: 3, strategy: 0 } }), 1).ok).toBe(false)
   })
   it('R8: the commodity limit is the post\'s own, 4 at the Sarnex Wheel and 2 everywhere else', () => {
     const rich = withPlayer(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 0), 0, { commodities: 5 })

@@ -96,6 +96,7 @@ function normalise(state: GameState, seed: number): GameState {
       players: next.players.map(p => ({
         ...p,
         secretObjectives: Array.isArray(p.secretObjectives) ? p.secretObjectives : [],
+        productionBiomesExhausted: typeof p.productionBiomesExhausted === 'boolean' ? p.productionBiomesExhausted : false,
       })),
     }
   }

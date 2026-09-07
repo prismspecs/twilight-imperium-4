@@ -38,6 +38,7 @@ export const TECHS: TechDef[] = [
   { id: 'spec_ops_ii', name: 'Spec Ops II', colour: null, prereq: { green: 2 }, kind: 'upgrade', faction: 'sol', unit: 'infantry' },
   { id: 'advanced_carrier_ii', name: 'Advanced Carrier II', colour: null, prereq: { blue: 2 }, kind: 'upgrade', faction: 'sol', unit: 'carrier' },
   { id: 'hybrid_crystal_fighter_ii', name: 'Hybrid Crystal Fighter II', colour: null, prereq: { green: 1, blue: 1 }, kind: 'upgrade', faction: 'naalu', unit: 'fighter' },
+  { id: 'production_biomes', name: 'Production Biomes', colour: 'green', prereq: { green: 2 }, kind: 'faction', faction: 'hacan' },
 ]
 
 const BY_ID = new Map(TECHS.map(t => [t.id, t]))

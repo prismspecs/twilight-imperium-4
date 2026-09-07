@@ -2,7 +2,7 @@ import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
-import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
+import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, postDef, productionBiomesTargets, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPayment, cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
@@ -284,6 +284,9 @@ export function legalMoves(state: GameState): Move[] {
     const planets = cheapestPlanets(state, seat, SHIPYARD_COST) ?? []
     for (const planetId of shipyardPlanets(state, seat)) out.push({ type: 'shipyard', planetId, planets, tradeGoods: 0 })
   }
+  if (canProductionBiomes(state, seat)) {
+    for (const target of productionBiomesTargets(state, seat)) out.push({ type: 'productionBiomes', target })
+  }
   out.push(...postMoves(state, seat))
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
@@ -323,6 +326,8 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'research' && candidate.techId === move.techId
     case 'shipyard':
       return candidate.type === 'shipyard' && candidate.planetId === move.planetId
+    case 'productionBiomes':
+      return candidate.type === 'productionBiomes' && candidate.target === move.target
     case 'tradePost':
       return candidate.type === 'tradePost' && candidate.post === move.post
     // R8: which ability it is follows from the post, so the side identifies the move; the parameters the
