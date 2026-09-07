@@ -2,6 +2,7 @@ import { tileByNumber } from '../data/tiles'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, statsOwner, trimCargo } from './board'
+import { ignoresFleets, moveBonus, wormholesLinked } from './effects'
 import { afterSpaceStep } from './invasion'
 import type { Anomaly, CombatState, GameState, Result, Seat, System, Unit } from './types'
 
@@ -47,16 +48,21 @@ function passable(state: GameState, seat: Seat, id: string, destination: boolean
  */
 export function pathLength(state: GameState, seat: Seat, from: string, to: string, moveValue: number, ignoreFleets = false): number | null {
   if (from === to || moveValue < 1) return null
-  if (!passable(state, seat, to, true, ignoreFleets)) return null
+  // R9 In The Silence Of Space: ships starting from the named system ignore fleets in the way for the whole
+  // path, on top of whatever the caller (movementObstacle's diagnostic probe) already asked to ignore.
+  const effectiveIgnoreFleets = ignoreFleets || ignoresFleets(state, seat, from)
+  // R9 Lost Star Chart: alpha and beta wormholes count as the same class for this tactical action.
+  const linkAlphaBeta = wormholesLinked(state, seat)
+  if (!passable(state, seat, to, true, effectiveIgnoreFleets)) return null
   const seen = new Set([from])
   let frontier = [from]
   for (let d = 1; d <= moveValue && frontier.length; d++) {
     const next: string[] = []
-    for (const id of frontier) for (const n of neighbours(state.systems, id, state.players[seat]?.faction)) {
+    for (const id of frontier) for (const n of neighbours(state.systems, id, state.players[seat]?.faction, linkAlphaBeta)) {
       if (n === to) return d
       if (seen.has(n)) continue
       seen.add(n)
-      if (passable(state, seat, n, false, ignoreFleets)) next.push(n)
+      if (passable(state, seat, n, false, effectiveIgnoreFleets)) next.push(n)
     }
     frontier = next
   }
@@ -65,7 +71,11 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
 
 function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
   const player = state.players[seat]
-  return unitStats(unit.type, { faction: player.faction, techs: player.techs }).move
+  const base = unitStats(unit.type, { faction: player.faction, techs: player.techs }).move
+  // R9 Flank Speed: +1 to the move value of each of the seat's ships for the rest of this tactical action.
+  // A base fighter's move value is 0 (it cannot move without a carrier, LRR 91.3) and stays that way: Flank
+  // Speed boosts an existing move value, it does not grant one a unit does not otherwise have.
+  return base > 0 ? base + moveBonus(state, seat) : base
 }
 
 /** Every ship of the seat that could reach `systemId`, whether or not that system is activated yet. */

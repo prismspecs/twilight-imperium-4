@@ -2,6 +2,7 @@ import { MECATOL_ID } from '../data/map'
 import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo, combatBonus } from './board'
+import { fighterBonus, moraleBoost } from './effects'
 import { fleetPoolLimit, nonFighterShips } from './economy'
 import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
@@ -442,7 +443,9 @@ function combatRolls(state: GameState, ctx: Ctx, owner: Owner, bonus: number, re
   for (const u of shipsOf(state.systems[ctx.systemId], owner)) {
     const stats = unitStats(u.type, sOwner)
     if (stats.combat === null) continue
-    const value = stats.combat - bonus
+    // R9 Fighter Prototype: +2 to the result of each of the seat's fighters' combat rolls this round only.
+    const unitBonus = bonus + (u.type === 'fighter' ? fighterBonus(state, owner) : 0)
+    const value = stats.combat - unitBonus
     const roll = rollHits(rng, stats.combatDice, value, false)
     rolls.push(...dieRolls(owner, u.type, roll.rolls, value))
     let unitHits = roll.hits
@@ -750,8 +753,8 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   if (wantAttacker && !canMunitions(state, ctx.attacker)) return { ok: false, error: 'Munitions Reserves is not available to the attacker' }
   if (wantDefender && !canMunitions(state, ctx.defender)) return { ok: false, error: 'Munitions Reserves is not available to the defender' }
   const salt = ctx.round * 4
-  const a = combatRolls(state, ctx, ctx.attacker, combatBonus(state, ctx.attacker), wantAttacker, seed, salt + 10)
-  const d = combatRolls(state, ctx, ctx.defender, combatBonus(state, ctx.defender), wantDefender, seed, salt + 11)
+  const a = combatRolls(state, ctx, ctx.attacker, combatBonus(state, ctx.attacker) + moraleBoost(state, ctx.attacker, 'space'), wantAttacker, seed, salt + 10)
+  const d = combatRolls(state, ctx, ctx.defender, combatBonus(state, ctx.defender) + moraleBoost(state, ctx.defender, 'space'), wantDefender, seed, salt + 11)
   let next = state
   if (wantAttacker) next = payMunitions(next, ctx.attacker)
   if (wantDefender) next = payMunitions(next, ctx.defender)

@@ -10,9 +10,11 @@
  */
 import { aiChoose } from '../src/ai'
 import { PERSONALITIES } from '../src/ai/score'
-import { applyMove, createGame, legalMoves } from '../src/engine'
+import { PLAYABLE_REACTION_CARDS, applyMove, createGame, legalMoves } from '../src/engine'
 import { deriveSeed } from '../src/engine/rng'
 import type { FactionId, GameConfig, Move } from '../src/engine/types'
+
+const REACTION_CARDS = new Set(PLAYABLE_REACTION_CARDS)
 
 const FACTIONS: FactionId[] = ['l1z1x', 'letnev', 'sol', 'hacan', 'jolnar', 'xxcha']
 const COLOURS = ['blue', 'red', 'green', 'yellow', 'purple', 'black'] as const
@@ -44,6 +46,8 @@ const seedCount = Number.parseInt(args[0] ?? '50', 10) || 50
 const failures: Failure[] = []
 let ended = 0
 const moveCounts: number[] = []
+const reactionWindows = new Map<string, number>()
+let reactionsDeclined = 0
 
 for (let seed = 1; seed <= seedCount; seed++) {
   let state = createGame(config(), seed)
@@ -57,6 +61,12 @@ for (let seed = 1; seed <= seedCount; seed++) {
     }
     const weights = WEIGHTS[state.active % WEIGHTS.length]
     const move = aiChoose(state, options, state.active, weights)
+    if (move.type === 'playActionCard' && REACTION_CARDS.has(move.cardId)) {
+      const effect = move.cardId.replace(/_\d+$/, '')
+      reactionWindows.set(effect, (reactionWindows.get(effect) ?? 0) + 1)
+    } else if (move.type === 'declineReaction') {
+      reactionsDeclined++
+    }
     const r = applyMove(state, move, deriveSeed(seed, moves))
     if (!r.ok) {
       failure = { seed, kind: 'illegal-move', moves, round: state.round, seat: state.active, move, error: r.error }
@@ -80,6 +90,12 @@ console.log(`finished cleanly: ${String(ended)}/${String(seedCount)}`)
 if (moveCounts.length) {
   const avg = moveCounts.reduce((a, b) => a + b, 0) / moveCounts.length
   console.log(`moves per game: min ${String(Math.min(...moveCounts))}, max ${String(Math.max(...moveCounts))}, avg ${avg.toFixed(0)}`)
+}
+console.log(`\nreaction windows answered (${String(PLAYABLE_REACTION_CARDS.length)} cards in the deck):`)
+console.log(`  declined: ${String(reactionsDeclined)}`)
+for (const [effect, count] of [...reactionWindows.entries()].sort()) console.log(`  ${effect}: ${String(count)}`)
+for (const effect of new Set(PLAYABLE_REACTION_CARDS.map(c => c.replace(/_\d+$/, '')))) {
+  if (!reactionWindows.has(effect)) console.log(`  ${effect}: NEVER PLAYED`)
 }
 if (failures.length) {
   console.log(`\n${String(failures.length)} failures:`)

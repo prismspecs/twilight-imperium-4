@@ -2,6 +2,7 @@ import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
 import { cheapestInfluencePlanets, payInfluence } from './economy'
+import { moraleBoost } from './effects'
 import { addVp } from './objectives'
 import { deriveSeed, mulberry32, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
@@ -265,7 +266,8 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
 function groundRolls(state: GameState, units: Unit[], owner: Owner, seed: number, salt: number): { rolls: DieRoll[]; hits: number } {
   const sOwner = statsOwner(state, owner)
   const rng = mulberry32(deriveSeed(seed, salt))
-  const bonus = combatBonus(state, owner)
+  // R9 Morale Boost: +1 to the result of each of the seat's combat rolls this ground combat round only.
+  const bonus = combatBonus(state, owner) + moraleBoost(state, owner, 'ground')
   return rollGroup(rng, units, owner, type => {
     const stats = unitStats(type, sOwner)
     return stats.combat === null ? null : { value: stats.combat - bonus, dice: stats.combatDice }

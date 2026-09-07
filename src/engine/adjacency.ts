@@ -8,7 +8,12 @@ import type { FactionId, System } from './types'
  */
 type Systems = Readonly<Record<string, System>>
 
-export function neighbours(systems: Systems, id: string, faction?: FactionId): string[] {
+/**
+ * `linkAlphaBeta` treats alpha and beta as one class on top of the usual same-type link — R9 Lost Star
+ * Chart's "systems that contain alpha and beta wormholes are adjacent to each other" for the tactical
+ * action it was played into.
+ */
+export function neighbours(systems: Systems, id: string, faction?: FactionId, linkAlphaBeta = false): string[] {
   const sys = systems[id]
   if (!sys) throw new Error(`unknown system ${id}`)
   const out = new Set(sys.neighbours)
@@ -23,6 +28,8 @@ export function neighbours(systems: Systems, id: string, faction?: FactionId): s
               (s.wormhole === 'delta' && (sys.wormhole === 'alpha' || sys.wormhole === 'beta'))) {
             out.add(s.id)
           }
+        } else if (linkAlphaBeta && (sys.wormhole === 'alpha' || sys.wormhole === 'beta') && (s.wormhole === 'alpha' || s.wormhole === 'beta')) {
+          out.add(s.id)
         }
       }
     }

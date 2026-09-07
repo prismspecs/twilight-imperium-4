@@ -4,6 +4,7 @@ import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
 import { SECRET_OBJECTIVES, STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
 import { POSTS, POST_IDS, type PostId } from '../data/posts'
 import { PLAYABLE_ACTION_CARDS } from './actionCards'
+import { PLAYABLE_REACTION_CARDS } from './reactions'
 import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
@@ -91,12 +92,13 @@ const ACTION_CARDS_SALT = 95
 const AGENDAS_SALT = 96
 
 /**
- * R9: the action card deck, shuffled from the game seed. It holds the base-game cards the engine can play in
- * full (`PLAYABLE_ACTION_CARDS`), copies included; a card whose printed ability the engine cannot yet resolve
- * is left out of the deck rather than dealt as a blank.
+ * R9: the action card deck, shuffled from the game seed. It holds every base-game card the engine can play in
+ * full, copies included — the "ACTION:" cards played as a whole turn (`PLAYABLE_ACTION_CARDS`) and the ones
+ * played into a reaction window (`PLAYABLE_REACTION_CARDS`). A card whose printed ability the engine cannot
+ * yet resolve is left out of the deck rather than dealt as a blank.
  */
 export function shuffledActionCards(seed: number): string[] {
-  return shuffleIds(PLAYABLE_ACTION_CARDS, mulberry32(deriveSeed(seed, ACTION_CARDS_SALT)))
+  return shuffleIds([...PLAYABLE_ACTION_CARDS, ...PLAYABLE_REACTION_CARDS], mulberry32(deriveSeed(seed, ACTION_CARDS_SALT)))
 }
 
 /**

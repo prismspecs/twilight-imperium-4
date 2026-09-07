@@ -1,6 +1,7 @@
 import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
+import { pendingReaction, reactionMoves } from './reactions'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPayment, cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
@@ -235,6 +236,13 @@ export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
   if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
+  // R9: an open reaction window blocks everything else too; the seat it is waiting on may play a matching
+  // card or decline, and nothing else, until the window closes
+  const reaction = pendingReaction(state)
+  if (reaction) {
+    const seat = reaction.queue[0]
+    return seat === undefined ? [] : [{ type: 'declineReaction' }, ...reactionMoves(state, seat, reaction)]
+  }
   if (state.phase === 'strategy') {
     const seat = state.draft[0]
     if (seat === undefined || seat !== state.active) return []

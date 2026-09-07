@@ -1,4 +1,5 @@
 import { homeSystemOf } from './board'
+import { clearTacticalEffects } from './effects'
 import type { GameState, Result, Seat, Unit } from './types'
 
 export function otherSeat(seat: Seat): Seat {
@@ -119,7 +120,8 @@ export function endTactical(state: GameState): Result<GameState> {
   const tac = state.tactical
   if (state.phase !== 'action' || !tac) return { ok: false, error: 'no tactical action is running' }
   if (tac.step !== 'done' && tac.step !== 'production') return { ok: false, error: `the ${tac.step} step is not finished` }
-  return { ok: true, value: { ...state, tactical: null, turnDone: true } }
+  // R9: every action-card effect scoped to this tactical action ends with it, whatever step it finished on
+  return { ok: true, value: clearTacticalEffects({ ...state, tactical: null, turnDone: true }) }
 }
 
 /** R3.2: the deliberate end of a turn whose action is spent, after any free move of R8 the seat still wanted. */

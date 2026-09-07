@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { findActionCard } from '../data/actionCards'
 import { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, drawActionCards, playActionCard } from './actionCards'
 import { applyMove, legalMoves, validateMove } from './index'
+import { PLAYABLE_REACTION_CARDS } from './reactions'
 import { createGame, shuffledActionCards } from './setup'
 import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
+
+const ALL_PLAYABLE_CARDS: readonly string[] = [...PLAYABLE_ACTION_CARDS, ...PLAYABLE_REACTION_CARDS]
 
 /** Puts exactly `cards` in a seat's hand. */
 function withHand(state: GameState, seat: Seat, cards: string[]): GameState {
@@ -16,10 +19,13 @@ function withHand(state: GameState, seat: Seat, cards: string[]): GameState {
 describe('R9 the action card deck', () => {
   it('deals only the cards the engine can actually play', () => {
     const deck = shuffledActionCards(7)
-    expect(deck.length).toBe(PLAYABLE_ACTION_CARDS.length)
-    expect([...deck].sort()).toEqual([...PLAYABLE_ACTION_CARDS].sort())
-    // every card in the deck is a real printed card played as a whole action
-    for (const id of deck) expect(findActionCard(id)?.window).toBe('Action')
+    expect(deck.length).toBe(ALL_PLAYABLE_CARDS.length)
+    expect([...deck].sort()).toEqual([...ALL_PLAYABLE_CARDS].sort())
+    // every card in the deck is either played as a whole action, or into a reaction window this engine opens
+    for (const id of deck) {
+      const window = findActionCard(id)?.window
+      expect(window === 'Action' || PLAYABLE_REACTION_CARDS.includes(id), `${id}: ${String(window)}`).toBe(true)
+    }
   })
 
   it('shuffles from the game seed, so the same seed deals the same deck and another one does not', () => {
@@ -29,7 +35,7 @@ describe('R9 the action card deck', () => {
 
   it('starts a game with a full deck, an empty discard pile and empty hands', () => {
     const state = createGame(DUEL_CONFIG, 3)
-    expect(state.actionCardDeck.length).toBe(PLAYABLE_ACTION_CARDS.length)
+    expect(state.actionCardDeck.length).toBe(ALL_PLAYABLE_CARDS.length)
     expect(state.actionCardDiscard).toEqual([])
     for (const p of state.players) expect(p.actionCards).toEqual([])
   })
@@ -300,8 +306,8 @@ describe('R9 the printed abilities', () => {
 
   it('shuffles the deck randomly preserving all playable cards', () => {
     const deck = shuffledActionCards(42)
-    expect(deck.length).toBe(PLAYABLE_ACTION_CARDS.length)
-    expect([...deck].sort()).toEqual([...PLAYABLE_ACTION_CARDS].sort())
+    expect(deck.length).toBe(ALL_PLAYABLE_CARDS.length)
+    expect([...deck].sort()).toEqual([...ALL_PLAYABLE_CARDS].sort())
   })
 
   it('Lucky Shot destroys a non-fighter ship in a system containing a planet you control, leaving an unrelated fighter alone', () => {
