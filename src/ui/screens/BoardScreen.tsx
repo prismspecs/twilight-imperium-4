@@ -13,6 +13,7 @@ import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
 import { isAi } from '../../engine/types'
 import type { GameConfig, GameState, Seat, StrategyCardId } from '../../engine/types'
+import { agendaDef } from '../../data/agendas'
 import { FACTIONS } from '../../data/factions'
 import { COLOUR_INK, SIGIL, tokenUrl } from '../art'
 import { diagnoseMovement, logInfo, logWarn } from '../debugLogger'
@@ -23,6 +24,7 @@ import { MovementPanel } from '../flows/MovementPanel'
 import { ProduceDrawer } from '../flows/ProduceDrawer'
 // strategic, component and status flows (Task 4b)
 import { ActionCardPanel } from '../flows/ActionCardPanel'
+import { AgendaDialog } from '../flows/AgendaDialog'
 import { ComponentPanel } from '../flows/ComponentPanel'
 import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
@@ -40,6 +42,7 @@ const HINTS: Record<string, string> = {
   component: 'Component action. Choose one of the offered actions.',
   strategy: 'Strategy phase. Choose a strategy card.',
   status: 'Status phase. Distribute your new command tokens.',
+  agenda: 'Agenda phase. Cast your vote.',
   idle: 'Choose an action.',
   spent: 'Your action is spent. Trade at a post or end your turn.',
 }
@@ -54,6 +57,8 @@ function ActiveTurnBanner({ state, config }: { state: GameState; config?: GameCo
   let actionText = 'Taking turn'
   if (state.phase === 'strategy') {
     actionText = 'Strategy Phase: Drafting Strategy Card'
+  } else if (state.phase === 'agenda' && state.agenda) {
+    actionText = `🗳️ Voting on ${agendaDef(state.agenda.revealed).name}`
   } else if (state.pendingSecondary !== null) {
     const secSeat = state.pendingSecondary.queue[0]
     const secPlayer = secSeat !== undefined ? state.players[secSeat] : null
@@ -228,8 +233,9 @@ export function BoardScreen() {
     ? `${activePlayer.name} (${FACTIONS[activePlayer.faction]?.name ?? activePlayer.faction}) is taking their turn...`
     : drafting ? HINTS.strategy
       : state.phase === 'status' ? HINTS.status
-        : state.turnDone ? (isGalaxy ? 'Your action is spent. End your turn.' : HINTS.spent)
-          : HINTS[mode ?? 'idle']
+        : state.phase === 'agenda' ? HINTS.agenda
+          : state.turnDone ? (isGalaxy ? 'Your action is spent. End your turn.' : HINTS.spent)
+            : HINTS[mode ?? 'idle']
   // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
   // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would
   // only ask the player to confirm an empty production, so the turn simply ends.
@@ -244,6 +250,7 @@ export function BoardScreen() {
     (state.tactical && state.tactical.step !== 'done') ||
     combatOutcome ||
     state.phase === 'status' ||
+    state.phase === 'agenda' ||
     mode === 'strategic' ||
     mode === 'component' ||
     mode === 'actionCard' ||
@@ -389,6 +396,7 @@ export function BoardScreen() {
             ) : null}
             {!isAiTurn && state.pendingSecondary !== null ? <SecondaryPanel /> : null}
             {!isAiTurn && state.phase === 'status' ? <StatusDialog /> : null}
+            {!isAiTurn && state.phase === 'agenda' ? <AgendaDialog /> : null}
           </div>
           {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
         </div>
