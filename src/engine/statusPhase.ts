@@ -1,5 +1,6 @@
 import { objectiveDef } from '../data/objectives'
 import { drawActionCards } from './actionCards'
+import { enterAgendaOrNextRound } from './agendas'
 import { distributeTokens } from './economy'
 import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
@@ -57,8 +58,8 @@ export function victoryCheck(state: GameState): Seat | null {
   return decideWinner(state)
 }
 
-/** R3.3 steps 2 and 4 to 6, run once both players have submitted their status move. */
-export function finishStatusPhase(state: GameState, seed: number): GameState {
+/** R3.3 steps 2 and 4 to 6: score-adjacent bookkeeping that runs whether or not the agenda phase follows. */
+function endOfRoundCleanup(state: GameState, seed: number): GameState {
   let next = state
   // One objective off the shuffled pool per round
   const nextId = state.objectiveOrder[state.round]
@@ -87,24 +88,35 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
-  next = { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
+  return { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
+}
+
+/** R3.1/R10: the round+1/phase:strategy tail, run either right after the status phase (no agenda this round)
+ * or after the agenda phase resolves both its agendas. The speaker token does not rotate on its own: it
+ * starts with the seat the setup names and only the Politics primary hands it on, which is exactly what
+ * makes Politics worth picking. */
+export function startNextRound(state: GameState, seed: number): GameState {
+  const speaker = state.speaker
+  // R8: the round starting here gets two new posts, drawn from the four that were not in play. They are new
+  // posts, so the ability nobody took is gone with them and the fresh pair starts unused.
+  const round = state.round + 1
+  const posts = rollPosts(deriveSeed(seed, POSTS_ROUND_SALT_BASE + round), [state.posts.west, state.posts.east])
+  const draft = snakeOrder({ ...state, speaker })
+  return {
+    ...state, round, phase: 'strategy', speaker, active: speaker, draft,
+    posts, postAbilityUsed: { west: false, east: false },
+    log: [...state.log, { t: 'info', text: postRollEntry(posts) }],
+  }
+}
+
+/** R3.3 steps 2 and 4 to 6, run once both players have submitted their status move. */
+export function finishStatusPhase(state: GameState, seed: number): GameState {
+  const next = endOfRoundCleanup(state, seed)
   const winner = victoryCheck(next)
   if (winner !== null) {
     return { ...next, phase: 'ended', winner, draft: [], log: [...next.log, { t: 'info', text: `seat ${winner} wins with ${next.players[winner].vp} VP` }] }
   }
-  // R3.1/R6: the speaker token does not rotate on its own. It starts with the seat the setup names and only
-  // the Politics primary hands it on, which is exactly what makes Politics worth picking.
-  const speaker = next.speaker
-  // R8: the round starting here gets two new posts, drawn from the four that were not in play. They are new
-  // posts, so the ability nobody took is gone with them and the fresh pair starts unused.
-  const round = next.round + 1
-  const posts = rollPosts(deriveSeed(seed, POSTS_ROUND_SALT_BASE + round), [next.posts.west, next.posts.east])
-  const draft = snakeOrder({ ...next, speaker })
-  return {
-    ...next, round, phase: 'strategy', speaker, active: speaker, draft,
-    posts, postAbilityUsed: { west: false, east: false },
-    log: [...next.log, { t: 'info', text: postRollEntry(posts) }],
-  }
+  return enterAgendaOrNextRound(next, seed, startNextRound)
 }
 
 // R3.3: the status phase normally opens with `active === speaker` (set by `pass()` on the action phase's last

@@ -19,7 +19,7 @@ export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carri
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
 export type Anomaly = 'asteroid_field' | 'nebula' | 'gravity_rift' | 'supernova'
 export type StrategyCardId = 'leadership' | 'diplomacy' | 'politics' | 'construction' | 'trade' | 'warfare' | 'technology' | 'imperial'
-export type Phase = 'strategy' | 'action' | 'status' | 'ended'
+export type Phase = 'strategy' | 'action' | 'status' | 'agenda' | 'ended'
 export type PlayerType = 'human' | 'ai'
 
 export interface Unit { id: number; type: UnitType; owner: Owner; damaged: boolean }
@@ -97,7 +97,7 @@ export interface InvasionState {
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
   /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
-  version: 4
+  version: 5
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
@@ -131,6 +131,10 @@ export interface GameState {
   nextUnitId: number
   guardianRolls: number
   custodiansToken?: boolean
+  // R10: the agenda phase's live round, or null outside it. `order` is the remaining voters, head first —
+  // clockwise from the speaker's left, speaker last, so the speaker's tie-break vote is simply the last one
+  // in, not a special case.
+  agenda: AgendaRound | null
   winner: Seat | null
   log: LogEntry[]
 }
@@ -166,6 +170,9 @@ export type Move =
   | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }   // R8: the post's own ability, a free move like the sale
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
+  // R10: one seat's vote on the revealed agenda. `outcome` is 'For'/'Against', or the elected target's id
+  // (a seat number as a string, or a planet id) for an Elect agenda. Empty `planets` is a legal abstain.
+  | { type: 'castVote'; outcome: string; planets: string[] }
 export interface StrategicParams {
   systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
   planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)
@@ -247,6 +254,16 @@ export interface SecondaryWindow {
   owner: Seat
   queue: Seat[]   // seats still to answer; empty means the window is closed
   freeSeats?: Seat[]
+}
+
+/** R10: one revealed agenda's live vote, from reveal to resolution. */
+export interface AgendaRound {
+  revealed: string           // the agenda id from `agendaDeck[0]` at reveal
+  slot: 1 | 2                // which of the round's two agendas this is
+  votes: Partial<Record<Seat, { outcome: string; influence: number }>>
+  order: Seat[]              // remaining voters, head first; the phase resolves once this empties
+  // Public Execution: the elected player cannot vote on the second agenda this same phase
+  barredFromVoting: Seat[]
 }
 
 /**

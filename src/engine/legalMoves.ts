@@ -1,5 +1,6 @@
 import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
+import { agendaMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
 import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, postDef, productionBiomesTargets, shipyardPlanets, tradePostOptions } from './componentActions'
@@ -253,6 +254,7 @@ export function legalMoves(state: GameState): Move[] {
     const tokens = state.players[seat].tokens
     return [{ type: 'status', params: { tokens: { ...tokens, tactic: tokens.tactic + tokensGained(state, seat) } } }]
   }
+  if (state.phase === 'agenda') return agendaMoves(state)
   if (state.phase !== 'action') return []
   const seat = state.active
   // R3.2: the answer to a strategy card is not a turn, so it comes before the passed check
@@ -334,6 +336,10 @@ function matches(candidate: Move, move: Move): boolean {
     // interface fills in are checked by `postAbility`, the only place that knows what the ability needs
     case 'postAbility':
       return candidate.type === 'postAbility' && candidate.post === move.post
+    // R10: which planets pay for the vote is the voter's own choice, checked by castVote itself, the only
+    // place that knows what is legal — same idiom as research/shipyard/productionBiomes above
+    case 'castVote':
+      return candidate.type === 'castVote' && candidate.outcome === move.outcome
     default:
       // moveShips, produce, assignHits, status and the closing moves are identified by their kind alone; the
       // picks of an assignment are checked by its handler, which is the only place that knows the queue

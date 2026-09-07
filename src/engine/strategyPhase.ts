@@ -14,6 +14,16 @@ export function snakeOrder(state: GameState): Seat[] {
   return n <= 4 ? [...seats, ...seats.slice().reverse()] : seats
 }
 
+/**
+ * R10: agenda vote order — clockwise starting to the speaker's left, the speaker voting last. This is the
+ * opposite of `snakeOrder`'s speaker-first draft: the speaker's vote is genuinely the deciding one on a tie,
+ * which only means something if everyone else has already committed.
+ */
+export function voteOrder(state: GameState): Seat[] {
+  const n = state.players.length
+  return Array.from({ length: n }, (_, i) => (state.speaker + 1 + i) % n)
+}
+
 export function initiativeOrder(state: GameState): Seat[] {
   const lowest = (seat: Seat) => {
     const cards = state.players[seat].strategyCards

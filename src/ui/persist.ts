@@ -47,8 +47,8 @@ function isLegacy(value: unknown): value is Legacy {
     && Array.isArray(p.clockMs) && p.clockMs.length >= 2
     && Array.isArray(p.history)
     // R9 added pendingReactions and effects, so a game saved before version 4 is not readable any more
-    // and is dropped rather than crashed into. Version 3 is still supported for now.
-    && typeof p.state === 'object' && p.state !== null && [2, 3, 4].includes((p.state as { version: number }).version)
+    // and is dropped rather than crashed into. Versions 2-5 are still supported.
+    && typeof p.state === 'object' && p.state !== null && [2, 3, 4, 5].includes((p.state as { version: number }).version)
 }
 
 function isSummary(value: unknown): value is GameSummary {
@@ -90,6 +90,11 @@ function normalise(state: GameState, seed: number): GameState {
   if (!Array.isArray(raw.secretObjectiveDeck)) {
     next = { ...next, secretObjectiveDeck: [] }
   }
+  // R10: a game saved before the agenda phase existed has no live round to resume into — null is exactly
+  // what "outside the phase" already means, and custodiansToken is unaffected either way.
+  if (typeof (raw as { agenda?: unknown }).agenda !== 'object') {
+    next = { ...next, agenda: null }
+  }
   if (Array.isArray(next.players)) {
     next = {
       ...next,
@@ -100,7 +105,7 @@ function normalise(state: GameState, seed: number): GameState {
       })),
     }
   }
-  return next.version === 4 ? next : { ...next, version: 4 }
+  return next.version === 5 ? next : { ...next, version: 5 }
 }
 
 function isPayload(value: unknown): value is Payload {

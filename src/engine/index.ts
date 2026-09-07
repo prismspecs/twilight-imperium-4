@@ -1,5 +1,6 @@
 import { playActionCard } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
+import { castVote } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
 import { productionBiomes, research, shipyard, tradePost } from './componentActions'
@@ -8,7 +9,7 @@ import { endMovement, moveShips } from './movement'
 import { postAbility } from './postAbilities'
 import { produce } from './production'
 import { secondary, strategic } from './strategicActions'
-import { status } from './statusPhase'
+import { startNextRound, status } from './statusPhase'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
@@ -59,6 +60,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'tradePost': result = tradePost(logged, move.post, move.commodities); break
       case 'postAbility': result = postAbility(logged, move.post, move.params); break
       case 'status': result = status(logged, move.params, seed); break
+      case 'castVote': result = castVote(logged, move.outcome, move.planets, seed, startNextRound); break
       case 'declineReaction': result = declineReaction(logged); break
       default: {
         // every Move kind is dispatched above; this only runs for a malformed move from outside the type system
@@ -105,6 +107,7 @@ export { researchable } from './research'
 export { deriveSeed } from './rng'
 export { unitsOf } from './setup'
 export { tokensGained } from './statusPhase'
+export { agendaMoves, legalOutcomes, readyInfluencePlanets } from './agendas'
 export { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 export { INITIATIVE } from './strategyPhase'
 export { PLAYABLE_REACTION_CARDS, pendingReaction, reactingSeat, reactionMoves, skilledRetreatTargets } from './reactions'

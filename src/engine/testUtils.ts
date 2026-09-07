@@ -5,6 +5,7 @@ import { capacity, cheapestPlanets, fleetPoolLimit, nonFighterShips, productionC
 import { applyMove } from './index'
 import { movableShips } from './movement'
 import { createGame } from './setup'
+import { voteOrder } from './strategyPhase'
 import type { GameConfig, GameState, Move, Owner, Player, Seat, StrategyCardId, TacticalContext, Unit, UnitType } from './types'
 
 export function deepFreeze<T>(value: T): T {
@@ -141,6 +142,21 @@ export function carriedIds(state: GameState, systemId: string, owner: Owner = 0)
 /** Puts a state into the status phase the way `pass` does: speaker first, nothing else running. */
 export function toStatusPhase(state: GameState): GameState {
   return deepFreeze({ ...state, phase: 'status' as const, tactical: null, pendingSecondary: null, statusSubmitted: [], active: state.speaker })
+}
+
+/** Puts a state into the agenda phase with `revealed` (or the deck's own top card) live for voting, exactly
+ * the way `enterAgendaOrNextRound` would once the custodians token is gone. */
+export function toAgendaPhase(state: GameState, revealed?: string): GameState {
+  const id = revealed ?? state.agendaDeck[0]
+  const order = voteOrder(state)
+  return deepFreeze({
+    ...state,
+    phase: 'agenda' as const,
+    custodiansToken: false,
+    agendaDeck: revealed ? state.agendaDeck : state.agendaDeck.slice(1),
+    agenda: { revealed: id, slot: 1 as const, votes: {}, order, barredFromVoting: [] },
+    active: order[0],
+  })
 }
 
 export function hitsIn(state: GameState, context: string): number {
