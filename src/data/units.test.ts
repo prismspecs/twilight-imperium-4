@@ -38,4 +38,14 @@ describe('unit stats (R1 components)', () => {
   it('guardian units use generic level I stats', () => {
     expect(unitStats('dreadnought', 'guardian')).toMatchObject({ combat: 5, capacity: 1 })
   })
+  it('a faction with its own named unit upgrade uses its own stats, not the generic II ones', () => {
+    const sol = { faction: 'sol' as const, techs: [] as string[] }
+    expect(unitStats('infantry', sol)).toMatchObject({ cost: 1, combat: 8 })
+    expect(unitStats('infantry', { ...sol, techs: ['spec_ops_ii'] })).toMatchObject({ cost: 1, combat: 6 })
+    expect(unitStats('carrier', { ...sol, techs: ['advanced_carrier_ii'] })).toMatchObject({ move: 2, capacity: 8, sustain: true })
+
+    const naalu = { faction: 'naalu' as const, techs: [] as string[] }
+    expect(unitStats('fighter', naalu)).toMatchObject({ combat: 9, move: 0 })
+    expect(unitStats('fighter', { ...naalu, techs: ['hybrid_crystal_fighter_ii'] })).toMatchObject({ combat: 7, move: 2 })
+  })
 })

@@ -33,6 +33,11 @@ export const TECHS: TechDef[] = [
   { id: 'non_euclidean_shielding', name: 'Non-Euclidean Shielding', colour: 'red', prereq: { red: 2 }, kind: 'faction', faction: 'letnev' },
   { id: 'valefar_assimilator_x', name: 'Valefar Assimilator X', colour: null, prereq: {}, kind: 'faction', faction: 'nekro' },
   { id: 'valefar_assimilator_y', name: 'Valefar Assimilator Y', colour: null, prereq: {}, kind: 'faction', faction: 'nekro' },
+  // Faction unit upgrades: same tech-tree slot and prerequisite as the generic upgrade, so `kind` stays
+  // 'upgrade' (not 'faction') — `excludesGenericUpgrade` is what stops the faction researching both.
+  { id: 'spec_ops_ii', name: 'Spec Ops II', colour: null, prereq: { green: 2 }, kind: 'upgrade', faction: 'sol', unit: 'infantry' },
+  { id: 'advanced_carrier_ii', name: 'Advanced Carrier II', colour: null, prereq: { blue: 2 }, kind: 'upgrade', faction: 'sol', unit: 'carrier' },
+  { id: 'hybrid_crystal_fighter_ii', name: 'Hybrid Crystal Fighter II', colour: null, prereq: { green: 1, blue: 1 }, kind: 'upgrade', faction: 'naalu', unit: 'fighter' },
 ]
 
 const BY_ID = new Map(TECHS.map(t => [t.id, t]))
