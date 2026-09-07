@@ -186,6 +186,36 @@ describe('N-player galaxy setup', () => {
     expect(count(l1z1xHome.planets[0].ground, 'infantry')).toBe(5)
   })
 
+  it('sets up Ghosts of Creuss starting fleet on off-board Tile 51 with empty Creuss Gate on the board ring', () => {
+    const creussGame: GameConfig = {
+      players: [
+        { faction: 'creuss', color: 'purple', name: 'Ghosts' },
+        { faction: 'sol', color: 'blue', name: 'Sol' },
+        { faction: 'letnev', color: 'red', name: 'Letnev' },
+      ],
+      speaker: 0,
+    }
+    const g = createGame(creussGame, 1)
+    // 1. Off-board home system (tile 51) carries starting units
+    const home = g.systems['home-0']
+    expect(home.tile).toBe('51')
+    expect(home.planets[0].id).toBe('creuss')
+    expect(home.planets[0].owner).toBe(0)
+    expect(count(home.planets[0].ground, 'infantry')).toBe(4)
+    expect(home.planets[0].structures.map(u => u.type)).toEqual(['spacedock'])
+    expect(count(home.space, 'carrier')).toBe(1)
+    expect(count(home.space, 'destroyer')).toBe(2)
+    expect(count(home.space, 'fighter')).toBe(2)
+
+    // 2. Creuss Gate (tile 17) is on the board ring and starts empty
+    const gate = g.systems['tile-17']
+    expect(gate).toBeDefined()
+    expect(gate.tile).toBe('17')
+    expect(gate.home).toBeNull()
+    expect(gate.space).toHaveLength(0)
+    expect(gate.planets).toHaveLength(0)
+  })
+
   it('is deterministic in the seed and starts in the strategy phase with a snake draft', () => {
     expect(createGame(three, 7).systems).toEqual(createGame(three, 7).systems)
     const g = createGame(three, 7)

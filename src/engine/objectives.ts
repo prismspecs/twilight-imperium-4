@@ -49,7 +49,8 @@ function techSpecialtyPlanets(state: GameState, seat: Seat): number {
 }
 
 function shipsAdjacentToMecatol(state: GameState, seat: Seat): number {
-  const adjacentSystems = neighbours(state.systems, MECATOL_ID)
+  const faction = state.players[seat]?.faction
+  const adjacentSystems = neighbours(state.systems, MECATOL_ID, faction)
   let count = 0
   for (const sysId of adjacentSystems) {
     const sys = state.systems[sysId]
@@ -186,7 +187,7 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'lsc': {
       const anomalyTiles = ['41', '42', '43', '44', '45']
       const anomalySystems = new Set(Object.values(state.systems).filter(s => s.tile && (anomalyTiles.includes(s.tile) || s.name.toLowerCase().includes('nebula') || s.name.toLowerCase().includes('supernova') || s.name.toLowerCase().includes('asteroid') || s.name.toLowerCase().includes('rift'))).map(s => s.id))
-      return Object.values(state.systems).filter(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id).some(nid => anomalySystems.has(nid))).length >= 3
+      return Object.values(state.systems).filter(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id, player.faction).some(nid => anomalySystems.has(nid))).length >= 3
     }
     case 'mew':
       return player.spaceCombatWins >= 1
@@ -202,7 +203,7 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       return player.spaceCombatWins >= 1
     case 'te': {
       const otherHomes = state.players.filter(p => p.seat !== seat).map(p => homeSystemOf(state, p.seat))
-      return Object.values(state.systems).some(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id).some(nid => otherHomes.includes(nid)))
+      return Object.values(state.systems).some(s => s.space.some(u => u.owner === seat && isShip(u.type)) && neighbours(state.systems, s.id, player.faction).some(nid => otherHomes.includes(nid)))
     }
     case 'ttfd':
       return player.spaceCombatWins >= 1

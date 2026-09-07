@@ -1,5 +1,5 @@
 import { MECATOL_ID, type SystemDef } from '../data/map'
-import { GALAXY_TILES, MECATOL_TILE, homeTileFor, type TileDef } from '../data/tiles'
+import { CREUSS_GATE, GALAXY_TILES, MECATOL_TILE, homeTileFor, tileByNumber, type TileDef } from '../data/tiles'
 import { deriveSeed, mulberry32 } from './rng'
 import type { FactionId, Seat } from './types'
 
@@ -109,18 +109,26 @@ export function generateGalaxy(homes: readonly GalaxyHome[], seed: number): Gene
     const home = homeAtCell.get(hexKey(q, r))
     let id: string
     let tile: TileDef
+    let homeSeat: Seat | null = home ? home.seat : null
     if (q === 0 && r === 0) { id = MECATOL_ID; tile = MECATOL_TILE }
     else if (home) {
-      const homeTile = homeTileFor(home.faction)
-      if (!homeTile) throw new Error(`no home tile for faction ${home.faction}`)
-      id = generatedHomeId(home.seat); tile = homeTile
+      if (home.faction === 'creuss') {
+        // Authentic TI4: Creuss Gate (tile 17) sits in the galaxy ring; no planets, delta wormhole, not a home system
+        tile = CREUSS_GATE
+        id = `tile-${CREUSS_GATE.tile}`
+        homeSeat = null
+      } else {
+        const homeTile = homeTileFor(home.faction)
+        if (!homeTile) throw new Error(`no home tile for faction ${home.faction}`)
+        id = generatedHomeId(home.seat); tile = homeTile
+      }
     } else {
       const next = deck[deckPos]; deckPos++
       if (!next) throw new Error('galaxy deck ran out of tiles')
       id = `tile-${next.tile}`; tile = next
     }
     idAtCell.set(hexKey(q, r), id)
-    placed.push(tileToSystem(id, tile, home ? home.seat : null, q, r))
+    placed.push(tileToSystem(id, tile, homeSeat, q, r))
   }
 
   // Hex adjacency: the six axial neighbours that are on the board, by system id.
@@ -129,5 +137,20 @@ export function generateGalaxy(homes: readonly GalaxyHome[], seed: number): Gene
       .map(([dq, dr]) => idAtCell.get(hexKey(system.q + dq, system.r + dr)))
       .filter((id): id is string => id !== undefined)
   }
+
+  // Authentic TI4: Ghosts of Creuss off-board home system (tile 51, Creuss)
+  // Carries the seat's home status and starting units, connected via delta wormhole.
+  for (const home of homes) {
+    if (home.faction === 'creuss') {
+      const corner = CORNERS[cornerIdx[home.seat]]
+      const offQ = corner[0] + (corner[0] !== 0 ? Math.sign(corner[0]) : 0)
+      const offR = corner[1] + (corner[1] !== 0 ? Math.sign(corner[1]) : 0)
+      const creussTile = tileByNumber(51)
+      const offboard = tileToSystem(generatedHomeId(home.seat), creussTile, home.seat, offQ, offR)
+      offboard.neighbours = []
+      placed.push(offboard)
+    }
+  }
+
   return placed
 }

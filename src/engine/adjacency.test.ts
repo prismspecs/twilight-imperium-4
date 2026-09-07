@@ -53,4 +53,27 @@ describe('R1 map Bereg Standoff', () => {
   it('R8 trade posts link the flank systems', () => {
     expect(TRADE_POSTS).toEqual({ west: ['sakulag', 'starpoint'], east: ['bereg', 'quann'] })
   })
+  it('Quantum Entanglement: Ghosts of Creuss connects delta wormholes to alpha and beta wormholes', () => {
+    const creussSystems: Record<string, System> = {
+      ...systems,
+      'creuss-gate': { id: 'creuss-gate', name: 'Creuss Gate', planets: [], wormhole: 'delta', neighbours: ['home-n'], home: null, space: [], activatedBy: [] },
+      'creuss-home': { id: 'creuss-home', name: 'Creuss', planets: [], wormhole: 'delta', neighbours: [], home: 0, space: [], activatedBy: [] },
+    }
+    // For non-Creuss: delta only connects to delta
+    expect(adjacent(creussSystems, 'creuss-gate', 'creuss-home')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'bereg')).toBe(false)
+    expect(adjacent(creussSystems, 'creuss-gate', 'sakulag')).toBe(false)
+
+    // For Creuss: delta connects to alpha (bereg, starpoint) and beta (sakulag, quann)
+    expect(adjacent(creussSystems, 'creuss-gate', 'bereg', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'starpoint', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'sakulag', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'quann', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-home', 'bereg', 'creuss')).toBe(true)
+
+    // And vice-versa: alpha/beta systems connect to delta systems for Creuss
+    expect(adjacent(creussSystems, 'bereg', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'sakulag', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'bereg', 'creuss-home', 'letnev')).toBe(false)
+  })
 })

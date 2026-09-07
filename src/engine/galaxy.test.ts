@@ -123,4 +123,32 @@ describe('generateGalaxy', () => {
     const withWormhole = galaxy.filter(s => s.wormhole !== null)
     for (const s of withWormhole) expect(['alpha', 'beta', 'delta']).toContain(s.wormhole)
   })
+
+  it('implements authentic Ghosts of Creuss setup: Tile 17 (Creuss Gate) in the ring, Tile 51 (Creuss) off-board', () => {
+    const factions: FactionId[] = ['creuss', 'letnev', 'sol', 'saar', 'hacan', 'mentak']
+    const galaxy = generateGalaxy(homesFor(factions), 42)
+    const map = byId(galaxy)
+
+    // 1. Tile 17 (Creuss Gate) is placed on the board ring at corner (q=3, r=0)
+    const gate = map.get('tile-17')
+    expect(gate).toBeDefined()
+    expect(gate?.tile).toBe('17')
+    expect(gate?.name).toBe('Creuss Gate')
+    expect(gate?.wormhole).toBe('delta')
+    expect(gate?.planets).toHaveLength(0)
+    expect(gate?.home).toBeNull() // Not a home system
+    expect(gate?.neighbours).toHaveLength(3) // 3 on-board ring neighbours
+
+    // 2. Tile 51 (Creuss) is placed off-board with home: 0
+    const creuss = map.get(generatedHomeId(0))
+    expect(creuss).toBeDefined()
+    expect(creuss?.tile).toBe('51')
+    expect(creuss?.name).toBe('Creuss')
+    expect(creuss?.home).toBe(0)
+    expect(creuss?.wormhole).toBe('delta')
+    expect(creuss?.planets).toEqual([
+      { id: 'creuss', name: 'Creuss', resources: 4, influence: 2, trait: null, techSkip: null },
+    ])
+    expect(creuss?.neighbours).toHaveLength(0) // No hex borders, connected strictly via wormholes
+  })
 })

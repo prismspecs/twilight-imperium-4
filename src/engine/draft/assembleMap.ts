@@ -1,5 +1,5 @@
 import { MECATOL_ID, type SystemDef } from '../../data/map'
-import { GALAXY_TILES, MECATOL_TILE, homeTileFor, type TileDef } from '../../data/tiles'
+import { CREUSS_GATE, GALAXY_TILES, MECATOL_TILE, homeTileFor, tileByNumber, type TileDef } from '../../data/tiles'
 import { deriveSeed, mulberry32 } from '../rng'
 import type { PlayerConfig, Seat } from '../types'
 import type { MiltyDraftState } from './miltyDraft'
@@ -129,14 +129,24 @@ export function assembleDraftedGame(draftState: MiltyDraftState, seed: number): 
   for (let seat = 0; seat < n; seat++) {
     const c = cornerIdx[seat]
     const corner = CORNERS[c]
-    const homeTile = homeTileFor(players[seat].faction)
-    if (!homeTile) throw new Error(`no home tile for faction ${players[seat].faction}`)
-    tileAtCell.set(hexKey(corner[0], corner[1]), {
-      tile: homeTile,
-      home: seat as Seat,
-      id: `home-${String(seat)}`,
-    })
-    usedTileNumbers.add(homeTile.tile)
+    const faction = players[seat].faction
+    if (faction === 'creuss') {
+      tileAtCell.set(hexKey(corner[0], corner[1]), {
+        tile: CREUSS_GATE,
+        home: null,
+        id: `tile-${CREUSS_GATE.tile}`,
+      })
+      usedTileNumbers.add(CREUSS_GATE.tile)
+    } else {
+      const homeTile = homeTileFor(faction)
+      if (!homeTile) throw new Error(`no home tile for faction ${faction}`)
+      tileAtCell.set(hexKey(corner[0], corner[1]), {
+        tile: homeTile,
+        home: seat as Seat,
+        id: `home-${String(seat)}`,
+      })
+      usedTileNumbers.add(homeTile.tile)
+    }
 
     const sliceTiles = seatToSliceTiles.get(seat)!
     const sliceCells = BASE_SECTOR.map(pt => rotateN(pt, c))
@@ -189,6 +199,21 @@ export function assembleDraftedGame(draftState: MiltyDraftState, seed: number): 
     system.neighbours = DIRECTIONS
       .map(([dq, dr]) => idAtCell.get(hexKey(system.q + dq, system.r + dr)))
       .filter((id): id is string => id !== undefined)
+  }
+
+  // Authentic TI4: Ghosts of Creuss off-board home system (tile 51, Creuss)
+  // Carries the seat's home status and starting units, connected via delta wormhole.
+  for (let seat = 0; seat < n; seat++) {
+    if (players[seat].faction === 'creuss') {
+      const c = cornerIdx[seat]
+      const corner = CORNERS[c]
+      const offQ = corner[0] + (corner[0] !== 0 ? Math.sign(corner[0]) : 0)
+      const offR = corner[1] + (corner[1] !== 0 ? Math.sign(corner[1]) : 0)
+      const creussTile = tileByNumber(51)
+      const offboard = tileToSystem(`home-${String(seat)}`, creussTile, seat as Seat, offQ, offR)
+      offboard.neighbours = []
+      placed.push(offboard)
+    }
   }
 
   return {
