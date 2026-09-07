@@ -94,6 +94,49 @@ export function MovementPanel() {
 
   const totalPicked = origins.reduce((sum, from) => sum + Object.values(pickedAt(from)).reduce((a, b) => a + b, 0), 0)
   const canProduceHere = productionLimit(state, seat, target) > 0
+  const targetSys = state.systems[target]
+  const hasEnemyShips = targetSys?.space.some(u => u.owner !== seat && isShip(u.type)) ?? false
+  const hasEnemyPlanets = targetSys?.planets.some(p => p.owner !== null && p.owner !== seat) ?? false
+  const hasEnemyGround = targetSys?.planets.some(p => p.ground.some(u => u.owner !== seat)) ?? false
+  const hasNeutralPlanets = targetSys?.planets.some(p => p.owner === null) ?? false
+  const hasFriendlyBombardment = targetSys?.space.some(
+    u => u.owner === seat && unitStats(u.type, stats).bombardment !== null
+  ) ?? false
+  const hasBombardmentTarget = hasFriendlyBombardment && (hasEnemyGround || hasEnemyPlanets)
+  const hasInvasion = hasEnemyPlanets || hasEnemyGround || hasNeutralPlanets
+
+  let zeroMoveLabel = 'Done moving'
+  let isZeroMoveGold = false
+  if (canProduceHere && !hasInvasion && !hasEnemyShips) {
+    zeroMoveLabel = 'Proceed to production'
+    isZeroMoveGold = true
+  } else if (hasEnemyShips) {
+    zeroMoveLabel = 'Proceed to space combat'
+    isZeroMoveGold = true
+  } else if (hasBombardmentTarget) {
+    zeroMoveLabel = 'Proceed to bombardment & invasion'
+    isZeroMoveGold = true
+  } else if (hasInvasion) {
+    zeroMoveLabel = 'Proceed to invasion'
+    isZeroMoveGold = true
+  } else if (canProduceHere) {
+    zeroMoveLabel = 'Proceed to production'
+    isZeroMoveGold = true
+  }
+
+  let skipLabel = 'Done moving'
+  if (canProduceHere && !hasInvasion && !hasEnemyShips) {
+    skipLabel = 'Skip to production'
+  } else if (hasEnemyShips) {
+    skipLabel = 'Skip to space combat'
+  } else if (hasBombardmentTarget) {
+    skipLabel = 'Skip to bombardment & invasion'
+  } else if (hasInvasion) {
+    skipLabel = 'Skip to invasion'
+  } else if (canProduceHere) {
+    skipLabel = 'Skip to production'
+  }
+
   const obstacle = origins.length === 0 && !canProduceHere ? movementObstacle(state, seat, target) : null
   const lockedSystemsWithShips = origins.length === 0
     ? Object.values(state.systems).filter(sys =>
@@ -109,24 +152,79 @@ export function MovementPanel() {
         <div className="dhead">
           <span className="tab">Movement into {systemLabel(target, state)}</span>
           <span className="sub">
-            {origins.length === 0 && canProduceHere
-              ? 'No ships to move. Proceed directly to production at your space dock.'
-              : 'Pick the ships that move, then the units they carry.'}
+            {canProduceHere && !hasInvasion && !hasEnemyShips
+              ? (origins.length === 0
+                  ? 'No ships to move. Proceed directly to production at your space dock.'
+                  : 'Move ships into this system, or proceed directly to production at your space dock.')
+              : hasBombardmentTarget
+                ? 'Move additional ships, or proceed to bombardment and invasion.'
+                : hasEnemyShips
+                  ? 'Move ships in to engage the enemy fleet.'
+                  : 'Pick the ships that move, then the units they carry.'}
           </span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={totalPicked === 0} onClick={submit}>Move ships</button>
-            <button
-              type="button"
-              className={origins.length === 0 && canProduceHere ? 'btn gold' : 'btn quiet'}
-              data-testid="btn-end-movement"
-              disabled={!legal.some(m => m.type === 'endMovement')}
-              onClick={() => apply({ type: 'endMovement' })}
-            >
-              {origins.length === 0 && canProduceHere ? 'Proceed to production' : 'Done moving'}
-            </button>
+            {totalPicked === 0 ? (
+              <>
+                {origins.length > 0 ? (
+                  <button type="button" className="btn quiet" data-testid="btn-move-ships" disabled={true} onClick={submit}>
+                    Move ships
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={`btn ${isZeroMoveGold ? 'gold' : 'quiet'}`}
+                  data-testid="btn-end-movement"
+                  disabled={!legal.some(m => m.type === 'endMovement')}
+                  onClick={() => apply({ type: 'endMovement' })}
+                >
+                  {zeroMoveLabel}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn gold" data-testid="btn-move-ships" onClick={submit}>
+                  Move ships
+                </button>
+                <button
+                  type="button"
+                  className="btn quiet"
+                  data-testid="btn-end-movement"
+                  disabled={!legal.some(m => m.type === 'endMovement')}
+                  onClick={() => apply({ type: 'endMovement' })}
+                >
+                  {skipLabel}
+                </button>
+              </>
+            )}
           </div>
         </div>
-        {origins.length === 0 && canProduceHere ? (
+        {hasBombardmentTarget ? (
+          <div
+            className="info-callout"
+            data-testid="bombardment-ready-notice"
+            style={{
+              margin: '8px 0',
+              padding: '10px 14px',
+              background: 'rgba(234, 179, 8, 0.15)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              borderRadius: '6px',
+              color: '#fde047',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>🎯</span>
+            <span>
+              <strong>Ready for Bombardment:</strong> You have bombardment ships in{' '}
+              {systemLabel(target, state)}. Under TI4 rules (LRR 83), Bombardment is Step 4.1 of the
+              Tactical Action (during Invasion, immediately following Movement). Moving additional ships is
+              optional — click &quot;Proceed to bombardment &amp; invasion&quot; to begin.
+            </span>
+          </div>
+        ) : null}
+        {canProduceHere ? (
           <div
             className="info-callout"
             data-testid="produce-ready-notice"
@@ -145,8 +243,11 @@ export function MovementPanel() {
           >
             <span>🏭</span>
             <span>
-              <strong>Ready to produce:</strong> No ships are moving into this system. You have a space dock in{' '}
-              {systemLabel(target, state)} ready to produce up to {productionLimit(state, seat, target)} units. Click &quot;Proceed to production&quot; to build.
+              <strong>Ready to produce:</strong> You have a space dock in{' '}
+              {systemLabel(target, state)} ready to produce up to {productionLimit(state, seat, target)} units.{' '}
+              {origins.length === 0
+                ? 'No ships to move. Click "Proceed to production" to build.'
+                : 'Moving ships is optional — choose ships to move in, or click "Proceed to production" to build immediately.'}
             </span>
           </div>
         ) : obstacle ? (
@@ -193,11 +294,44 @@ export function MovementPanel() {
           const carried = want.fighter + want.infantry
           const pool = availableCargo(state, seat, from, chosen)
           const setShips = (type: UnitType, n: number) => setPicked({ ...picked, [from]: { ...pickedAt(from), [type]: n } })
+          const allMovers = SHIP_ORDER.filter(type => movers.has(type))
+          const isAllSelected = allMovers.length > 0 && allMovers.every(type => (pickedAt(from)[type] ?? 0) === (movers.get(type)?.length ?? 0))
+          const toggleBringAll = () => {
+            if (isAllSelected) {
+              setPicked(prev => {
+                const next = { ...prev }
+                delete next[from]
+                return next
+              })
+              setCargo(prev => {
+                const next = { ...prev }
+                delete next[from]
+                return next
+              })
+            } else {
+              const allShips: Partial<Record<UnitType, number>> = {}
+              for (const type of allMovers) {
+                allShips[type] = movers.get(type)?.length ?? 0
+              }
+              setPicked(prev => ({
+                ...prev,
+                [from]: allShips,
+              }))
+            }
+          }
           return (
             <div className="mvorigin" key={from} data-testid={`origin-${from}`}>
               <div className="mvhead">
                 <span className="lbl bul">Ships in {systemLabel(from, state)}</span>
                 <span className="sub" data-testid={`capacity-${from}`}>Capacity {room}, carrying {carried}</span>
+                <button
+                  type="button"
+                  className="btn quiet btn-bring-all"
+                  data-testid={`btn-bring-all-${from}`}
+                  onClick={toggleBringAll}
+                >
+                  {isAllSelected ? 'Clear all' : 'Bring all'}
+                </button>
               </div>
               <div className="mvunits">
                 {SHIP_ORDER.filter(type => movers.has(type)).map(type => {

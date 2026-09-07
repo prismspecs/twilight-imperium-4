@@ -46,6 +46,19 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('capacity-home-n').textContent).toBe('Capacity 4, carrying 3')
   })
 
+  it('supports "Bring all" button to pick all movable ships from an origin tile', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('bereg')
+    const bringAllBtn = screen.getByTestId('btn-bring-all-home-n')
+    expect(bringAllBtn.textContent).toBe('Bring all')
+    fireEvent.click(bringAllBtn)
+    expect(bringAllBtn.textContent).toBe('Clear all')
+    expect(screen.getByTestId('capacity-home-n').textContent).toContain('Capacity')
+    // Clicking again clears
+    fireEvent.click(bringAllBtn)
+    expect(bringAllBtn.textContent).toBe('Bring all')
+  })
+
   it('R3.2 step 1: marks the systems no ship can reach before the activation', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-tactical'))
@@ -269,6 +282,57 @@ describe('the tactical action', () => {
     fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
     fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
     expect(screen.getByTestId('capacity-home-n').textContent).toContain('Capacity 4, carrying 2')
+  })
+
+  it('prominently offers Proceed to production and explains optional movement when activating space dock with ships in range', () => {
+    // Player 0 activates home-n (where they have a space dock)
+    // Ships exist in bereg in range
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = withTactical(s, { systemId: 'home-n', step: 'movement' })
+    renderWithSession(s, <BoardScreen />)
+
+    // Notice is visible even though origins.length > 0!
+    const notice = screen.getByTestId('produce-ready-notice')
+    expect(notice.textContent).toContain('Ready to produce:')
+    expect(notice.textContent).toContain('Moving ships is optional')
+
+    // Primary button says "Proceed to production" and is gold
+    const proceedBtn = screen.getByTestId('btn-end-movement')
+    expect(proceedBtn.textContent).toBe('Proceed to production')
+    expect(proceedBtn.className).toContain('btn gold')
+
+    // Move ships button is quiet and disabled since 0 ships picked
+    const moveBtn = screen.getByTestId('btn-move-ships')
+    expect(moveBtn.className).toContain('btn quiet')
+    expect(moveBtn.hasAttribute('disabled')).toBe(true)
+
+    // Clicking Proceed to production opens produce drawer
+    fireEvent.click(proceedBtn)
+    expect(screen.getByTestId('produce-drawer')).toBeTruthy()
+  })
+
+  it('prominently offers Proceed to bombardment & invasion when friendly bombardment ships sit in target with enemy units', () => {
+    // Put a dreadnought and enemy ground forces in bereg
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['dreadnought'])
+    s = withPlanetOwner(s, 'bereg', 'bereg', 1)
+    s = withUnits(s, 'bereg', 1, ['infantry'], 'bereg')
+    renderWithSession(s, <BoardScreen />)
+
+    fireEvent.click(screen.getByTestId('btn-tactical'))
+    fireEvent.click(screen.getByTestId('tile-bereg'))
+
+    // Notice explains bombardment step timing
+    const notice = screen.getByTestId('bombardment-ready-notice')
+    expect(notice.textContent).toContain('Ready for Bombardment:')
+    expect(notice.textContent).toContain('Bombardment is Step 4.1')
+
+    // Button offers "Proceed to bombardment & invasion" in gold
+    const proceedBtn = screen.getByTestId('btn-end-movement')
+    expect(proceedBtn.textContent).toBe('Proceed to bombardment & invasion')
+    expect(proceedBtn.className).toContain('btn gold')
+
+    fireEvent.click(proceedBtn)
+    expect(screen.getByTestId('invasion-panel')).toBeTruthy()
   })
 })
 

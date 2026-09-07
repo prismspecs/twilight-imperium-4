@@ -3113,6 +3113,11 @@ button { font-family: inherit; }
   font-weight: var(--weight-data);
   color: var(--ink-muted);
 }
+.btn-bring-all {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+}
 .mvunits { display: flex; gap: 8px; flex-wrap: wrap; }
 .mvu {
   width: 118px;
