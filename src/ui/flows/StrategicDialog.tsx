@@ -138,7 +138,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             : false
 
   return (
-    <div className={card === 'technology' ? 'drawer full' : 'dialog'} data-testid="strategic-dialog">
+    <div className={card === 'technology' ? 'drawer full wide tech-dialog' : 'dialog'} data-testid="strategic-dialog">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, primary</span>
