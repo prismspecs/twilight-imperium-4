@@ -12,6 +12,8 @@ import { FACTIONS } from '../../data/factions'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
 const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
+/** Inset hex points for thick borders that stay inside the hex boundary without being clipped by .tile clip-path */
+const INSET_HEX = '59.5,3.2 172.5,3.2 228.8,100.5 172.5,197.8 59.5,197.8 3.2,100.5'
 
 /** AsyncTI4/ti4_web_new's SystemHexTarget.tsx: a pan that ends over a tile still fires click, so the tile
  * checks its own pointerdown-to-click travel rather than relying on a shared, timing-based "just panned"
@@ -116,12 +118,13 @@ export interface TileProps {
   /** Selectable, but no ship can move in; the outline goes cold and the tile says so. */
   outOfReach?: boolean
   isGalaxy?: boolean
+  isPlayerHome?: boolean
   onSelect?: (systemId: string) => void
   /** Not currently selectable for an action - clicking it instead opens the system's info panel. */
   onInspect?: (systemId: string) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, onSelect, onInspect }: TileProps) {
+export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, onSelect, onInspect }: TileProps) {
   const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
@@ -131,12 +134,17 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const box = getSpaceBox(system.id, system.planets.length)
   const fleet = groupUnits(system.space)
   const scale = fleetScale(fleet.length, box)
+  const isHomeTurn = system.home !== null && system.home === state.active
+  const homeOwner = system.home !== null ? state.players[system.home] : undefined
+  const homeInk = homeOwner ? COLOUR_INK[homeOwner.color] : undefined
   const home = system.home === null ? '' : ` home-${system.home}`
+  const playerHomeClass = isPlayerHome ? ' player-home-hex' : ''
+  const homeTurnClass = isHomeTurn ? ' turn-active-home' : ''
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
   const inspect = onInspect ? () => onInspect(system.id) : undefined
   const act = activate ?? inspect
-  const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
+  const classes = `tile${home}${playerHomeClass}${homeTurnClass}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
   const canProduce = selectable && productionLimit(state, state.active, system.id) > 0
@@ -148,6 +156,11 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
     top: pos.top,
     width: TILE_W,
     height: TILE_H,
+    ...(homeInk ? {
+      '--home-hex-stroke': homeInk.accent,
+      '--home-hex-glow': homeInk.glow,
+      '--home-hex-tint': homeInk.tint,
+    } as CSSProperties : {}),
     ...(active && activeColor ? {
       '--active-hex-stroke': activeColor.accent,
       '--active-hex-glow': activeColor.glow,
@@ -159,15 +172,16 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
       ? (canProduce && !canReach
         ? `Activate ${system.name} to produce`
         : `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}`)
-      : `View ${system.name}`)
-    : undefined
+      : `View ${system.name}${isPlayerHome ? ' (Your home system)' : ''}`)
+    : (isPlayerHome ? `Your home system: ${system.name}` : undefined)
+  const titleText = reachDiag ?? (isPlayerHome ? `Your Home System (${system.name})` : undefined)
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
       style={tileStyle}
       role={act ? 'button' : undefined}
       tabIndex={act ? 0 : undefined}
-      title={reachDiag}
+      title={titleText}
       aria-label={actAriaLabel}
       onPointerDown={act ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
       onClick={act
@@ -187,7 +201,23 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
         : undefined}
     >
       <img className="hex" src={tileUrl(system.id, system.tile, isGalaxy)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} draggable={false} />
-      <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>
+      <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}>
+        <polygon points={HEX} />
+        {isPlayerHome && (
+          <polygon
+            className="player-home-line"
+            points={INSET_HEX}
+            data-testid={`player-home-border-${system.id}`}
+          />
+        )}
+        {isHomeTurn && !isPlayerHome && (
+          <polygon
+            className="turn-home-line"
+            points={INSET_HEX}
+            data-testid={`turn-home-border-${system.id}`}
+          />
+        )}
+      </svg>
       {tileNumberLabel(system.q, system.r) ? (
         <span className="tile-number" data-testid={`tile-number-${system.id}`}
           style={{ left: TILE_NUMBER_SPOT.left, top: TILE_NUMBER_SPOT.top }}>

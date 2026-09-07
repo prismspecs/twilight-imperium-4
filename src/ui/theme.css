@@ -895,6 +895,11 @@ button { font-family: inherit; }
   padding-right: 2px;
 }
 .player-strip .clock.mini small { display: none; }
+.player-strip .clock.mini.untimed {
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1;
+}
 
 .player-strip .runbar {
   position: absolute;
@@ -2086,8 +2091,62 @@ button { font-family: inherit; }
   stroke-width: 1.4;
   stroke: transparent;
 }
-.tile.home-0 svg.line polygon { stroke: var(--player-0); }
-.tile.home-1 svg.line polygon { stroke: var(--player-1); }
+.tile.home-0 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-0)); }
+.tile.home-1 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-1)); }
+.tile.home-2 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-2)); }
+.tile.home-3 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-3)); }
+.tile.home-4 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-4)); }
+.tile.home-5 svg.line polygon { stroke: var(--home-hex-stroke, var(--player-5)); }
+
+/* Player home hex: always emphasized with a thick border around the outside of the home hex */
+.tile.player-home-hex {
+  z-index: 3;
+}
+.tile .player-home-line {
+  fill: none;
+  stroke: var(--home-hex-stroke, var(--player-0));
+  stroke-width: 4.5px;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px var(--home-hex-glow, rgba(59, 130, 246, 0.5)));
+  pointer-events: none;
+}
+
+/* Turn home line: when it is another faction's turn, their home hex border */
+.tile .turn-home-line {
+  fill: none;
+  stroke: var(--home-hex-stroke);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px var(--home-hex-glow));
+  pointer-events: none;
+}
+
+/* Subtly pulsate the color of the faction on their home hex when it is their turn */
+.tile.turn-active-home .player-home-line,
+.tile.turn-active-home .turn-home-line {
+  animation: pulse-turn-home 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-turn-home {
+  0% {
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 4px var(--home-hex-glow, rgba(59, 130, 246, 0.35)));
+    opacity: 0.85;
+  }
+  100% {
+    stroke-width: 5.5px;
+    filter: drop-shadow(0 0 14px var(--home-hex-stroke, rgba(59, 130, 246, 0.9)));
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.turn-active-home .player-home-line,
+  .tile.turn-active-home .turn-home-line {
+    animation: none;
+    stroke-width: 4.5px;
+  }
+}
 .tile.active svg.line polygon {
   stroke: var(--active-hex-stroke, var(--accent-blue));
   stroke-width: 2.8;

@@ -140,6 +140,18 @@ describe('the hot-seat store', () => {
     vi.useRealTimers()
   })
 
+  it('untimed play: does not run clock when minutes is 0', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.start(CONFIG, 7, 0) })
+    expect(result.current.clockRunning).toBe(false)
+    expect(result.current.session?.minutes).toBe(0)
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(result.current.session?.clockMs[0]).toBe(0)
+    expect(result.current.session?.state.players[0].passed).toBe(false)
+    vi.useRealTimers()
+  })
+
   it('R6: the clock runs in the status phase for the seat that has to submit', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })

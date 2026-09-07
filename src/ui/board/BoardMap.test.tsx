@@ -200,4 +200,37 @@ describe('the board', () => {
     expect(wh.style.left).toBe('36px')
     expect(wh.style.top).toBe('40px')
   })
+
+  it('emphasizes the player home hex with a thick border and pulsates when it is their turn', () => {
+    // state.active is 0 in action phase initially
+    const { rerender } = render(<BoardMap state={state} humanSeat={0 as Seat} />)
+    const playerHomeTile = screen.getByTestId('tile-home-n') // seat 0 home in duel map
+    const opponentHomeTile = screen.getByTestId('tile-home-s') // seat 1 home in duel map
+
+    // Player home hex is emphasized always
+    expect(playerHomeTile.className).toContain('player-home-hex')
+    expect(screen.getByTestId('player-home-border-home-n')).toBeTruthy()
+    // Seat 0 is active, so player home hex also pulsates for their turn
+    expect(playerHomeTile.className).toContain('turn-active-home')
+
+    // Opponent home hex is NOT player home
+    expect(opponentHomeTile.className).not.toContain('player-home-hex')
+    expect(opponentHomeTile.className).not.toContain('turn-active-home')
+    expect(screen.queryByTestId('player-home-border-home-s')).toBeNull()
+
+    // When turn passes to seat 1:
+    const seat1ActiveState = { ...state, active: 1 as Seat }
+    rerender(<BoardMap state={seat1ActiveState} humanSeat={0 as Seat} />)
+
+    // Player home hex STILL has the thick border emphasizing it
+    expect(playerHomeTile.className).toContain('player-home-hex')
+    expect(screen.getByTestId('player-home-border-home-n')).toBeTruthy()
+    // But is no longer active turn
+    expect(playerHomeTile.className).not.toContain('turn-active-home')
+
+    // Opponent home hex now pulsates for their turn!
+    expect(opponentHomeTile.className).toContain('turn-active-home')
+    expect(screen.getByTestId('turn-home-border-home-s')).toBeTruthy()
+  })
 })
+

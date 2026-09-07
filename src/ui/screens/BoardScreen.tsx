@@ -321,6 +321,7 @@ export function BoardScreen() {
             activeSystemId={state.tactical?.systemId ?? null}
             selectable={selectable}
             outOfReach={outOfReach}
+            humanSeat={humanSeat}
             onSelect={systemId => {
               const diag = diagnoseMovement(state, state.active, systemId)
               logInfo('Tactical', `Tile clicked: ${systemId} in mode=${mode ?? 'idle'} (seat ${state.active})`, {

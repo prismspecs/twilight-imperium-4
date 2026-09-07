@@ -290,7 +290,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // by sitting on a draft pick. `legal` is memoised on the state, so this costs no enumeration per tick.
   // An AI seat takes its turn inside `apply`, never against the clock, so a seat that is AI does not tick.
   const activeSeatIsAi = session !== null && isAi(session.config, session.state.active)
-  const running = session !== null && !activeSeatIsAi && session.state.winner === null && session.handoff === null && legal.length > 0
+  const running = session !== null && session.minutes > 0 && !activeSeatIsAi && session.state.winner === null && session.handoff === null && legal.length > 0
   const seat = session ? session.state.active : 0
   useEffect(() => {
     if (!ticking || !running) return
@@ -308,14 +308,14 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // R6: at zero the player passes automatically; while passing is illegal (another phase, an unused strategy
   // card, an open secondary window, a running tactical action) the clock stays at zero until it becomes legal
   useEffect(() => {
-    if (!session || !running) return
+    if (!session || !running || session.minutes <= 0) return
     if ((session.clockMs[session.state.active] ?? 0) > 0) return
     if (legal.some(m => m.type === 'pass')) apply({ type: 'pass' })
   }, [session, running, legal, apply])
 
   // R6: three extra minutes for a flagged player at the start of every later round
   useEffect(() => {
-    if (!session) return
+    if (!session || session.minutes <= 0) return
     if (roundRef.current === session.state.round) return
     roundRef.current = session.state.round
     setSession(prev => prev ? {

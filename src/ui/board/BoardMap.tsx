@@ -3,7 +3,7 @@ import { TradePosts } from './TradePosts'
 import { TRADE_POSTS } from '../../data/map'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
 import { useMapPanZoom } from './useMapPanZoom'
-import type { GameState } from '../../engine/types'
+import type { GameState, Seat } from '../../engine/types'
 
 export interface BoardMapProps {
   state: GameState
@@ -11,12 +11,13 @@ export interface BoardMapProps {
   selectable?: string[]
   /** Selectable systems no ship of the active seat can move into; they stay clickable but read as a dead end. */
   outOfReach?: string[]
+  humanSeat?: Seat
   onSelect?: (systemId: string) => void
   /** Any system not currently selectable for an action opens its info panel here instead. */
   onInspect?: (systemId: string) => void
 }
 
-export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], onSelect, onInspect }: BoardMapProps) {
+export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, onSelect, onInspect }: BoardMapProps) {
   const panZoom = useMapPanZoom()
   const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
   const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
@@ -62,6 +63,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               selectable={selectable.includes(system.id)}
               outOfReach={outOfReach.includes(system.id)}
               isGalaxy={!isDuel}
+              isPlayerHome={system.home !== null && (humanSeat !== undefined ? system.home === humanSeat : system.home === 0)}
               onSelect={onSelect}
               onInspect={onInspect}
             />

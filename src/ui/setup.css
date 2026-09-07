@@ -1662,7 +1662,7 @@
   min-width: 0;
 }
 .preflight .pf-set > .lbl { grid-area: lbl; }
-.preflight .pf-set > .pf-seg, .preflight .pf-set > .pf-clock, .preflight .pf-set > .pf-set-val { grid-area: val; }
+.preflight .pf-set > .pf-seg, .preflight .pf-set > .pf-clock, .preflight .pf-set > .pf-clock-ctrls, .preflight .pf-set > .pf-set-val { grid-area: val; }
 .preflight .pf-set-sub {
   grid-area: sub;
   font-family: var(--font-text);
@@ -1676,6 +1676,11 @@
   font-weight: var(--weight-title);
   color: var(--ink-bright);
 }
+.preflight .pf-clock-ctrls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
 .preflight .pf-clock {
   display: flex;
   align-items: center;
@@ -1683,6 +1688,15 @@
   font-family: var(--font-text);
   font-size: var(--text-meta);
   color: var(--ink);
+  transition: opacity var(--duration-fast) ease;
+}
+.preflight .pf-clock.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.preflight .pf-clock.disabled .pf-min {
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .preflight .pf-min {
   width: 44px; height: 24px;

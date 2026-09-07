@@ -80,12 +80,20 @@ function CompactPlayer({
         </div>
       </div>
 
-      <div className="clock mini">
-        <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
-        <small>{running ? 'running' : 'paused'}</small>
-      </div>
-
-      <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
+      {clockMaxMs > 0 ? (
+        <>
+          <div className="clock mini">
+            <span data-testid={`clock-${seat}`}>{formatClock(clockMs)}</span>
+            <small>{running ? 'running' : 'paused'}</small>
+          </div>
+          <div className="runbar"><i style={{ width: `${Math.round(Math.min(1, clockMs / clockMaxMs) * 100)}%` }} /></div>
+        </>
+      ) : (
+        <div className="clock mini untimed">
+          <span data-testid={`clock-${seat}`}>∞</span>
+          <small>untimed</small>
+        </div>
+      )}
 
       <span className="vis" data-testid={`turn-${seat}`}>
         {active ? (isAiSeat ? 'AI Turn' : 'Your turn') : 'Waiting'}

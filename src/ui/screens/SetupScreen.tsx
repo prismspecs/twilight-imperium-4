@@ -204,6 +204,7 @@ export function SetupScreen() {
   const [colours, setColours] = useState<Color[]>(DEFAULT_COLOURS)
   const [playerTypes, setPlayerTypes] = useState<PlayerType[]>(DEFAULT_TYPES)
   const [minutes, setMinutes] = useState(15)
+  const [clockEnabled, setClockEnabled] = useState(true)
   const [useMiltyDraft, setUseMiltyDraft] = useState(false)
   const [isDrafting, setIsDrafting] = useState(false)
   const [draftSeed, setDraftSeed] = useState(0)
@@ -280,7 +281,7 @@ export function SetupScreen() {
         playerType: playerTypes[seat],
       })),
       speaker: 0,
-    }, seed, minutes)
+    }, seed, clockEnabled ? minutes : 0)
   }
   function forget(code: string) {
     deleteGame(code)
@@ -302,7 +303,7 @@ export function SetupScreen() {
           playerType: playerTypes[seat],
         }))}
         seed={draftSeed}
-        minutes={minutes}
+        minutes={clockEnabled ? minutes : 0}
         onBackToSetup={() => { setIsDrafting(false) }}
         onStartGame={(config, gameSeed, gameMinutes) => {
           start(config, gameSeed, gameMinutes)
@@ -316,7 +317,9 @@ export function SetupScreen() {
     : (allAi ? 'Watch AI game' : anyAi ? 'Launch vs AI' : 'Launch hot-seat')
   const startSub = useMiltyDraft
     ? 'Snake draft: choose factions, map slices, and table positions.'
-    : `Hot-seat, pass the tablet, chess clock ${String(minutes)} minutes each.`
+    : clockEnabled
+      ? `Hot-seat, pass the tablet, chess clock ${String(minutes)} minutes each.`
+      : 'Hot-seat, pass the tablet, untimed play.'
 
   return (
     <div className="preflight" data-testid="setup-screen">
@@ -618,14 +621,33 @@ export function SetupScreen() {
 
         <div className="pf-set" data-testid="setup-clock">
           <span className="lbl">Clock</span>
-          <label className="pf-clock">
-            <input
-              type="number" min={1} max={60} className="pf-min" data-testid="minutes"
-              value={minutes} onChange={e => { setMinutes(Math.max(1, Number.parseInt(e.target.value, 10) || 1)) }}
-            />
-            <span>minutes per player</span>
-          </label>
-          <span className="pf-set-sub">Runs whenever it is your turn to decide</span>
+          <div className="pf-clock-ctrls">
+            <div className="pf-seg pf-clock-seg" data-testid="clock-mode-picker">
+              <button
+                type="button" className={clockEnabled ? 'on' : ''} data-testid="btn-clock-on"
+                aria-pressed={clockEnabled} onClick={() => { setClockEnabled(true) }}
+              >
+                On
+              </button>
+              <button
+                type="button" className={!clockEnabled ? 'on' : ''} data-testid="btn-clock-off"
+                aria-pressed={!clockEnabled} onClick={() => { setClockEnabled(false) }}
+              >
+                Off
+              </button>
+            </div>
+            <label className={`pf-clock${!clockEnabled ? ' disabled' : ''}`}>
+              <input
+                type="number" min={1} max={60} className="pf-min" data-testid="minutes"
+                disabled={!clockEnabled}
+                value={minutes} onChange={e => { setMinutes(Math.max(1, Number.parseInt(e.target.value, 10) || 1)) }}
+              />
+              <span>minutes per player</span>
+            </label>
+          </div>
+          <span className="pf-set-sub">
+            {clockEnabled ? 'Runs whenever it is your turn to decide' : 'Untimed play (no chess clock)'}
+          </span>
         </div>
 
         <div className="pf-set" data-testid="setup-target">
