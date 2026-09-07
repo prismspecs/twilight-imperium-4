@@ -372,7 +372,8 @@ function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCar
       const targets = sys.space.filter(u => u.owner !== seat && (u.type === 'dreadnought' || u.type === 'cruiser' || u.type === 'destroyer'))
       if (!targets.length) return { ok: false, error: 'R9: no eligible ship in that system' }
       const targetUnit = params.unitId !== undefined ? targets.find(u => u.id === params.unitId) ?? targets[0] : targets[0]
-      return { ok: true, value: destroyUnits(state, systemId, [targetUnit]) }
+      const afterDestroy = destroyUnits(state, systemId, [targetUnit])
+      return { ok: true, value: trimCargo(afterDestroy, systemId, targetUnit.owner) }
     }
     case 'plague': {
       const planetId = params.planetId

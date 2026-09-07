@@ -221,6 +221,9 @@ describe('legal moves in every phase', () => {
 // 11 exercises `groundCombatRound`.
 // 18 came in with the Spy action card: one more legal move on turns where an opponent holds a card reshuffled
 // the paths again and none of 9, 11, 19 or 24 still reached `groundCombatRound`; 18 does.
+// 187, 302, 353, 405, 414 and 520 came in when auditing the Spy seed retune: they surfaced a real bug (Lucky
+// Shot destroying a ship without trimming the cargo it stranded) rather than a coverage gap, so they are not
+// added here — the fix means they no longer fail, but they add nothing beyond the seeds already kept.
 const SEEDS: readonly number[] = [1, 2, 3, 4, 5, 8, 9, 11, 13, 21, 34, 40, 55, 71, 89, 203, 238, 24, 27, 19, 18]
 const RUNS = new Map<number, GameRun>()
 

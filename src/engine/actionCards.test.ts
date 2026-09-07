@@ -304,13 +304,24 @@ describe('R9 the printed abilities', () => {
     expect([...deck].sort()).toEqual([...PLAYABLE_ACTION_CARDS].sort())
   })
 
-  it('Lucky Shot destroys a non-fighter ship in a system containing a planet you control', () => {
+  it('Lucky Shot destroys a non-fighter ship in a system containing a planet you control, leaving an unrelated fighter alone', () => {
     let base = withPlanetOwner(toActionPhase(), 'quann', 'quann', 0)
-    base = withUnits(base, 'quann', 1, ['cruiser', 'fighter'])
+    base = withUnits(base, 'quann', 1, ['cruiser'])
+    base = withUnits(base, 'quann', 0, ['fighter']) // the attacker's own fighter: unrelated to the target's cargo
     const played = playActionCard(withHand(base, 0, ['lucky_shot']), 'lucky_shot', { systemId: 'quann' })
     if (!played.ok) throw new Error(played.error)
     expect(played.value.systems.quann.space.some(u => u.type === 'cruiser')).toBe(false)
     expect(played.value.systems.quann.space.some(u => u.type === 'fighter')).toBe(true)
+  })
+
+  it('Lucky Shot also strands and destroys the cargo its target was carrying', () => {
+    // Regression: destroying the ship left its fighter alone in space with no capacity to hold it, which
+    // fullGame.test.ts's random-play smoke test caught as a broken fleet/capacity invariant.
+    let base = withPlanetOwner(toActionPhase(), 'quann', 'quann', 0)
+    base = withUnits(base, 'quann', 1, ['dreadnought', 'fighter']) // seat 1's dreadnought (capacity 1) carries the fighter
+    const played = playActionCard(withHand(base, 0, ['lucky_shot']), 'lucky_shot', { systemId: 'quann' })
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.systems.quann.space.some(u => u.owner === 1)).toBe(false)
   })
 
   it('Plague rolls for each infantry on another player planet and destroys on 6 or greater', () => {
