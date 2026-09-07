@@ -1,4 +1,5 @@
 import { actionCardDef } from '../../data/actionCards'
+import { isShip } from '../../data/units'
 import { HAND_LIMIT, PLAYABLE_ACTION_CARDS } from '../../engine'
 import { planetLabel, systemLabel, techLabel } from '../format'
 import { useGame } from '../store'
@@ -21,10 +22,10 @@ function findPlanetInState(state: GameState, planetId: string) {
 /** What one enumerated play of a card actually does, in words: the card names its own target. */
 function offerLabel(state: GameState, params: ActionCardParams | undefined, cardId?: string): string {
   if (!params) return 'Play it'
+  const baseCard = cardId ? cardId.replace(/_\d+$/, '') : ''
   if (params.planetId !== undefined) {
     const planet = findPlanetInState(state, params.planetId)
     if (!planet) return planetLabel(state, params.planetId)
-    const baseCard = cardId ? cardId.replace(/_\d+$/, '') : ''
     if (baseCard === 'uprising' || baseCard === 'mining_initiative') {
       return `${planet.name} (${planet.resources} res → +${planet.resources} TG)`
     }
@@ -38,7 +39,11 @@ function offerLabel(state: GameState, params: ActionCardParams | undefined, card
     }
     return `${planet.name} (${planet.resources}R, ${planet.influence}I)`
   }
-  if (params.systemId !== undefined) return systemLabel(params.systemId, state)
+  if (params.systemId !== undefined) {
+    if (baseCard === 'war_effort') return `Place cruiser in ${systemLabel(params.systemId, state)}`
+    if (baseCard === 'ghost_ship') return `Place destroyer in ${systemLabel(params.systemId, state)}`
+    return systemLabel(params.systemId, state)
+  }
   if (params.techId !== undefined) return techLabel(params.techId)
   if (params.seat !== undefined) return state.players[params.seat].name
   return 'Play it'
@@ -78,17 +83,41 @@ export function ActionCardPanel({ onClose, viewingSeat }: ActionCardPanelProps) 
         ) : null}
         {hand.map(cardId => {
           const def = actionCardDef(cardId)
+          const baseCard = cardId.replace(/_\d+$/, '')
           const offers = plays.filter(m => m.cardId === cardId)
-          const reason = !isMyTurn
+          const isWarEffort = baseCard === 'war_effort'
+          const shipSystems = isWarEffort && isMyTurn
+            ? Object.keys(state.systems).filter(id => state.systems[id].space.some(u => u.owner === seat && isShip(u.type)))
+            : []
+          const warEffortBlocked = isWarEffort && isMyTurn
+            ? shipSystems.filter(id => !offers.some(m => m.params?.systemId === id))
+            : []
+          let reason = !isMyTurn
             ? 'Cards can only be played during your turn or during appropriate reaction windows.'
             : PLAYABLE_ACTION_CARDS.includes(cardId)
               ? `Nothing on the board is a legal target for this card right now (${def.window.toLowerCase()}).`
               : `This card waits for a moment the game cannot offer yet: ${def.window.toLowerCase()}.`
+
+          if (isMyTurn && isWarEffort && offers.length === 0) {
+            if (state.players[seat].reinforcements.cruiser < 1) {
+              reason = 'No cruisers remaining in your reinforcements (TI4 limit: 8 cruisers).'
+            } else if (shipSystems.length === 0) {
+              reason = 'None of your systems contains a ship in space (ground forces and space docks on planets do not count as ships per TI4 LRR 78.1).'
+            } else if (warEffortBlocked.length > 0) {
+              reason = 'All systems containing your ships have reached your fleet pool capacity. Add command tokens to your fleet pool to place more ships.'
+            }
+          }
+
           return (
             <div key={cardId} className="rowline" data-testid={`action-card-${cardId}`} style={{ alignItems: 'flex-start', marginBottom: 10 }}>
               <div style={{ minWidth: 220 }}>
                 <div className="tab">{def.name}</div>
                 <div className="sub">{def.text}</div>
+                {warEffortBlocked.length > 0 && offers.length > 0 ? (
+                  <div className="sub warn" style={{ color: '#fca5a5', marginTop: 4 }}>
+                    Fleet pool full in: {warEffortBlocked.map(id => systemLabel(id, state)).join(', ')}
+                  </div>
+                ) : null}
               </div>
               {offers.length === 0 ? <span className="sub err">{reason}</span> : null}
               {offers.map((move, i) => (

@@ -45,6 +45,14 @@ describe('R9 the action card hand', () => {
     expect(screen.getByTestId('action-card-focused_research_1').textContent).toContain('is a legal target for this card right now')
   })
 
+  it('offers War Effort with informative system placement label', () => {
+    renderWithSession(withHand(base(), ['war_effort']), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-action-card'))
+    // Seat 0 has ships in home system [0.0.0]
+    expect(screen.getByTestId('play-war_effort-0').textContent).toContain('Place cruiser in')
+    expect(screen.getByTestId('play-war_effort-0').textContent).toContain('[0.0.0]')
+  })
+
   it('does not offer the hand at all when it is empty', () => {
     renderWithSession(base(), <BoardScreen />)
     expect(screen.getByTestId('btn-action-card').hasAttribute('disabled')).toBe(true)
