@@ -2,7 +2,7 @@ import { applyMove, createGame, legalMoves } from '../engine'
 import { homeSystemOf } from '../engine/board'
 import { deriveSeed, mulberry32 } from '../engine/rng'
 import type { GameState, Move, Seat } from '../engine/types'
-import { fillMoveShips, fillProduce, fillStatusTokens } from './fill'
+import { fillCastVote, fillMoveShips, fillProduce, fillStatusTokens } from './fill'
 import { playerView } from './fog'
 import { DEFAULT_WEIGHTS, scoreMove } from './score'
 import type { ScoreWeights } from './score'
@@ -27,6 +27,10 @@ function fillTemplate(state: GameState, move: Move, seat: Seat): Move {
     case 'status': {
       const tokens = fillStatusTokens(state, seat)
       return { type: 'status', params: { tokens } }
+    }
+    case 'castVote': {
+      const planets = fillCastVote(state, seat)
+      return { ...move, planets }
     }
     case 'secondary': {
       if (move.card === 'warfare' && move.accept) {

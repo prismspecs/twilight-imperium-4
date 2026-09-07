@@ -1,6 +1,7 @@
 import { NON_FIGHTER_SHIPS, unitStats, type StatsOwner } from '../data/units'
+import { readyInfluencePlanets } from '../engine/agendas'
 import { checkFleet, maxFightersAllowed } from '../engine/board'
-import { fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
+import { cheapestInfluencePlanets, fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
 import { movableShips, pathLength } from '../engine/movement'
 import { tokensGained } from '../engine/statusPhase'
 import type { GameState, Player, Seat, Unit, UnitType } from '../engine/types'
@@ -316,6 +317,16 @@ function findCheapestPayment(state: GameState, seat: Seat, cost: number): { plan
     }
   }
   return best ? { planets: best.planets, tradeGoods: best.tradeGoods } : null
+}
+
+/**
+ * R10: which planets to exhaust for influence behind a vote. `agendaMoves` already suggests every ready
+ * planet (the maximal vote); naive AI play commits only the cheapest planet that covers 1 influence, rather
+ * than always maxing out, so a stronger vote is left for later tuning of which outcome to actually favor.
+ */
+export function fillCastVote(state: GameState, seat: Seat): string[] {
+  if (readyInfluencePlanets(state, seat).length === 0) return []
+  return cheapestInfluencePlanets(state, seat, 1)?.planets ?? []
 }
 
 /**

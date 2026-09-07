@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../engine'
-import { DUEL_CONFIG, toActionPhase } from '../engine/testUtils'
+import { agendaMoves } from '../engine/agendas'
+import { DUEL_CONFIG, toActionPhase, toAgendaPhase } from '../engine/testUtils'
 import type { Move } from '../engine/types'
-import { fillProduce, fillStatusTokens } from './fill'
+import { fillCastVote, fillProduce, fillStatusTokens } from './fill'
 import { aiChoose } from './index'
 
 describe('fillProduce calibrated fleet production', () => {
@@ -72,6 +73,27 @@ describe('fillStatusTokens and aiChoose integration', () => {
       const params = chosen.params as { tokens: { fleet: number; tactic: number; strategy: number } }
       expect(params).toBeDefined()
       expect(params.tokens.fleet).toBeGreaterThan(state.players[0].tokens.fleet)
+    }
+  })
+})
+
+describe('fillCastVote and aiChoose in the agenda phase', () => {
+  it('commits only the cheapest planet, not every ready one, to back the vote', () => {
+    const state = toAgendaPhase(toActionPhase(), 'mutiny')
+    const seat = state.agenda?.order[0] ?? 0
+    const planets = fillCastVote(state, seat)
+    expect(planets.length).toBeLessThanOrEqual(1)
+  })
+
+  it('aiChoose fills castVote templates with a legal, affordable outcome', () => {
+    const state = toAgendaPhase(toActionPhase(), 'mutiny')
+    const seat = state.agenda?.order[0] ?? 0
+    const moves = agendaMoves(state)
+    const chosen = aiChoose(state, moves, seat)
+    expect(chosen.type).toBe('castVote')
+    if (chosen.type === 'castVote') {
+      expect(['For', 'Against']).toContain(chosen.outcome)
+      expect(chosen.planets.length).toBeLessThanOrEqual(1)
     }
   })
 })
