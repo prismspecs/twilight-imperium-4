@@ -64,6 +64,28 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-card-infantry_ii')).toBeTruthy()
   })
 
+  it('TechDrawer: filters tech cards by category tab and restores all view', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('technology')
+    expect(screen.getByTestId('tech-tab-all')).toBeTruthy()
+    expect(screen.getByTestId('tech-tab-blue')).toBeTruthy()
+    expect(screen.getByTestId('tech-tab-red')).toBeTruthy()
+    expect(screen.getByTestId('tech-tab-units')).toBeTruthy()
+
+    // Switch to Propulsion (Blue)
+    fireEvent.click(screen.getByTestId('tech-tab-blue'))
+    expect(screen.getByTestId('tech-tab-blue').className).toContain('active')
+    expect(screen.getByTestId('tech-card-antimass_deflectors')).toBeTruthy()
+    // Sarween tools (Yellow) should not be visible in Blue tab
+    expect(screen.queryByTestId('tech-card-sarween_tools')).toBeNull()
+
+    // Switch back to All
+    fireEvent.click(screen.getByTestId('tech-tab-all'))
+    expect(screen.getByTestId('tech-card-sarween_tools')).toBeTruthy()
+    expect(screen.getByTestId('tech-card-antimass_deflectors')).toBeTruthy()
+  })
+
   it('closes the strategic dialog on Escape, the same way Cancel does', () => {
     const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
     renderWithSession(s, <BoardScreen />)
@@ -159,7 +181,20 @@ describe('strategic actions', () => {
     playCard('politics')
     // no new speaker chosen yet, so the card cannot be played
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+
+    // verify agenda preview cards render with name, target, and text
+    const topId = s.agendaDeck[0]
+    const previewEl = screen.getByTestId(`agenda-preview-${topId}`)
+    expect(previewEl).toBeTruthy()
+    expect(screen.getByTestId(`agenda-place-${topId}`)).toBeTruthy()
+
     fireEvent.click(screen.getByTestId('speaker-pick-1'))
+    // toggle bottom placement on and off
+    fireEvent.click(screen.getByTestId(`agenda-place-${topId}`))
+    expect(screen.getByTestId(`agenda-place-${topId}`).textContent).toContain('Put on bottom')
+    fireEvent.click(screen.getByTestId(`agenda-place-${topId}`))
+    expect(screen.getByTestId(`agenda-place-${topId}`).textContent).toContain('Keep on top')
+
     fireEvent.click(screen.getByTestId('agenda-swap'))
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
     // seat 1 answers the secondary first; the bar follows the active seat, so the two drawn cards show

@@ -206,18 +206,88 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             </div>
             {peek.length > 0 ? (
               <>
-                <div className="tab" style={{ margin: '12px 0 6px' }}>The top {peek.length} agenda cards</div>
-                <div className="rowline">
-                  {peekOrder.map(id => (
-                    <button key={id} type="button" className={`pay${agendaBottom.includes(id) ? '' : ' on'}`}
-                      data-testid={`agenda-place-${id}`}
-                      onClick={() => setAgendaBottom(agendaBottom.includes(id) ? agendaBottom.filter(x => x !== id) : [...agendaBottom, id])}>
-                      {agendaDef(id).name}: {agendaBottom.includes(id) ? 'to the bottom' : 'stays on top'}
-                    </button>
-                  ))}
+                <div className="tab" style={{ margin: '12px 0 8px' }}>
+                  Top {peek.length} Agenda Cards (Peek & Order)
+                </div>
+                <div className="sub" style={{ marginBottom: 12 }}>
+                  Read the cards below and decide where each goes. Cards kept on top will be revealed and voted on in the upcoming agenda phase.
+                </div>
+                <div className="agenda-peek-cards" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {peekOrder.map((id, idx) => {
+                    const def = agendaDef(id)
+                    const isBottom = agendaBottom.includes(id)
+                    return (
+                      <div
+                        key={id}
+                        className={`agenda-card-container${isBottom ? ' is-bottom' : ' is-top'}`}
+                        data-testid={`agenda-preview-${id}`}
+                        style={{
+                          background: isBottom ? 'rgba(15, 23, 42, 0.6)' : 'rgba(30, 41, 59, 0.85)',
+                          border: isBottom ? '1px solid rgba(148, 163, 184, 0.2)' : '1px solid rgba(234, 179, 8, 0.45)',
+                          borderRadius: 8,
+                          padding: '12px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: isBottom ? '#94a3b8' : '#f8fafc' }}>
+                              {def.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                letterSpacing: '0.05em',
+                                background: def.kind === 'law' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                                color: def.kind === 'law' ? '#fde047' : '#7dd3fc',
+                                border: def.kind === 'law' ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid rgba(56, 189, 248, 0.4)',
+                              }}
+                            >
+                              {def.kind}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                            Target: <strong style={{ color: '#e2e8f0' }}>{def.target}</strong>
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: 13, lineHeight: 1.5, color: isBottom ? '#64748b' : '#cbd5e1', padding: '6px 0' }}>
+                          {def.text}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid rgba(148, 163, 184, 0.15)' }}>
+                          <button
+                            type="button"
+                            className={`pay${isBottom ? '' : ' on'}`}
+                            data-testid={`agenda-place-${id}`}
+                            onClick={() => setAgendaBottom(isBottom ? agendaBottom.filter(x => x !== id) : [...agendaBottom, id])}
+                          >
+                            {isBottom ? '⬇ Put on bottom of deck' : `⬆ Keep on top (${idx + 1} of ${peekOrder.length})`}
+                          </button>
+                          <span style={{ fontSize: 12, color: isBottom ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
+                            {isBottom ? 'Moving to bottom of deck' : 'Drawn first in Agenda Phase'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
                   {peekOrder.length > 1 ? (
-                    <button type="button" className="pay" data-testid="agenda-swap"
-                      onClick={() => setAgendaOrder([...peekOrder].reverse())}>Swap the two</button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4 }}>
+                      <button
+                        type="button"
+                        className="pay"
+                        data-testid="agenda-swap"
+                        onClick={() => setAgendaOrder([...peekOrder].reverse())}
+                      >
+                        ⇄ Swap top two cards order
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               </>
@@ -236,7 +306,9 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             <div className="rowline">
               {dockable.map(planet => (
                 <button key={planet.id} type="button" className={`pay${dock === planet.id ? ' on' : ''}`}
-                  data-testid={`dock-${planet.id}`} onClick={() => setDock(dock === planet.id ? null : planet.id)}>
+                  data-testid={`dock-${planet.id}`}
+                  disabled={player.reinforcements.spacedock < 1 && dock !== planet.id}
+                  onClick={() => setDock(dock === planet.id ? null : planet.id)}>
                   Dock on {planet.name}
                 </button>
               ))}
@@ -246,14 +318,24 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             <div className="rowline">
               {pdsable.map(planet => (
                 <button key={planet.id} type="button" className={`pay${firstPds === planet.id ? ' on' : ''}`}
-                  data-testid={`pds-${planet.id}`} onClick={() => setFirstPds(firstPds === planet.id ? null : planet.id)}>
+                  data-testid={`pds-${planet.id}`}
+                  disabled={player.reinforcements.pds < 1 && firstPds !== planet.id}
+                  onClick={() => setFirstPds(firstPds === planet.id ? null : planet.id)}>
                   PDS on {planet.name}
                 </button>
               ))}
               {pdsable.length === 0 ? <span className="sub">Every planet you control already carries two PDS.</span> : null}
             </div>
-            {player.reinforcements.spacedock < 1 ? <div className="sub">No space dock left in your reinforcements.</div> : null}
-            {player.reinforcements.pds < 1 ? <div className="sub">No PDS left in your reinforcements.</div> : null}
+            {player.reinforcements.spacedock < 1 ? (
+              <div className="sub warn" style={{ color: '#fca5a5', marginTop: 4 }}>
+                No space docks remaining in supply (TI4 component limit: 3 space docks per player).
+              </div>
+            ) : null}
+            {player.reinforcements.pds < 1 ? (
+              <div className="sub warn" style={{ color: '#fca5a5', marginTop: 4 }}>
+                No PDS remaining in supply (TI4 component limit: 6 PDS per player).
+              </div>
+            ) : null}
           </>
         ) : null}
 
