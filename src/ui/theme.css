@@ -874,14 +874,16 @@ button { font-family: inherit; }
 }
 
 .sc-mini-num {
-  display: inline-block;
-  width: 12px; height: 12px;
-  line-height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px; height: 15px;
+  flex: none;
   text-align: center;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .player-strip .clock.mini {
