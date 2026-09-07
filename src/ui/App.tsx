@@ -58,6 +58,17 @@ function useDemoBootstrap() {
       })
       return
     }
+    // `&panel=agenda` is the R10 manual QA hook: resumes straight into a live vote (Mutiny, with an
+    // influence planet ready) so the dialog, the clock and the hot-seat handoff can all be checked
+    // without playing a game up to Mecatol capture first.
+    if (panel === 'agenda') {
+      void import('../engine/testUtils').then(({ toActionPhase, toAgendaPhase, withPlanetOwner }) => {
+        const state = toAgendaPhase(withPlanetOwner(toActionPhase(1, 0), 'bereg', 'bereg', 1), 'mutiny')
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
     // `start` puts the new game's code in the URL itself
     start(DEMO_CONFIG, 1, 15)
     // Runs once on mount; `start`, `resume` and `session` come from a stable context store.
