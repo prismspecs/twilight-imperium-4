@@ -67,3 +67,15 @@ export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: M
     height: Math.round(def.spriteH / def.pxPerModelUnit * scale),
   }
 }
+
+/**
+ * A unit's true width and height, scaled to fit inside a `box`-sized square without distorting its aspect
+ * ratio — for small UI icons (the tech drawer's unit symbols) that need one shared bounding box rather than
+ * the board's or a panel's relative scale. Reads the same manifest as `spriteSize`, so an icon never drifts
+ * from how the model actually looks everywhere else it is drawn.
+ */
+export function iconFitSize(type: UnitType, box: number, style: ModelStyle = 'models'): { width: number; height: number } {
+  const def = SPRITE_SETS[style][type]
+  const scale = box / Math.max(def.spriteW, def.spriteH) * def.pxPerModelUnit
+  return spriteSize(type, scale, style)
+}

@@ -1,8 +1,9 @@
 /// <reference types="node" />
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { SPRITE_FOLDER, SPRITE_SETS, spriteSize } from './sprites'
+import { SPRITE_FOLDER, SPRITE_SETS, iconFitSize, spriteSize } from './sprites'
 import type { ModelStyle } from './modelStyle'
+import type { UnitType } from '../engine/types'
 
 const MODEL_STYLE_IDS: ModelStyle[] = ['models', 'topdown', 'counters']
 
@@ -54,5 +55,18 @@ describe('unit sprites', () => {
     const big = spriteSize('dreadnought')
     const small = spriteSize('dreadnought', 5.8)
     expect(small.width).toBe(Math.round(big.width / 2))
+  })
+  it('fits every unit inside a shared icon box without exceeding it, and without distorting a non-square sprite', () => {
+    for (const style of MODEL_STYLE_IDS) {
+      for (const type of Object.keys(SPRITE_SETS[style]) as UnitType[]) {
+        const fit = iconFitSize(type, 18, style)
+        expect(fit.width, `${style} ${type}`).toBeLessThanOrEqual(18)
+        expect(fit.height, `${style} ${type}`).toBeLessThanOrEqual(18)
+        expect(Math.max(fit.width, fit.height), `${style} ${type}`).toBe(18)
+      }
+    }
+    // A non-square sprite keeps its own proportions rather than being forced into a square.
+    const infantry = iconFitSize('infantry', 18, 'counters')
+    expect(infantry.width).not.toBe(infantry.height)
   })
 })

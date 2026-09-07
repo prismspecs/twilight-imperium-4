@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { iconFitSize } from './sprites'
 import { TechIcon } from './TechIcon'
 
 describe('the technology symbol', () => {
@@ -30,7 +31,9 @@ describe('the technology symbol', () => {
     expect(container.style.width).toBe('18px')
     expect(container.style.height).toBe('18px')
   })
-  it('correctly constrains infantry_ii and fighter_ii to requested custom size without overflow', () => {
+  it('sizes infantry_ii and fighter_ii from the shared sprite manifest, keeping their true aspect ratio', () => {
+    // Regression: the icon used to force width===height===size on every unit, distorting non-square sprites
+    // (infantry's counter art is 156x172, not square) instead of reading real proportions from one place.
     const { container } = render(
       <>
         <TechIcon techId="infantry_ii" colour="blue" size={15} />
@@ -39,13 +42,16 @@ describe('the technology symbol', () => {
     )
     const imgs = container.querySelectorAll('img')
     expect(imgs).toHaveLength(2)
-    for (const img of imgs) {
-      expect(img.getAttribute('width')).toBe('15')
-      expect(img.getAttribute('height')).toBe('15')
+    const expected = [iconFitSize('infantry', 15, 'counters'), iconFitSize('fighter', 15, 'counters')]
+    imgs.forEach((img, i) => {
+      expect(img.getAttribute('width')).toBe(String(expected[i].width))
+      expect(img.getAttribute('height')).toBe(String(expected[i].height))
+      expect(Number(img.getAttribute('width'))).toBeLessThanOrEqual(15)
+      expect(Number(img.getAttribute('height'))).toBeLessThanOrEqual(15)
       const unitContainer = img.closest('.ticon.unit') as HTMLElement
       expect(unitContainer.style.width).toBe('15px')
       expect(unitContainer.style.height).toBe('15px')
-    }
+    })
   })
   it('falls back to models sprite style when counter sprite fails to load', () => {
     render(<TechIcon techId="infantry_ii" colour="blue" />)

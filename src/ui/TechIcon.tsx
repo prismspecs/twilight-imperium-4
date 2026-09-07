@@ -1,6 +1,7 @@
 import { techDef } from '../data/techs'
 import { spriteUrl, techIconUrl } from './art'
 import { useModelStyle } from './modelStyle'
+import { iconFitSize } from './sprites'
 import type { Color, TechColor } from '../engine/types'
 
 const COLOUR_NAME: Record<TechColor, string> = {
@@ -20,13 +21,14 @@ export function TechIcon({ techId, colour: playerColour, size = 18 }: { techId: 
   const { style } = useModelStyle()
   const def = techDef(techId)
   if (def.unit) {
+    const fit = iconFitSize(def.unit, size, style)
     return (
       <span className="ticon unit" style={{ width: size, height: size }} title={def.name}>
         <img
           src={spriteUrl(playerColour, def.unit, style)}
           alt={def.name}
-          width={size}
-          height={size}
+          width={fit.width}
+          height={fit.height}
           onError={e => {
             const target = e.currentTarget as HTMLImageElement
             target.onerror = null
