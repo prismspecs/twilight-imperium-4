@@ -60,10 +60,11 @@ export const PLANET_SPOTS: Record<string, PlanetSpot> = {
   // 35_Bereg.png: disc fitted at art (138,90) r 61 -> board centre (93,61) d 82; banner along the top
   bereg: { art: { left: 52, top: 20, width: 82, height: 82 }, plate: { left: 52, top: 14 } },
   starpoint: { art: { left: 52, top: 20, width: 82, height: 82 }, plate: { left: 52, top: 14 } },
-  // 35_Bereg.png: Lirta IV fitted at art (205,208) r 63 -> board centre (138,140) d 86; the print mirrors
-  // its plate, badges on the outward (right) rim and the banner running left along the bottom
   'lirta-iv': { art: { left: 95, top: 97, width: 86, height: 86 }, plate: { left: 146, top: 152, flip: true } },
+  // On fixed duel map, centauri sits at index 1 in starpoint; on galaxy tile 34, it sits at index 0.
+  // getPlanetSpot below routes count >= 2 to fallbackPlanetSpot by index.
   centauri: { art: { left: 95, top: 97, width: 86, height: 86 }, plate: { left: 146, top: 152, flip: true } },
+  gral: { art: { left: 95, top: 97, width: 86, height: 86 }, plate: { left: 146, top: 152, flip: true } },
   // 18_MR.png: disc fitted at art (171,152) r 121 -> board d 164, centred on the tile like the print
   'mecatol-rex': { art: { left: 34, top: 18.5, width: 164, height: 164 }, plate: { left: 64, top: 150 } },
   // 10_ArcPime.png: Arc Prime fitted at art (131,87) r 63, Wren Terra at (224,205) r 63, both with the
@@ -93,7 +94,7 @@ export function fallbackPlanetSpot(index: number, count: number): PlanetSpot {
 }
 
 export function getPlanetSpot(planetId: string, index = 0, count = 1): PlanetSpot {
-  if (count >= 2 && (planetId === 'sakulag' || planetId === 'starpoint' || planetId === 'quann')) {
+  if (count >= 2 && (planetId === 'sakulag' || planetId === 'starpoint' || planetId === 'quann' || planetId === 'centauri')) {
     return fallbackPlanetSpot(index, count)
   }
   return PLANET_SPOTS[planetId] ?? fallbackPlanetSpot(index, count)
@@ -126,7 +127,7 @@ export const PLATE_SIZE: Record<string, { width: number; height: number }> = {
   '000': { width: 79, height: PLATE_H }, sakulag: { width: 102, height: PLATE_H },
   quann: { width: 92, height: PLATE_H }, bereg: { width: 90, height: PLATE_H },
   starpoint: { width: 110, height: PLATE_H }, 'lirta-iv': { width: 99, height: PLATE_H },
-  centauri: { width: 105, height: PLATE_H }, 'mecatol-rex': { width: 106, height: PLATE_H },
+  centauri: { width: 105, height: PLATE_H }, gral: { width: 85, height: PLATE_H }, 'mecatol-rex': { width: 106, height: PLATE_H },
   'arc-prime': { width: 94, height: PLATE_H }, 'wren-terra': { width: 104, height: PLATE_H },
 }
 
