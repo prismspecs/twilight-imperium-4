@@ -48,6 +48,8 @@ let ended = 0
 const moveCounts: number[] = []
 const reactionWindows = new Map<string, number>()
 let reactionsDeclined = 0
+const agendasVoted = new Map<string, number>()
+let agendaPhasesEntered = 0
 
 for (let seed = 1; seed <= seedCount; seed++) {
   let state = createGame(config(), seed)
@@ -66,13 +68,17 @@ for (let seed = 1; seed <= seedCount; seed++) {
       reactionWindows.set(effect, (reactionWindows.get(effect) ?? 0) + 1)
     } else if (move.type === 'declineReaction') {
       reactionsDeclined++
+    } else if (move.type === 'castVote' && state.agenda) {
+      agendasVoted.set(state.agenda.revealed, (agendasVoted.get(state.agenda.revealed) ?? 0) + 1)
     }
+    const wasAgenda = state.phase === 'agenda'
     const r = applyMove(state, move, deriveSeed(seed, moves))
     if (!r.ok) {
       failure = { seed, kind: 'illegal-move', moves, round: state.round, seat: state.active, move, error: r.error }
       break
     }
     state = r.value
+    if (!wasAgenda && state.phase === 'agenda') agendaPhasesEntered++
     moves++
   }
   if (failure) {
@@ -97,6 +103,8 @@ for (const [effect, count] of [...reactionWindows.entries()].sort()) console.log
 for (const effect of new Set(PLAYABLE_REACTION_CARDS.map(c => c.replace(/_\d+$/, '')))) {
   if (!reactionWindows.has(effect)) console.log(`  ${effect}: NEVER PLAYED`)
 }
+console.log(`\nR10 agenda phase: entered ${String(agendaPhasesEntered)} times, ${String([...agendasVoted.values()].reduce((a, b) => a + b, 0))} votes cast`)
+for (const [agenda, count] of [...agendasVoted.entries()].sort()) console.log(`  ${agenda}: ${String(count)} votes`)
 if (failures.length) {
   console.log(`\n${String(failures.length)} failures:`)
   for (const f of failures) {
