@@ -239,7 +239,7 @@ function runGame(seed: number): GameRun {
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
-  'shipyard', 'tradePost', 'postAbility', 'playActionCard', 'pass', 'status',
+  'shipyard', 'tradePost', 'postAbility', 'playActionCard', 'pass', 'status', 'castVote',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 
@@ -258,6 +258,8 @@ const COUNTERS: readonly [string, RegExp][] = [
   ['technology researched', /^seat \d researches /],
   ['trade posts rolled', /^Trade posts: /],
   ['a post ability used', /^seat \d uses .+ at the (west|east) post/],
+  ['R10 an agenda was revealed', /^agenda revealed: /],
+  ['R10 an agenda outcome resolved', / resolves: /],
 ]
 
 describe('R3.1 to R3.3 full game', () => {
