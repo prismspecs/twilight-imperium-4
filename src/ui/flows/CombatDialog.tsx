@@ -106,7 +106,14 @@ export function CombatDialog() {
   const attackerShips = currentSystemId && state.systems[currentSystemId]
     ? state.systems[currentSystemId].space.filter(u => u.owner === combat.attacker && isShip(u.type)).length
     : 0
-  const isPdsDefense = combat.round <= 1 && defenderShips === 0
+  // Only frame this as a "space cannon defense" round when the defender actually has a PDS to fire — an
+  // undefended planet (no ships, no PDS) falls through to the ordinary combat-round flow instead, where the
+  // defender simply has no dice to roll, rather than showing a PDS-fire prompt for a PDS that isn't there.
+  const defenderHasPds = currentSystemId && state.systems[currentSystemId]
+    ? state.systems[currentSystemId].planets.some(p => p.structures.some(u => u.owner === combat.defender && u.type === 'pds'))
+    : false
+  const isPdsDefense = combat.round <= 1 && defenderShips === 0 && defenderHasPds
+  const pdsHits = combat.lastRolls.filter(r => r.unit === 'pds' && r.owner === combat.defender && r.hit).length
 
   const rollBtnLabel = isPdsDefense
     ? (combat.round === 0
@@ -226,11 +233,11 @@ export function CombatDialog() {
 
           {isPdsDefense && combat.round === 1 && attackerShips === 0 ? (
             <div className="info-callout good" data-testid="pds-defense-destroyed-notice">
-              <strong>Defense successful:</strong> all invading ships were destroyed by space cannon fire. The tactical action has been repelled.
+              <strong>Defense successful:</strong> the PDS scored {pdsHits} hit{pdsHits === 1 ? '' : 's'}, destroying every invading ship. The tactical action has been repelled.
             </div>
           ) : isPdsDefense && combat.round === 1 ? (
             <div className="info-callout" data-testid="pds-defense-resolved-notice">
-              <strong>Space cannon resolved:</strong> defense fire is complete. Click &quot;Proceed to Invasion&quot; to continue.
+              <strong>Space cannon fired:</strong> the PDS scored {pdsHits} hit{pdsHits === 1 ? '' : 's'} against the invading fleet. Click &quot;Proceed to Invasion&quot; to continue.
             </div>
           ) : null}
 

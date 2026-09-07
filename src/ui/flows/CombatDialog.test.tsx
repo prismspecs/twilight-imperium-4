@@ -271,7 +271,62 @@ describe('CombatDialog and combat outcome visibility', () => {
     renderWithSession(sRound1, <BoardScreen />)
     expect(screen.getByText('Defense Resolved')).toBeTruthy()
     expect(screen.getByTestId('pds-defense-resolved-notice')).toBeTruthy()
+    expect(screen.getByTestId('pds-defense-resolved-notice').textContent).toContain('scored 0 hits')
     expect(screen.getByRole('button', { name: 'Proceed to Invasion' })).toBeTruthy()
+  })
+
+  it('states how many hits the PDS scored, not just that it fired', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        bereg: {
+          ...s.systems.bereg,
+          planets: s.systems.bereg.planets.map(p =>
+            p.id === 'bereg' ? { ...p, structures: [{ id: 99, type: 'pds' as const, owner: 1, damaged: false }] } : p
+          ),
+        },
+      },
+    }
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 1,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [{ owner: 1, unit: 'pds', value: 9, hit: true }],
+        pending: [],
+      },
+    })
+
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('pds-defense-resolved-notice').textContent).toContain('scored 1 hit')
+  })
+
+  it('does not frame an undefended planet (no ships, no PDS) as a space cannon defense round', () => {
+    // Defender (seat 1) has neither ships nor a PDS on bereg: an ordinary combat round should render instead.
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 0,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [],
+        pending: [],
+      },
+    })
+
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.queryByText(/Space cannon defense in/i)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open fire' })).toBeTruthy()
   })
 
   it('renders defense successful notice when space cannon destroys all invading ships', () => {
