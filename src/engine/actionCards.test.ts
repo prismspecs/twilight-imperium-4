@@ -169,6 +169,20 @@ describe('R9 the printed abilities', () => {
     expect(played.value.players[0].reinforcements.infantry).toBe(before - 3)
   })
 
+  it('Frontline Deployment remains legal when player has large numbers of infantry (TI4 LRR 94.1 unlimited supply)', () => {
+    // Player has produced 20 infantry already (exceeding original 12 cap)
+    const base = withHand(toActionPhase(), 0, ['frontline_deployment_1'])
+    const highInfantryState = {
+      ...base,
+      players: base.players.map((p, i) => i === 0 ? { ...p, reinforcements: { ...p.reinforcements, infantry: 75 } } : p),
+    }
+    const played = playActionCard(highInfantryState, 'frontline_deployment_1', { planetId: '000' })
+    expect(played.ok).toBe(true)
+    if (played.ok) {
+      expect(played.value.players[0].reinforcements.infantry).toBe(72)
+    }
+  })
+
   it('Rise of a Messiah puts one infantry on every planet you control', () => {
     const base = withHand(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 0), 0, ['rise_of_a_messiah'])
     const played = playActionCard(base, 'rise_of_a_messiah', {})

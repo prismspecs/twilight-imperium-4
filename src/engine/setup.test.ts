@@ -35,7 +35,7 @@ describe('R2 setup', () => {
     expect(g.players[1].techs).toEqual(['antimass_deflectors', 'plasma_scoring'])
     expect(g.players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })
     expect(g.players[0].commodities).toBe(2); expect(g.players[0].tradeGoods).toBe(0)
-    expect(g.players[0].reinforcements.infantry).toBe(7); expect(g.players[0].reinforcements.pds).toBe(5); expect(g.players[1].reinforcements.pds).toBe(6)
+    expect(g.players[0].reinforcements.infantry).toBe(94); expect(g.players[0].reinforcements.pds).toBe(5); expect(g.players[1].reinforcements.pds).toBe(6)
   })
   it('unit ids are unique across the map', () => {
     const ids = [...unitsOf(g, 0), ...unitsOf(g, 1), ...unitsOf(g, 'guardian')].map(u => u.id)
