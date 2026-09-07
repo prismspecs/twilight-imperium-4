@@ -115,6 +115,7 @@ export interface Session {
   handoff: Seat | null
   /** Which seat is an AI. Absent (an old saved game) means both seats are human. */
   config?: GameConfig
+  autoPassOnZero?: boolean
 }
 
 export interface GameStore {
@@ -203,7 +204,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       players: config.players.map((p, seat) => ({ seat, faction: p.faction, playerType: p.playerType })),
     })
     if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
-    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, config }
+    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, config, autoPassOnZero: false }
     sessionRef.current = fresh
     setSession(fresh)
     // the URL names the game from the first move on, so the code and the address cannot drift apart
@@ -308,7 +309,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // R6: at zero the player passes automatically; while passing is illegal (another phase, an unused strategy
   // card, an open secondary window, a running tactical action) the clock stays at zero until it becomes legal
   useEffect(() => {
-    if (!session || !running || session.minutes <= 0) return
+    if (!session || !running || session.minutes <= 0 || !session.autoPassOnZero) return
     if ((session.clockMs[session.state.active] ?? 0) > 0) return
     if (legal.some(m => m.type === 'pass')) apply({ type: 'pass' })
   }, [session, running, legal, apply])

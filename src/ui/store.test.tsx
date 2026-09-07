@@ -39,8 +39,8 @@ function wrapper(ticking: boolean) {
   }
 }
 
-function session(state: Session['state'], clockMs: [number, number]): Session {
-  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null }
+function session(state: Session['state'], clockMs: [number, number], autoPassOnZero = true): Session {
+  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null, autoPassOnZero }
 }
 
 describe('the hot-seat store', () => {
@@ -126,6 +126,17 @@ describe('the hot-seat store', () => {
     expect(result.current.session?.clockMs[0]).toBe(0)
     expect(result.current.session?.state.players[0].passed).toBe(true)
     expect(result.current.session?.state.active).toBe(1)
+    vi.useRealTimers()
+  })
+
+  it('does not pass automatically at zero when autoPassOnZero is false', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [1000, 60000], false)) })
+    act(() => { vi.advanceTimersByTime(1100) })
+    expect(result.current.session?.clockMs[0]).toBe(0)
+    expect(result.current.session?.state.players[0].passed).toBe(false)
+    expect(result.current.session?.state.active).toBe(0)
     vi.useRealTimers()
   })
 
