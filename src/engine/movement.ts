@@ -2,7 +2,6 @@ import { tileByNumber } from '../data/tiles'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, statsOwner, trimCargo } from './board'
-import { afterSpaceCannonOnly, spaceCannonOffense } from './combat'
 import { afterSpaceStep } from './invasion'
 import type { Anomaly, CombatState, GameState, Result, Seat, System, Unit } from './types'
 
@@ -53,7 +52,7 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
   let frontier = [from]
   for (let d = 1; d <= moveValue && frontier.length; d++) {
     const next: string[] = []
-    for (const id of frontier) for (const n of neighbours(state.systems, id)) {
+    for (const id of frontier) for (const n of neighbours(state.systems, id, state.players[seat]?.faction)) {
       if (n === to) return d
       if (seen.has(n)) continue
       seen.add(n)
@@ -195,7 +194,7 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   return { ok: true, value: next }
 }
 
-export function endMovement(state: GameState, seed: number): Result<GameState> {
+export function endMovement(state: GameState, _seed?: number): Result<GameState> {
   const tac = state.tactical
   if (!tac || tac.step !== 'movement') return { ok: false, error: 'not in the movement step' }
   const seat = state.active
@@ -206,15 +205,12 @@ export function endMovement(state: GameState, seed: number): Result<GameState> {
     const combat: CombatState = { round: 0, attacker: seat, defender: foes[0].owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
     return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
-  // R4.1 step 1: a defending PDS still fires even when there are no enemy ships to trigger a full space combat.
+  // R4.1 step 1: a defending PDS fires even when there are no enemy ships in space.
+  // We enter the spaceCombat step with round 0 so the defense roll is interactive and visible.
   const gunner = sys.planets.flatMap(p => p.structures).find(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon)
   if (!mine.length || !gunner) {
     return { ok: true, value: { ...state, tactical: afterSpaceStep(state, tac.systemId, seat) } }
   }
-  // the cannon hits are the arriving player's to assign, so the movement step borrows a combat state to hold the
-  // queue; `afterSpaceCannonOnly` drops it again, whether the assignment happens now or in an `assignHits` move
-  const holder: CombatState = { round: 0, attacker: seat, defender: gunner.owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
-  const fired = spaceCannonOffense({ ...state, tactical: { ...tac, combat: holder } }, tac.systemId, seat, seed)
-  if (fired.tactical?.combat?.pending.length) return { ok: true, value: fired }
-  return { ok: true, value: afterSpaceCannonOnly(fired, tac.systemId, seat) }
+  const combat: CombatState = { round: 0, attacker: seat, defender: gunner.owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
+  return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
 }

@@ -7,6 +7,7 @@ import { useGame } from '../store'
 import { findActionCard } from '../../data/actionCards'
 import { COLOUR_INK, SIGIL, tokenUrl } from '../art'
 import { isAi } from '../../engine'
+import { isShip } from '../../data/units'
 import type { Owner, Seat } from '../../engine/types'
 
 export function CombatDialog() {
@@ -98,11 +99,31 @@ export function CombatDialog() {
   const attackerInk = attackerPlayer ? COLOUR_INK[attackerPlayer.color] : { accent: '#ef4444', tint: '#fca5a5', glow: 'rgba(239,68,68,0.4)' }
   const defenderInk = defenderPlayer ? COLOUR_INK[defenderPlayer.color] : { accent: '#94a3b8', tint: '#cbd5e1', glow: 'rgba(148,163,184,0.4)' }
 
-  const rollBtnLabel = combat.round === 0
-    ? 'Open fire'
-    : `Roll combat dice (Round ${combat.round})`
-
   const currentSystemId = state.tactical?.systemId ?? ''
+  const defenderShips = currentSystemId && state.systems[currentSystemId]
+    ? state.systems[currentSystemId].space.filter(u => u.owner === combat.defender && isShip(u.type)).length
+    : 0
+  const attackerShips = currentSystemId && state.systems[currentSystemId]
+    ? state.systems[currentSystemId].space.filter(u => u.owner === combat.attacker && isShip(u.type)).length
+    : 0
+  const isPdsDefense = combat.round <= 1 && defenderShips === 0
+
+  const rollBtnLabel = isPdsDefense
+    ? (combat.round === 0
+        ? 'Fire Space Cannon (PDS)'
+        : (attackerShips === 0 ? 'Fleet Destroyed (Done)' : 'Proceed to Invasion'))
+    : combat.round === 0
+      ? 'Open fire'
+      : `Roll combat dice (Round ${combat.round})`
+
+  const headerTitle = isPdsDefense
+    ? `Space cannon defense in ${systemLabel(currentSystemId, state)}`
+    : `Space combat in ${systemLabel(currentSystemId, state)}`
+
+  const subRound = isPdsDefense
+    ? (combat.round === 0 ? 'Defense Cannon Fire' : 'Defense Resolved')
+    : `Round ${combat.round}`
+
   const combatEvents = (() => {
     // If round is 0 and no rolls or pending hits exist, combat just started: no events have occurred yet
     if (combat.round === 0 && combat.lastRolls.length === 0 && combat.pending.length === 0) {
@@ -129,7 +150,8 @@ export function CombatDialog() {
           text.includes('retreats') ||
           text.includes('Assault Cannon') ||
           text.includes('Ambush') ||
-          text.includes('Mentak')
+          text.includes('Mentak') ||
+          text.toLowerCase().includes('space cannon')
         if (!isCombatInfo) return false
         // Exclude events explicitly mentioning another system
         for (const sys of Object.values(state.systems)) {
@@ -152,8 +174,8 @@ export function CombatDialog() {
         <div className="in">
           {/* Modal Header */}
           <div className="dhead">
-            <span className="tab">Space combat in {systemLabel(state.tactical?.systemId ?? '', state)}</span>
-            <span className="sub" data-testid="combat-round">Round {combat.round}</span>
+            <span className="tab">{headerTitle}</span>
+            <span className="sub" data-testid="combat-round">{subRound}</span>
             <div className="right">
               <button
                 type="button"
@@ -197,10 +219,44 @@ export function CombatDialog() {
               />
               <div className="combat-matchup-info">
                 <span className="combat-matchup-name" style={{ color: defenderInk.accent }}>{name(combat.defender)}</span>
-                <span className="combat-matchup-role">Defender</span>
+                <span className="combat-matchup-role">{isPdsDefense ? 'Defender (PDS)' : 'Defender'}</span>
               </div>
             </div>
           </div>
+
+          {isPdsDefense && combat.round === 1 && attackerShips === 0 ? (
+            <div
+              className="info-callout"
+              data-testid="pds-defense-destroyed-notice"
+              style={{
+                margin: '8px 0',
+                padding: '8px 14px',
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: '1px solid rgba(34, 197, 94, 0.35)',
+                borderRadius: '6px',
+                color: '#86efac',
+                fontSize: '13px',
+              }}
+            >
+              🛡️ <strong>Defense Successful:</strong> All invading ships were destroyed by Space Cannon fire! The tactical action has been repelled.
+            </div>
+          ) : isPdsDefense && combat.round === 1 ? (
+            <div
+              className="info-callout"
+              data-testid="pds-defense-resolved-notice"
+              style={{
+                margin: '8px 0',
+                padding: '8px 14px',
+                background: 'rgba(59, 130, 246, 0.15)',
+                border: '1px solid rgba(59, 130, 246, 0.35)',
+                borderRadius: '6px',
+                color: '#93c5fd',
+                fontSize: '13px',
+              }}
+            >
+              🎯 <strong>Space Cannon Resolved:</strong> Defense fire complete. Click &quot;Proceed to Invasion&quot; to continue.
+            </div>
+          ) : null}
 
           {/* Munitions Reserves & Matchup Info */}
           <div className="rowline">

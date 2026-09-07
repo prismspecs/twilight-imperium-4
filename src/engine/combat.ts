@@ -364,6 +364,14 @@ function resumeAfterAssignment(state: GameState, context: string, seed: number):
   const ctx: Ctx = { systemId: tac.systemId, attacker: tac.combat.attacker, defender: tac.combat.defender, round: tac.combat.round }
   if (tac.step === 'movement') return afterSpaceCannonOnly(state, ctx.systemId, ctx.attacker)
   if (isRoundContext(context)) return finish(state, ctx)
+  if (context === 'space cannon offense') {
+    const sys = state.systems[ctx.systemId]
+    const defenderShips = shipsOf(sys, ctx.defender).length
+    if (!defenderShips) {
+      // PDS-only defense: hits assigned; advance to round 1 to view results before proceeding
+      return { ...state, tactical: { ...tac, combat: { ...tac.combat, round: 1 } } }
+    }
+  }
   const from = context === 'space cannon offense' ? 'ambush'
     : context === 'Mentak Ambush' ? 'assault cannon'
     : context === 'assault cannon' ? 'anti-fighter barrage'
@@ -399,7 +407,7 @@ export function afterSpaceCannonOnly(state: GameState, systemId: string, seat: S
   const trimmed = trimCargo(state, systemId, seat)
   return {
     ...trimmed,
-    tactical: afterSpaceStep(state, tac.systemId, seat),
+    tactical: afterSpaceStep(trimmed, tac.systemId, seat),
   }
 }
 
@@ -467,6 +475,7 @@ export function spaceCannonOffense(state: GameState, systemId: string, attacker:
   // every shooter fires at the same fleet and their dice depend on nothing the hits change (a PDS sits on a
   // planet), so all of them roll first and the attacker assigns the whole barrage as one decision
   const groups: HitGroup[] = []
+  const allRolls: DieRoll[] = []
   for (const owner of shooters) {
     const sOwner = statsOwner(next, owner)
     const pds = next.systems[systemId].planets.flatMap(p => p.structures.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon))
@@ -483,10 +492,11 @@ export function spaceCannonOffense(state: GameState, systemId: string, attacker:
       rolls.push(...dieRolls(owner, u.type, roll.rolls, sc.value))
       hits += roll.hits
     }
+    allRolls.push(...rolls)
     next = { ...next, log: [...next.log, { t: 'roll', owner, rolls, context: 'space cannon offense' }] }
     groups.push({ count: hits, mode: hasTech(next, owner, 'graviton_laser_system') ? 'noFighters' : 'any' })
   }
-  return resolveHits(next, systemId, attacker, groups, 'space cannon offense')
+  return resolveHits(withLastRolls(next, allRolls), systemId, attacker, groups, 'space cannon offense')
 }
 
 /**
@@ -697,7 +707,31 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   if (pendingFor(state)) return { ok: false, error: 'hits must be assigned first' }
   const ctx: Ctx = { systemId: tac.systemId, attacker: tac.combat.attacker, defender: tac.combat.defender, round: tac.combat.round }
   const sys = state.systems[ctx.systemId]
-  if (!shipsOf(sys, ctx.attacker).length || !shipsOf(sys, ctx.defender).length) return { ok: false, error: 'the space combat is already decided' }
+  const defenderShips = shipsOf(sys, ctx.defender).length
+  const defenderHasPds = sys.planets.flatMap(p => p.structures).some(u => u.owner === ctx.defender && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon)
+  const isPdsDefense = !defenderShips && defenderHasPds && ctx.round <= 1
+
+  if (!shipsOf(sys, ctx.attacker).length && !isPdsDefense) return { ok: false, error: 'the space combat is already decided' }
+  if (!defenderShips && !isPdsDefense) return { ok: false, error: 'the space combat is already decided' }
+
+  // When PDS defense round 0 is resolved, round 1 advances out of space combat
+  if (ctx.round === 1 && !defenderShips) {
+    const attackerShips = shipsOf(sys, ctx.attacker).length
+    if (!attackerShips) {
+      const trimmed = trimCargo(state, ctx.systemId, ctx.attacker)
+      const tacTrimmed = trimmed.tactical!
+      return {
+        ok: true,
+        value: {
+          ...trimmed,
+          tactical: { ...tacTrimmed, step: 'done' },
+          log: [...trimmed.log, { t: 'info', text: `All attacking ships destroyed by space cannon defense in ${ctx.systemId}` }],
+        },
+      }
+    }
+    return { ok: true, value: afterSpaceCannonOnly(state, ctx.systemId, ctx.attacker) }
+  }
+
   const wantAttacker = munitions?.attacker ?? false
   const wantDefender = munitions?.defender ?? false
   if (ctx.round === 0) {
@@ -706,6 +740,11 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
     const opened = withLastRolls(state, [])
     const next = spaceCannonOffense(opened, ctx.systemId, ctx.attacker, seed)
     if (pendingFor(next)) return { ok: true, value: next }
+    if (!defenderShips) {
+      // 0 hits from PDS: advance round to 1 so the roll can be viewed before proceeding to invasion
+      const tacNext = next.tactical!
+      return { ok: true, value: { ...next, tactical: { ...tacNext, combat: { ...tacNext.combat!, round: 1 } } } }
+    }
     return { ok: true, value: preCombat(next, 'ambush', ctx, seed) }
   }
   if (wantAttacker && !canMunitions(state, ctx.attacker)) return { ok: false, error: 'Munitions Reserves is not available to the attacker' }

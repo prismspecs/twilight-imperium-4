@@ -213,5 +213,100 @@ describe('CombatDialog and combat outcome visibility', () => {
     expect(screen.queryByText(/Casualties & Hit Assignments/i)).toBeNull()
     expect(screen.queryByText(/cruiser destroyed in quann/i)).toBeNull()
   })
+
+  it('renders interactive PDS space cannon defense dialog at round 0 and round 1', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    // Defender (seat 1) has PDS structure on planet bereg, but 0 ships in space
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        bereg: {
+          ...s.systems.bereg,
+          planets: s.systems.bereg.planets.map(p =>
+            p.id === 'bereg' ? { ...p, structures: [{ id: 99, type: 'pds' as const, owner: 1, damaged: false }] } : p
+          ),
+        },
+      },
+    }
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 0,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [],
+        pending: [],
+      },
+    })
+
+    const { unmount } = renderWithSession(s, <BoardScreen />)
+
+    // Check round 0 header and button for PDS defense
+    expect(screen.getByText(/Space cannon defense in/i)).toBeTruthy()
+    expect(screen.getByText('Defense Cannon Fire')).toBeTruthy()
+    expect(screen.getByText('Defender (PDS)')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fire Space Cannon (PDS)' })).toBeTruthy()
+
+    unmount()
+
+    // Now test round 1 when PDS fired and ships survived
+    const sRound1 = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 1,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [{ owner: 1, unit: 'pds', value: 4, hit: false }],
+        pending: [],
+      },
+    })
+
+    renderWithSession(sRound1, <BoardScreen />)
+    expect(screen.getByText('Defense Resolved')).toBeTruthy()
+    expect(screen.getByTestId('pds-defense-resolved-notice')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Proceed to Invasion' })).toBeTruthy()
+  })
+
+  it('renders defense successful notice when space cannon destroys all invading ships', () => {
+    // 0 ships remaining for attacker
+    let s = toActionPhase()
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        bereg: {
+          ...s.systems.bereg,
+          space: [],
+          planets: s.systems.bereg.planets.map(p =>
+            p.id === 'bereg' ? { ...p, structures: [{ id: 99, type: 'pds' as const, owner: 1, damaged: false }] } : p
+          ),
+        },
+      },
+    }
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 1,
+        attacker: 0,
+        defender: 1,
+        retreating: null,
+        retreatTo: null,
+        lastRolls: [{ owner: 1, unit: 'pds', value: 8, hit: true }],
+        pending: [],
+      },
+    })
+
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('pds-defense-destroyed-notice')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fleet Destroyed (Done)' })).toBeTruthy()
+  })
 })
 

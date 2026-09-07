@@ -65,7 +65,9 @@ describe('R4.3 step 4 Infantry II revival', () => {
     // smallest seed where the carrier survives entry, letting this scenario reach the landing defense it tests.
     const s2 = ok(applyMove(deepFreeze(t), { type: 'startTactical', systemId: 'quann' }, 4))
     const m2 = ok(applyMove(s2, { type: 'endMovement' }, 4))
-    const landed = ok(applyMove(m2, { type: 'land', planetId: 'quann', infantryIds: carriedIds(m2, 'quann', 0) }, 4))
+    const c2 = ok(applyMove(m2, { type: 'combatRound' }, 4))
+    const inv = ok(applyMove(c2, { type: 'combatRound' }, 4))
+    const landed = ok(applyMove(inv, { type: 'land', planetId: 'quann', infantryIds: carriedIds(inv, 'quann', 0) }, 4))
     const lost = 2 - landed.systems.quann.planets[0].ground.filter(u => u.owner === 0).length
     expect(revivalRolls(landed)).toBe(lost > 0 ? 1 : 0)
     expect(landed.players[0].pendingInfantry).toBe(hitsIn(landed, 'Infantry II revival'))

@@ -120,7 +120,7 @@ describe('R3.2 movement', () => {
     expect(combat.value.tactical?.step).toBe('spaceCombat')
     expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] })
   })
-  it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system', () => {
+  it('R4.1 step 1: endMovement opens space combat for space cannon offense when a PDS defends an empty system', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
     const s = activate(withUnits(withPds, 'home-n', 0, ['destroyer', 'destroyer']), 0, 'bereg')
     const ids = s.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'destroyer').map(u => u.id)
@@ -128,10 +128,16 @@ describe('R3.2 movement', () => {
     if (!moved.ok) throw new Error(moved.error)
     const after = applyMove(moved.value, { type: 'endMovement' }, 5)
     if (!after.ok) throw new Error(after.error)
-    expect(after.value.tactical?.step).toBe('done')   // two destroyers and no infantry: nothing to invade with
-    const entries = after.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
+    expect(after.value.tactical?.step).toBe('spaceCombat')
+    expect(after.value.tactical?.combat?.round).toBe(0)
+    const fired = applyMove(after.value, { type: 'combatRound' }, 5)
+    if (!fired.ok) throw new Error(fired.error)
+    const entries = fired.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
     expect(entries).toHaveLength(1)
-    expect(after.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(after.value, 'space cannon offense'))
+    const resolved = applyMove(fired.value, { type: 'combatRound' }, 5)
+    if (!resolved.ok) throw new Error(resolved.error)
+    expect(resolved.value.tactical?.step).toBe('done')   // two destroyers and no infantry: nothing to invade with
+    expect(resolved.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(fired.value, 'space cannon offense'))
   })
   it('R4.1 step 1 and 4: a mixed fleet assigns the PDS hits itself before the action moves on', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
@@ -140,13 +146,20 @@ describe('R3.2 movement', () => {
     const destroyer = shipId(s, 'home-n', 'destroyer')
     const moved = applyMove(s, { type: 'moveShips', moves: [carrier, destroyer].map(unitId => ({ unitId, from: 'home-n', carrying: [] })) }, 0)
     if (!moved.ok) throw new Error(moved.error)
-    const stopped = applyMove(moved.value, { type: 'endMovement' }, 3)   // seed 3: the PDS hits
+    const inCombat = applyMove(moved.value, { type: 'endMovement' }, 3)
+    if (!inCombat.ok) throw new Error(inCombat.error)
+    expect(inCombat.value.tactical?.step).toBe('spaceCombat')
+    const stopped = applyMove(inCombat.value, { type: 'combatRound' }, 3)   // seed 3: the PDS hits
     if (!stopped.ok) throw new Error(stopped.error)
     expect(pendingFor(stopped.value)).toMatchObject({ owner: 0, context: 'space cannon offense' })
-    expect(stopped.value.tactical?.step).toBe('movement')                // the movement step holds the queue
+    expect(stopped.value.tactical?.step).toBe('spaceCombat')
     expect(legalMoves(stopped.value).map(m => m.type)).toEqual(['assignHits'])
     expect(stopped.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2)
-    const after = applyMove(stopped.value, { type: 'assignHits', destroy: [destroyer], sustain: [] }, 3)
+    const assigned = applyMove(stopped.value, { type: 'assignHits', destroy: [destroyer], sustain: [] }, 3)
+    if (!assigned.ok) throw new Error(assigned.error)
+    expect(assigned.value.tactical?.step).toBe('spaceCombat')
+    expect(assigned.value.tactical?.combat?.round).toBe(1)
+    const after = applyMove(assigned.value, { type: 'combatRound' }, 3)
     if (!after.ok) throw new Error(after.error)
     expect(after.value.systems.bereg.space.filter(u => u.owner === 0).map(u => u.type)).toEqual(['carrier'])
     expect(after.value.tactical?.step).toBe('done')   // the carrier arrived empty, so there is nothing to land
@@ -162,9 +175,13 @@ describe('R3.2 movement', () => {
     const moved = move(s, shipId(s, 'bereg', 'carrier', 1), 'bereg', troops)
     if (!moved.ok) throw new Error(moved.error)
     const before = moved.value.players[1].reinforcements
-    const after = applyMove(moved.value, { type: 'endMovement' }, 3)   // seed 3: the PDS hits
+    const inCombat = applyMove(moved.value, { type: 'endMovement' }, 3)   // seed 3: the PDS hits
+    if (!inCombat.ok) throw new Error(inCombat.error)
+    const stopped = applyMove(inCombat.value, { type: 'combatRound' }, 3)
+    if (!stopped.ok) throw new Error(stopped.error)
+    expect(hitsIn(stopped.value, 'space cannon offense')).toBeGreaterThanOrEqual(1)
+    const after = applyMove(stopped.value, { type: 'combatRound' }, 3)
     if (!after.ok) throw new Error(after.error)
-    expect(hitsIn(after.value, 'space cannon offense')).toBeGreaterThanOrEqual(1)
     expect(after.value.systems['home-n'].space.filter(u => u.owner === 1)).toHaveLength(0)
     expect(after.value.players[1].reinforcements.carrier).toBe(before.carrier + 1)
     expect(after.value.players[1].reinforcements.infantry).toBe(before.infantry + 2)
