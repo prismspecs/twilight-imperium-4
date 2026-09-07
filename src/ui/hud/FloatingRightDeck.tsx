@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
+import { factionAbility } from '../../data/factionAbilities'
 import { MANDATES, objectiveDef } from '../../data/objectives'
 import { HAND_LIMIT, cardOwner, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { techDef } from '../../data/techs'
+import { unitStats } from '../../data/units'
 import { BADGE, MISC, SIGIL, spriteUrl, strategyCardUrl, tokenUrl, unitCardUrl } from '../art'
 import { CARD_NAME, ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { TechIcon } from '../TechIcon'
@@ -145,6 +147,54 @@ export function FloatingRightDeck({
             <div className="frd-vp-chip" data-testid={`frd-vp-${safeSeat}`}>
               {myPlayer.vp} of {targetVp} VP
             </div>
+          </div>
+
+          {/* Faction Abilities */}
+          <div className="frd-section-title">Faction Abilities</div>
+          <div className="frd-abilities-list" data-testid={`frd-abilities-${safeSeat}`}>
+            {myFaction.abilities.map(id => {
+              const def = factionAbility(id)
+              return (
+                <div className="frd-ability" key={id} data-testid={`frd-ability-${safeSeat}-${id}`}>
+                  <div className="frd-ability-name">{def?.name ?? id}</div>
+                  {def ? <div className="frd-ability-text">{def.text}</div> : null}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Flagship */}
+          <div className="frd-section-title">Flagship</div>
+          <div className="frd-flagship" data-testid={`frd-flagship-${safeSeat}`}>
+            <img src={unitCardUrl('flagship', myPlayer.faction)} alt={`${myFaction.name} flagship`} className="frd-flagship-art" />
+            <div className="frd-flagship-stats">
+              {(() => {
+                const s = unitStats('flagship', { faction: myPlayer.faction, techs: myPlayer.techs })
+                return (
+                  <>
+                    <span>Cost {s.cost}</span>
+                    <span>Combat {s.combat}{s.combatDice > 1 ? `×${s.combatDice}` : ''}</span>
+                    <span>Move {s.move}</span>
+                    <span>Capacity {s.capacity}</span>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+
+          {/* Starting Technology */}
+          <div className="frd-section-title">Starting Technology</div>
+          <div className="tech-list frd-tech-list">
+            {myFaction.startingTechs.length === 0 ? (
+              <div className="frd-empty-hint">Chosen at setup</div>
+            ) : (
+              myFaction.startingTechs.map(id => (
+                <div className="techrow" key={id} data-testid={`frd-starting-tech-${safeSeat}-${id}`}>
+                  <TechIcon techId={id} colour={myPlayer.color} />
+                  <span>{techDef(id).name}</span>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Command Tokens */}

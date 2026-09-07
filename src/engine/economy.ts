@@ -137,11 +137,12 @@ export function productionLimit(state: GameState, seat: Seat, systemId: string):
   const player = state.players[seat]
   const sys = state.systems[systemId]
   if (!sys) return 0
+  let total = 0
   for (const p of sys.planets) {
     const dock = p.structures.find(u => u.type === 'spacedock' && u.owner === seat)
-    if (dock) return p.resources + (unitStats('spacedock', { faction: player.faction, techs: player.techs }).production ?? 0)
+    if (dock) total += p.resources + (unitStats('spacedock', { faction: player.faction, techs: player.techs }).production ?? 0)
   }
-  return 0
+  return total
 }
 
 export function fleetPoolLimit(player: Player): number {

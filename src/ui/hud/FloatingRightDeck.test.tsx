@@ -151,6 +151,11 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     expect(screen.getByTestId('frd-tokens-0-tactic')).toBeTruthy()
     expect(screen.getByTestId('frd-economy-0-resources')).toBeTruthy()
 
+    // Faction identity: abilities, flagship and starting technology are laid out for reference
+    expect(screen.getByTestId('frd-abilities-0').textContent).toContain('Assimilate')
+    expect(screen.getByTestId('frd-flagship-0').textContent).toContain('Cost')
+    expect(screen.getByTestId('frd-starting-tech-0-neural_motivator')).toBeTruthy()
+
     // Secret objective is fully visible to owner
     const secretCard = screen.getByTestId('frd-secret-0-fwm')
     expect(secretCard).toBeTruthy()
