@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { relativeTime, systemLabel } from './format'
+import { planetLabel, relativeTime, systemLabel } from './format'
 
 const NOW = Date.UTC(2026, 8, 3, 12, 0, 0)
 const SECOND = 1000
@@ -63,6 +63,23 @@ describe('systemLabel and 000, 100, 200 tile numbering system', () => {
   it('falls back gracefully to tile catalogue name when state is absent', () => {
     expect(systemLabel('tile-25')).toBe('Quann')
     expect(systemLabel('tile-39')).toBe('Alpha Wormhole')
+  })
+})
+
+describe('planetLabel', () => {
+  it('prefixes a planet name with its system tile number, so an action card target can be found on the map', () => {
+    const mockState = {
+      systems: {
+        'tile-25': { id: 'tile-25', name: 'Quann', q: 1, r: 0, planets: [{ id: 'quann-a', name: 'Quann' }] },
+      },
+    } as unknown as Parameters<typeof planetLabel>[0]
+
+    expect(planetLabel(mockState, 'quann-a')).toBe('[103] Quann')
+  })
+
+  it('falls back to the bare planet id when no system contains it', () => {
+    const mockState = { systems: {} } as unknown as Parameters<typeof planetLabel>[0]
+    expect(planetLabel(mockState, 'nowhere')).toBe('nowhere')
   })
 })
 

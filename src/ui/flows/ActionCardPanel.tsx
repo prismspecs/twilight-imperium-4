@@ -9,6 +9,8 @@ import type { ActionCardParams, GameState, Move, Seat } from '../../engine/types
 export interface ActionCardPanelProps {
   onClose: () => void
   viewingSeat?: Seat
+  /** Lets the map glow the system a hovered or focused target names, so the player can find it. */
+  onHighlight?: (systemId: string | null) => void
 }
 
 function findPlanetInState(state: GameState, planetId: string) {
@@ -19,25 +21,38 @@ function findPlanetInState(state: GameState, planetId: string) {
   return undefined
 }
 
+/** The system a move's target lives in, whichever kind of target it names. */
+function targetSystemId(state: GameState, params: ActionCardParams | undefined): string | null {
+  if (!params) return null
+  if (params.systemId !== undefined) return params.systemId
+  if (params.planetId !== undefined) {
+    for (const sys of Object.values(state.systems)) {
+      if (sys.planets.some(p => p.id === params.planetId)) return sys.id
+    }
+  }
+  return null
+}
+
 /** What one enumerated play of a card actually does, in words: the card names its own target. */
 function offerLabel(state: GameState, params: ActionCardParams | undefined, cardId?: string): string {
   if (!params) return 'Play it'
   const baseCard = cardId ? cardId.replace(/_\d+$/, '') : ''
   if (params.planetId !== undefined) {
     const planet = findPlanetInState(state, params.planetId)
-    if (!planet) return planetLabel(state, params.planetId)
+    const name = planetLabel(state, params.planetId)
+    if (!planet) return name
     if (baseCard === 'uprising' || baseCard === 'mining_initiative') {
-      return `${planet.name} (${planet.resources} res → +${planet.resources} TG)`
+      return `${name} (${planet.resources} res → +${planet.resources} TG)`
     }
     if (baseCard === 'plague') {
       const infCount = planet.ground.filter(u => u.type === 'infantry').length
-      return `${planet.name} (${infCount} inf)`
+      return `${name} (${infCount} inf)`
     }
     if (baseCard === 'cripple_defenses') {
       const pdsCount = planet.structures.filter(u => u.type === 'pds').length
-      return `${planet.name} (${pdsCount} PDS)`
+      return `${name} (${pdsCount} PDS)`
     }
-    return `${planet.name} (${planet.resources}R, ${planet.influence}I)`
+    return `${name} (${planet.resources}R, ${planet.influence}I)`
   }
   if (params.systemId !== undefined) {
     if (baseCard === 'war_effort') return `Place cruiser in ${systemLabel(params.systemId, state)}`
@@ -53,7 +68,7 @@ function offerLabel(state: GameState, params: ActionCardParams | undefined, card
  * R9: the hand, and every play the engine will accept for it. A card that cannot be played says why in
  * words rather than sitting there greyed out and mute (CLAUDE.md).
  */
-export function ActionCardPanel({ onClose, viewingSeat }: ActionCardPanelProps) {
+export function ActionCardPanel({ onClose, viewingSeat, onHighlight }: ActionCardPanelProps) {
   const { session, legal, apply } = useGame()
   useEscape(onClose)
   if (!session) return null
@@ -120,13 +135,20 @@ export function ActionCardPanel({ onClose, viewingSeat }: ActionCardPanelProps) 
                 ) : null}
               </div>
               {offers.length === 0 ? <span className="sub err">{reason}</span> : null}
-              {offers.map((move, i) => (
-                <button key={`${cardId}-${String(i)}`} type="button" className="pay"
-                  data-testid={`play-${cardId}-${String(i)}`}
-                  onClick={() => { if (apply(move)) onClose() }}>
-                  {offerLabel(state, move.params, cardId)}
-                </button>
-              ))}
+              {offers.map((move, i) => {
+                const targetId = targetSystemId(state, move.params)
+                return (
+                  <button key={`${cardId}-${String(i)}`} type="button" className="pay"
+                    data-testid={`play-${cardId}-${String(i)}`}
+                    onClick={() => { if (apply(move)) onClose() }}
+                    onMouseEnter={targetId ? () => onHighlight?.(targetId) : undefined}
+                    onMouseLeave={targetId ? () => onHighlight?.(null) : undefined}
+                    onFocus={targetId ? () => onHighlight?.(targetId) : undefined}
+                    onBlur={targetId ? () => onHighlight?.(null) : undefined}>
+                    {offerLabel(state, move.params, cardId)}
+                  </button>
+                )
+              })}
             </div>
           )
         })}

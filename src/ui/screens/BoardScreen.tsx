@@ -130,6 +130,7 @@ export function BoardScreen() {
   const [sideSeat, setSideSeat] = useState<Seat | null>(null)
   const [mode, setMode] = useState<ActionMode>(null)
   const [inspecting, setInspecting] = useState<string | null>(null)
+  const [highlightedSystemId, setHighlightedSystemId] = useState<string | null>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
   const [showLog, setShowLog] = useState(() => import.meta.env.DEV
@@ -322,6 +323,7 @@ export function BoardScreen() {
             selectable={selectable}
             outOfReach={outOfReach}
             humanSeat={humanSeat}
+            highlightedSystemId={highlightedSystemId}
             onSelect={systemId => {
               const diag = diagnoseMovement(state, state.active, systemId)
               logInfo('Tactical', `Tile clicked: ${systemId} in mode=${mode ?? 'idle'} (seat ${state.active})`, {
@@ -378,7 +380,13 @@ export function BoardScreen() {
             ) : null}
             {!isAiTurn && mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
             {!isAiTurn && mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
-            {mode === 'actionCard' ? <ActionCardPanel viewingSeat={viewingSeat} onClose={() => setMode(null)} /> : null}
+            {mode === 'actionCard' ? (
+              <ActionCardPanel
+                viewingSeat={viewingSeat}
+                onClose={() => { setMode(null); setHighlightedSystemId(null) }}
+                onHighlight={setHighlightedSystemId}
+              />
+            ) : null}
             {!isAiTurn && state.pendingSecondary !== null ? <SecondaryPanel /> : null}
             {!isAiTurn && state.phase === 'status' ? <StatusDialog /> : null}
           </div>

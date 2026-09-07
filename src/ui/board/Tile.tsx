@@ -119,12 +119,15 @@ export interface TileProps {
   outOfReach?: boolean
   isGalaxy?: boolean
   isPlayerHome?: boolean
+  /** A card or panel is naming this tile as its target - a distinct glow from `active`, which marks the
+   * system a tactical action is running in. */
+  highlighted?: boolean
   onSelect?: (systemId: string) => void
   /** Not currently selectable for an action - clicking it instead opens the system's info panel. */
   onInspect?: (systemId: string) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, onSelect, onInspect }: TileProps) {
+export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, highlighted = false, onSelect, onInspect }: TileProps) {
   const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
@@ -144,7 +147,7 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
   const inspect = onInspect ? () => onInspect(system.id) : undefined
   const act = activate ?? inspect
-  const classes = `tile${home}${playerHomeClass}${homeTurnClass}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
+  const classes = `tile${home}${playerHomeClass}${homeTurnClass}${active ? ' active' : ''}${highlighted ? ' highlighted' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}${act ? ' hoverable' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
   const canProduce = selectable && productionLimit(state, state.active, system.id) > 0

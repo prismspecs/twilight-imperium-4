@@ -57,4 +57,22 @@ describe('R9 the action card hand', () => {
     renderWithSession(base(), <BoardScreen />)
     expect(screen.getByTestId('btn-action-card').hasAttribute('disabled')).toBe(true)
   })
+
+  it('highlights a target\'s tile on the map while hovering its offer, and clears it on the way out', () => {
+    renderWithSession(withHand(base(), ['war_effort']), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-action-card'))
+    const offer = screen.getByTestId('play-war_effort-0')
+    const tile = screen.getByTestId('tile-home-n')
+
+    expect(tile.className).not.toContain('highlighted')
+    fireEvent.mouseEnter(offer)
+    expect(tile.className).toContain('highlighted')
+    fireEvent.mouseLeave(offer)
+    expect(tile.className).not.toContain('highlighted')
+
+    fireEvent.focus(offer)
+    expect(tile.className).toContain('highlighted')
+    fireEvent.click(screen.getByTestId('btn-action-card-close'))
+    expect(screen.getByTestId('tile-home-n').className).not.toContain('highlighted')
+  })
 })

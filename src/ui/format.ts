@@ -69,10 +69,13 @@ export function techLabel(techId: string): string {
   return techDef(techId).name
 }
 
+/** A planet's printed name, prefixed with its tile number so it can be found on the board at a glance. */
 export function planetLabel(state: GameState, planetId: string): string {
   for (const sys of Object.values(state.systems)) {
     const planet = sys.planets.find(p => p.id === planetId)
-    if (planet) return planet.name
+    if (!planet) continue
+    const num = tileNumberLabel(sys.q, sys.r)
+    return num ? `[${num}] ${planet.name}` : planet.name
   }
   return planetId
 }

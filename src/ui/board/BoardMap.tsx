@@ -12,12 +12,14 @@ export interface BoardMapProps {
   /** Selectable systems no ship of the active seat can move into; they stay clickable but read as a dead end. */
   outOfReach?: string[]
   humanSeat?: Seat
+  /** The system a card or panel is currently naming as its target, so the player can see where it is. */
+  highlightedSystemId?: string | null
   onSelect?: (systemId: string) => void
   /** Any system not currently selectable for an action opens its info panel here instead. */
   onInspect?: (systemId: string) => void
 }
 
-export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, onSelect, onInspect }: BoardMapProps) {
+export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, highlightedSystemId = null, onSelect, onInspect }: BoardMapProps) {
   const panZoom = useMapPanZoom()
   const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
   const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
@@ -60,6 +62,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               state={state}
               system={system}
               active={activeSystemId === system.id}
+              highlighted={highlightedSystemId === system.id}
               selectable={selectable.includes(system.id)}
               outOfReach={outOfReach.includes(system.id)}
               isGalaxy={!isDuel}

@@ -2193,6 +2193,12 @@ button { font-family: inherit; }
     filter: drop-shadow(0 0 14px var(--active-hex-glow, rgba(59, 130, 246, 0.85)));
   }
 }
+.tile.highlighted svg.line > polygon:first-child {
+  stroke: #eab308;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.75));
+  animation: pulse-active-hex 1.1s ease-in-out infinite alternate;
+}
 .tile.selectable { cursor: pointer; }
 .tile.selectable svg.line polygon {
   stroke: rgba(59,130,246,0.55);
