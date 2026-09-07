@@ -31,8 +31,14 @@ export function PayRow({ state, seat, unit = 'resources', needed, planets, onPla
           key={planet.id} type="button" disabled={planet.exhausted}
           className={`pay${planets.includes(planet.id) ? ' on' : ''}`} data-testid={`pay-${planet.id}`}
           onClick={() => onPlanets(planets.includes(planet.id) ? planets.filter(id => id !== planet.id) : [...planets, planet.id])}
+          title={`${planet.name}: ${planet.resources} Resources / ${planet.influence} Influence${planet.exhausted ? ' (Exhausted)' : ''}`}
         >
-          {planet.name} {unit === 'resources' ? planet.resources : planet.influence}
+          <span className="pay-pname">{planet.name}</span>
+          <span className="pay-stats">
+            <span className={`pay-val pay-res${unit === 'resources' ? ' active-unit' : ' alt-unit'}`}>{planet.resources}R</span>
+            <span className="pay-sep">/</span>
+            <span className={`pay-val pay-inf${unit === 'influence' ? ' active-unit' : ' alt-unit'}`}>{planet.influence}I</span>
+          </span>
         </button>
       ))}
       <span className="pay">

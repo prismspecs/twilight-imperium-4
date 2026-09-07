@@ -2653,6 +2653,31 @@ button { font-family: inherit; }
   color: var(--accent-blue-light);
 }
 .pay:disabled { opacity: 0.45; cursor: default; }
+.pay-pname { font-weight: 500; }
+.pay-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  font-size: 11px;
+}
+.pay-val.pay-res.active-unit {
+  color: #fbbf24;
+  font-weight: 700;
+}
+.pay-val.pay-inf.active-unit {
+  color: #60a5fa;
+  font-weight: 700;
+}
+.pay-val.alt-unit {
+  color: #94a3b8;
+  font-weight: 400;
+  opacity: 0.8;
+}
+.pay-sep {
+  color: #64748b;
+  opacity: 0.5;
+}
 
 /* Tech columns */
 .tcols { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; }
