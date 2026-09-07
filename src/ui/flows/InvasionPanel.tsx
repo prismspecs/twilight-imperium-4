@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deriveSeed, readyInfluence } from '../../engine'
+import { deriveSeed, productionLimit, readyInfluence } from '../../engine'
 import { MECATOL_ID } from '../../data/map'
 import { bombardTargets, landTargets } from '../moveOptions'
 import { planetLabel } from '../format'
@@ -43,20 +43,34 @@ export function InvasionPanel() {
   const exhaustedInfPlanets = Object.values(state.systems)
     .flatMap(sys => sys.planets)
     .filter(p => p.owner === seat && p.exhausted && p.influence > 0)
+  const canProduceHere = state.tactical ? productionLimit(state, seat, state.tactical.systemId) > 0 : false
+  const hasGroundFight = legal.some(m => m.type === 'groundCombatRound')
+
   return (
     <div className="drawer bottom" data-testid="invasion-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">Invasion</span>
-          <span className="sub">Bombard, then land your infantry and fight it out.</span>
+          <span className="sub">
+            {canProduceHere
+              ? 'Land infantry to invade, or proceed to production at your space dock.'
+              : 'Bombard, then land your infantry and fight it out.'}
+          </span>
           <div className="right">
-            {legal.some(m => m.type === 'groundCombatRound') ? (
+            {hasGroundFight ? (
               <button type="button" className="btn gold" data-testid="btn-ground-round" onClick={() => apply({ type: 'groundCombatRound' })}>
                 Ground combat round
               </button>
             ) : null}
-            <button type="button" className="btn quiet" data-testid="btn-end-invasion"
-              disabled={!legal.some(m => m.type === 'endInvasion')} onClick={() => apply({ type: 'endInvasion' })}>Done invading</button>
+            <button
+              type="button"
+              className={canProduceHere && !hasGroundFight ? 'btn gold' : 'btn quiet'}
+              data-testid="btn-end-invasion"
+              disabled={!legal.some(m => m.type === 'endInvasion')}
+              onClick={() => apply({ type: 'endInvasion' })}
+            >
+              {canProduceHere ? 'Proceed to production' : 'Done invading'}
+            </button>
           </div>
         </div>
         <div className="rowline">
