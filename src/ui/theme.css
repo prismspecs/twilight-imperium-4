@@ -3515,7 +3515,10 @@ button { font-family: inherit; }
 }
 
 .combat-dialog-modal {
-  position: relative !important;
+  /* `.dialog` centers itself with position:absolute + left/top:50% + a translate(-50%,-50%) transform.
+     Overriding position alone (without also resetting left/top/transform) turned those into a relative-
+     positioning offset instead of an absolute one, shoving the whole dialog toward the bottom-right corner
+     of the flex-centered overlay instead of leaving it centered. Leave position alone so it centers again. */
   max-width: 640px !important;
   width: 100% !important;
   max-height: 88vh;

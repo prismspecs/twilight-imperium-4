@@ -58,6 +58,30 @@ function useDemoBootstrap() {
       })
       return
     }
+    // `&panel=combat` is a manual QA hook for the space combat dialog: resumes straight into a live round
+    // so its layout and centering can be checked without playing up to a real fight first.
+    if (panel === 'combat') {
+      void import('../engine/testUtils').then(({ toActionPhase, withTactical, withUnits }) => {
+        let state = withUnits(toActionPhase(1, 0), 'bereg', 0, ['cruiser', 'fighter'])
+        state = withUnits(state, 'bereg', 1, ['destroyer'])
+        state = withTactical(state, {
+          systemId: 'bereg',
+          step: 'spaceCombat',
+          combat: {
+            round: 1, attacker: 0, defender: 1, retreating: null, retreatTo: null,
+            lastRolls: [
+              { owner: 0, unit: 'cruiser', value: 8, hit: true },
+              { owner: 0, unit: 'fighter', value: 4, hit: false },
+              { owner: 1, unit: 'destroyer', value: 2, hit: false },
+            ],
+            pending: [],
+          },
+        })
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
     // `&panel=agenda` is the R10 manual QA hook: resumes straight into a live vote (Mutiny, with an
     // influence planet ready) so the dialog, the clock and the hot-seat handoff can all be checked
     // without playing a game up to Mecatol capture first.
