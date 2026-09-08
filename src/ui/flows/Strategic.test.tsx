@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer } from '../../engine/testUtils'
+import { cardsUsed, groundIds, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs } from '../../engine/testUtils'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -174,6 +174,19 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('4')
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
+  })
+  it('R10 Bioplasmosis: an Arborec seat relocates infantry to an adjacent-system planet from the status dialog', () => {
+    const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'bereg', 'bereg', 0), 0, ['bioplasmosis'])
+    const infantryId = groundIds(s, 'home-n', '000', 0)[0]
+    const { store } = renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('bioplasmosis-panel')).toBeTruthy()
+    fireEvent.click(screen.getByTestId(`bioplasmosis-000-bereg-plus`))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    const after = store().session?.state
+    expect(after?.systems['home-n'].planets[0].ground.some(u => u.id === infantryId)).toBe(false)
+    expect(after?.systems.bereg.planets.find(p => p.id === 'bereg')?.ground.some(u => u.id === infantryId)).toBe(true)
   })
   it('R6 Politics: the primary hands the speaker token over, draws 2 action cards and reorders the agendas', () => {
     const s = withCards(withCards(toActionPhase(), 0, ['politics']), 1, [])

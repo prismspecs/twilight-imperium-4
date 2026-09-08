@@ -191,7 +191,12 @@ export interface StrategicParams {
   // secondary up to one, always on a planet you control.
   structures?: { planetId: string; type: 'pds' | 'spacedock' }[]
 }
-export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+export interface StatusParams {
+  tokens: { tactic: number; fleet: number; strategy: number }
+  // Arborec faction tech Bioplasmosis: at the end of the status phase, freely relocate any of your ground
+  // forces to a planet you control in the same or an adjacent system. Empty/omitted for every other faction.
+  redistribute?: { infantryId: number; to: string }[]
+}
 
 /**
  * R9: what an action card needs to name its target. Which of these fields matter is decided by the card

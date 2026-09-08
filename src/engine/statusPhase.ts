@@ -1,5 +1,6 @@
 import { objectiveDef } from '../data/objectives'
 import { drawActionCards } from './actionCards'
+import { neighbours } from './adjacency'
 import { enterAgendaOrNextRound } from './agendas'
 import { distributeTokens } from './economy'
 import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
@@ -119,6 +120,41 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   return enterAgendaOrNextRound(next, seed, startNextRound)
 }
 
+/** Arborec faction tech Bioplasmosis: relocate ground forces to a planet the seat controls in the same
+ * system or an adjacent one, validated against the state as it stood when the status phase began (so a
+ * batch of moves cannot chain hops through an intermediate planet within the same call). */
+function applyBioplasmosis(before: GameState, state: GameState, seat: Seat, moves: { infantryId: number; to: string }[]): Result<GameState> {
+  let next = state
+  for (const { infantryId, to } of moves) {
+    let fromSysId: string | null = null
+    let unit: System['planets'][number]['ground'][number] | null = null
+    for (const [sysId, sys] of Object.entries(before.systems)) {
+      const found = sys.planets.flatMap(p => p.ground).find(u => u.id === infantryId && u.owner === seat && u.type === 'infantry')
+      if (found) { fromSysId = sysId; unit = found; break }
+    }
+    if (!unit || fromSysId === null) return { ok: false, error: `no such infantry ${infantryId}` }
+    const toEntry = Object.entries(before.systems).find(([, sys]) => sys.planets.some(p => p.id === to))
+    if (!toEntry) return { ok: false, error: `unknown planet ${to}` }
+    const [toSysId, toSys] = toEntry
+    const destPlanet = toSys.planets.find(p => p.id === to)
+    if (!destPlanet || destPlanet.owner !== seat) return { ok: false, error: `${to} is not controlled by seat ${seat}` }
+    if (toSysId !== fromSysId && !neighbours(before.systems, fromSysId, state.players[seat].faction).includes(toSysId)) {
+      return { ok: false, error: `${to} is not in the same system as infantry ${infantryId}, or an adjacent one` }
+    }
+    const dropped: System = {
+      ...next.systems[fromSysId],
+      planets: next.systems[fromSysId].planets.map(p => ({ ...p, ground: p.ground.filter(u => u.id !== infantryId) })),
+    }
+    if (fromSysId === toSysId) {
+      next = { ...next, systems: { ...next.systems, [fromSysId]: { ...dropped, planets: dropped.planets.map(p => p.id === to ? { ...p, ground: [...p.ground, unit!] } : p) } } }
+    } else {
+      const placed: System = { ...next.systems[toSysId], planets: next.systems[toSysId].planets.map(p => p.id === to ? { ...p, ground: [...p.ground, unit!] } : p) }
+      next = { ...next, systems: { ...next.systems, [fromSysId]: dropped, [toSysId]: placed } }
+    }
+  }
+  return { ok: true, value: next }
+}
+
 // R3.3: the status phase normally opens with `active === speaker` (set by `pass()` on the action phase's last
 // pass, and by `toStatusPhase()` in tests), but the phase is closed by counting the submissions in
 // `statusSubmitted`, not by comparing the active seat against the speaker: a state that entered the phase on
@@ -132,8 +168,15 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   // token they already hold among the three pools, not just place the new ones.
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat), true)
   if (!distributed.ok) return distributed
+  let withBioplasmosis = distributed.value
+  if (params.redistribute?.length) {
+    if (!state.players[seat].techs.includes('bioplasmosis')) return { ok: false, error: 'Bioplasmosis has not been researched' }
+    const relocated = applyBioplasmosis(state, withBioplasmosis, seat, params.redistribute)
+    if (!relocated.ok) return relocated
+    withBioplasmosis = relocated.value
+  }
   const statusSubmitted = [...state.statusSubmitted, seat]
-  const submitted: GameState = { ...distributed.value, statusSubmitted }
+  const submitted: GameState = { ...withBioplasmosis, statusSubmitted }
   // N-player: the phase closes once every seat has submitted its status move
   if (statusSubmitted.length < state.players.length) return { ok: true, value: { ...submitted, active: (seat + 1) % state.players.length } }
   return { ok: true, value: finishStatusPhase(submitted, seed) }

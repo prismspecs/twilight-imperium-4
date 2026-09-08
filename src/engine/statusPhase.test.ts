@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { POST_IDS } from '../data/posts'
 import { applyMove } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
-import { deepFreeze, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { deepFreeze, groundIds, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result, StatusParams } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -213,5 +213,36 @@ describe('R3.3 status phase', () => {
     const done = bothSubmit(toStatusPhase(s))
     expect(done.players[0].scoredObjectives).toEqual(['spend_6_resources'])
     expect(done.players[0].resourcesSpentThisRound).toBe(0)
+  })
+  describe('Arborec faction tech Bioplasmosis', () => {
+    it('relocates infantry to a planet the seat controls in the same or an adjacent system', () => {
+      const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'bereg', 'bereg', 0), 0, ['bioplasmosis'])
+      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
+      const moved = value(submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] }))
+      expect(moved.systems['home-n'].planets[0].ground.some(u => u.id === infantryId)).toBe(false)
+      expect(moved.systems.bereg.planets.find(p => p.id === 'bereg')?.ground.some(u => u.id === infantryId)).toBe(true)
+    })
+    it('is rejected for a seat that has not researched it', () => {
+      const s = withPlanetOwner(toStatusPhase(toActionPhase()), 'bereg', 'bereg', 0)
+      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] })
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toMatch(/not been researched/)
+    })
+    it('is rejected when the destination planet is not the seat\'s own', () => {
+      const s = withTechs(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 0, ['bioplasmosis'])
+      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] })   // bereg is neutral
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toMatch(/not controlled/)
+    })
+    it('is rejected across two systems that are neither the same nor adjacent', () => {
+      // home-n neighbours bereg and sakulag but not starpoint or quann or home-s
+      const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'starpoint', 'starpoint', 0), 0, ['bioplasmosis'])
+      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'starpoint' }] })
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toMatch(/adjacent/)
+    })
   })
 })
