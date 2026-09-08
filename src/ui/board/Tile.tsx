@@ -128,9 +128,17 @@ export interface TileProps {
   /** The mouse is over (or has left) this tile, regardless of whether it is otherwise interactive - the side
    * panel uses this to preview whichever faction owns a planet here. */
   onHover?: (systemId: string | null) => void
+  /** This tile's own wormhole is the one currently hovered, or shares its class with the hovered one -
+   * either way it glows to show the link. */
+  wormholeHighlighted?: boolean
+  /** The mouse is over (or has left) this tile's own wormhole icon specifically. */
+  onHoverWormhole?: (wormhole: 'alpha' | 'beta' | 'delta' | null) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, highlighted = false, onSelect, onInspect, onHover }: TileProps) {
+export function Tile({
+  state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, highlighted = false,
+  onSelect, onInspect, onHover, wormholeHighlighted = false, onHoverWormhole,
+}: TileProps) {
   const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
@@ -280,8 +288,14 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
         </span>
       ) : null}
       {system.wormhole ? (
-        <img className="wh" src={system.wormhole === 'alpha' ? MISC.alpha : (system.wormhole === 'beta' ? MISC.beta : MISC.delta)} alt={`${system.wormhole} wormhole`}
-          data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id, system.home !== null)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
+        <img
+          className={`wh${wormholeHighlighted ? ' wh-linked' : ''}`}
+          src={system.wormhole === 'alpha' ? MISC.alpha : (system.wormhole === 'beta' ? MISC.beta : MISC.delta)}
+          alt={`${system.wormhole} wormhole`}
+          data-testid={`wormhole-${system.id}`} style={getWormholeSpot(system.id, system.home !== null)} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE}
+          onMouseEnter={onHoverWormhole ? () => onHoverWormhole(system.wormhole) : undefined}
+          onMouseLeave={onHoverWormhole ? () => onHoverWormhole(null) : undefined}
+        />
       ) : null}
       {system.home !== null ? (
         <img

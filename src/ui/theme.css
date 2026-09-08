@@ -2369,7 +2369,12 @@ button { font-family: inherit; }
   opacity: 0.8;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.9));
 }
-.wh { position: absolute; }
+.wh { position: absolute; transition: filter 0.15s ease-out; }
+/* Hovering one wormhole highlights every other system carrying the same class, since that is exactly what
+   makes them adjacent to each other. */
+.wh-linked {
+  filter: drop-shadow(0 0 6px var(--gold)) drop-shadow(0 0 10px var(--gold));
+}
 .chev { position: absolute; opacity: 0.9; }
 
 /* Catalog tile number: a quiet reference label, plainly less important than the plate or activation token */

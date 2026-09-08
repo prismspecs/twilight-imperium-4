@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Tile } from './Tile'
 import { TradePosts } from './TradePosts'
 import { TRADE_POSTS } from '../../data/map'
@@ -23,6 +24,7 @@ export interface BoardMapProps {
 
 export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, highlightedSystemId = null, onSelect, onInspect, onHover }: BoardMapProps) {
   const panZoom = useMapPanZoom()
+  const [hoveredWormhole, setHoveredWormhole] = useState<'alpha' | 'beta' | 'delta' | null>(null)
   const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
   const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
 
@@ -72,6 +74,8 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               onSelect={onSelect}
               onInspect={onInspect}
               onHover={onHover}
+              wormholeHighlighted={hoveredWormhole !== null && hoveredWormhole === system.wormhole}
+              onHoverWormhole={setHoveredWormhole}
             />
           ))}
           {isDuel && <TradePosts state={state} seat={state.active} />}

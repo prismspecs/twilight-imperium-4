@@ -77,6 +77,18 @@ describe('the board', () => {
     expect(screen.getByTestId('wormhole-quann').getAttribute('src')).toContain('WHbeta')
   })
 
+  it('hovering a wormhole highlights its pair, and only its pair', () => {
+    render(<BoardMap state={state} />)
+    // alpha links bereg and starpoint; beta links sakulag and quann
+    fireEvent.mouseEnter(screen.getByTestId('wormhole-bereg'))
+    expect(screen.getByTestId('wormhole-bereg').className).toContain('wh-linked')
+    expect(screen.getByTestId('wormhole-starpoint').className).toContain('wh-linked')
+    expect(screen.getByTestId('wormhole-sakulag').className).not.toContain('wh-linked')
+    expect(screen.getByTestId('wormhole-quann').className).not.toContain('wh-linked')
+    fireEvent.mouseLeave(screen.getByTestId('wormhole-bereg'))
+    expect(screen.getByTestId('wormhole-starpoint').className).not.toContain('wh-linked')
+  })
+
   it('only calls back for a system the caller marked selectable', () => {
     const onSelect = vi.fn()
     render(<BoardMap state={state} selectable={['bereg']} activeSystemId="quann" onSelect={onSelect} />)
