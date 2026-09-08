@@ -137,6 +137,46 @@ already holds l1z1x.png / leader_l1z1x_commander.png, matching the per-faction p
 Low priority — the 15 new factions are not selectable yet so their images are never loaded. Defer to the
 art/faction-picker pass once the map supports more home systems.
 
+### 2026-09-08 — How to actually reach it: normal page fetches are Cloudflare-blocked, the API isn't
+
+Revisited once the 15 factions became selectable (Saar's Floating Factory work). Ordinary page fetches —
+`curl https://twilight-imperium.fandom.com/wiki/<Page>`, and the WebFetch tool on the same URL — both come
+back 402/403: the wiki sits behind a Cloudflare bot challenge (`cf-mitigated: challenge` in the response
+headers). That is a network-level block, not a matter of asking nicely with a different User-Agent.
+
+**What does work: the bare MediaWiki API and the static image CDN, neither of which sit behind the same
+challenge.**
+
+```bash
+# Full-text search for a page
+curl -s "https://twilight-imperium.fandom.com/api.php?action=query&list=search&srsearch=<query>&format=json"
+
+# List every image embedded on one page (by exact title)
+curl -s "https://twilight-imperium.fandom.com/api.php?action=query&titles=<Page%20Title>&prop=images&format=json&imlimit=100"
+
+# Direct URL + dimensions for specific files (batch with |)
+curl -s "https://twilight-imperium.fandom.com/api.php?action=query&titles=File:Saar4.png&prop=imageinfo&iiprop=url|size&format=json"
+
+# The page's raw wikitext — usually the fastest way in: image filenames, captions, and stat tables
+# (move/capacity/production/prereqs etc.) are all inline as plain text, cheaper than downloading and
+# eyeballing images one at a time
+curl -s "https://twilight-imperium.fandom.com/api.php?action=parse&page=<Page%20Title>&prop=wikitext&format=json"
+
+# Files themselves download fine from the static CDN once you have the URL from imageinfo above, e.g.:
+curl -s -o out.png "https://static.wikia.nocookie.net/twilight-imperium-4/images/4/4f/Saar4.png/revision/latest?cb=<timestamp>"
+```
+
+Page titles are the *display* title (`The Clan of Saar`, `The Emirates of Hacan`), spaces as `%20` or `+`.
+Pull the exact title from a `list=search` result first rather than guessing.
+
+**Caveat that cost real time finding out**: the wiki does not have printed reference-card art for every
+card type. Checked two factions' Flagship sections (Saar, Hacan) via the wikitext dump — techs, promissory
+notes and unit-upgrade cards all embed a real scanned card image (`[[File:...]]`), but the Flagship section
+is a plain stats table with no image at all. So this source is reliable for faction data/stats/text (and is
+where the corrected Floating Factory I/II numbers in `2026-09-08-saar-floating-factory.ledger.md` came
+from) but is **not** a source for flagship card art specifically — that still needs a different source if
+it's ever wanted.
+
 ## Iteration 5 (Ralph iter 3) — map-import foundation: tile catalogue (commits 172fbad, d94e241, pushed)
 
 Ruling — planet-id scheme: the verified reference tiles.json uses concatenated planet ids
