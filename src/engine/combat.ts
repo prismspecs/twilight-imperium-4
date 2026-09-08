@@ -676,25 +676,41 @@ function withdraw(state: GameState, ctx: Ctx, to: string): GameState {
   return trimCargo(trimCargo(trimFleetPool(next, to, ctx.attacker), to, ctx.attacker), ctx.systemId, ctx.defender)
 }
 
+/**
+ * lrr-factions.md 2112/2114: a Floating Factory left with none of its owner's own ships in the system at the
+ * close of a round is destroyed — unless *neither* side has any ships left there, in which case it survives.
+ * (A retreat never rescues it either: `finish` only reaches the withdraw branch when the attacker still has
+ * ships, so an attacker down to zero always hits this destruction check first, never the retreat one.)
+ */
+function destroyEscortlessFloatingFactories(state: GameState, systemId: string, attackerShips: number, defenderShips: number, attacker: Seat, defender: Owner): GameState {
+  if (attackerShips === 0 && defenderShips === 0) return state
+  const sys = state.systems[systemId]
+  const victims = sys.space.filter(u => u.type === 'floating_factory'
+    && ((u.owner === attacker && attackerShips === 0) || (u.owner === defender && defenderShips === 0)))
+  if (!victims.length) return state
+  const next = destroyUnits(state, systemId, victims)
+  return { ...next, log: [...next.log, { t: 'info', text: `seat ${victims[0].owner}'s Floating Factory in ${systemId} is destroyed with no ships left to escort it` }] }
+}
+
 /** Closes a round (or the round 0 pre-combat steps); `lastRolls` was stored when the dice were thrown. */
 function finish(state: GameState, ctx: Ctx): GameState {
   const tac = state.tactical
   if (!tac || !tac.combat) return state
-  const sys = state.systems[ctx.systemId]
-  const attackerShips = shipsOf(sys, ctx.attacker).length
-  const defenderShips = shipsOf(sys, ctx.defender).length
+  const attackerShips = shipsOf(state.systems[ctx.systemId], ctx.attacker).length
+  const defenderShips = shipsOf(state.systems[ctx.systemId], ctx.defender).length
+  const next = destroyEscortlessFloatingFactories(state, ctx.systemId, attackerShips, defenderShips, ctx.attacker, ctx.defender)
   const combat: CombatState = { ...tac.combat, round: ctx.round + 1 }
   if (!attackerShips) {
     // the defender holding the field wins the combat and earns the same mandate the attacker would have
-    const done = defenderShips ? wonBy(state, ctx, ctx.defender) : state
+    const done = defenderShips ? wonBy(next, ctx, ctx.defender) : next
     return endCombat({ ...done, tactical: { ...tac, step: 'done', combat } }, ctx)
   }
   if (!defenderShips) {
-    const won = wonBy(state, ctx, ctx.attacker)
+    const won = wonBy(next, ctx, ctx.attacker)
     return endCombat({ ...won, tactical: { ...afterSpaceStep(won, tac.systemId, ctx.attacker), combat } }, ctx)
   }
-  if (combat.retreating === ctx.attacker && combat.retreatTo) return withdraw({ ...state, tactical: { ...tac, combat } }, ctx, combat.retreatTo)
-  return { ...state, tactical: { ...tac, combat } }
+  if (combat.retreating === ctx.attacker && combat.retreatTo) return withdraw({ ...next, tactical: { ...tac, combat } }, ctx, combat.retreatTo)
+  return { ...next, tactical: { ...tac, combat } }
 }
 
 export interface MunitionsRequest { attacker?: boolean; defender?: boolean }
