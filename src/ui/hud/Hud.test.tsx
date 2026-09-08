@@ -7,6 +7,7 @@ import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
 import { renderWithSession } from '../test/harness'
 import { BoardScreen } from '../screens/BoardScreen'
+import { COLOUR_INK } from '../art'
 
 describe('the HUD', () => {
   it('shows both players with their faction, clock and turn state', () => {
@@ -18,6 +19,19 @@ describe('the HUD', () => {
     expect(screen.getByTestId('turn-1').textContent).toBe('Waiting')
     expect(screen.getByTestId('speaker-0')).toBeTruthy()
     expect(screen.queryByTestId('speaker-1')).toBeNull()
+  })
+
+  it('the top bar portrait border matches the seat\'s own assigned colour, not a seat-indexed default', () => {
+    // seat 0's slot in the fixed --player-0 palette is blue; assign it purple instead and prove the portrait
+    // follows the player's own colour, not the CSS variable keyed on seat index.
+    const s = withPlayer(toActionPhase(), 0, { color: 'purple' })
+    renderWithSession(s, <BoardScreen />)
+    const portrait = screen.getByTestId('player-0').querySelector('.portrait')
+    expect(portrait).toBeTruthy()
+    expect((portrait as HTMLElement).style.borderColor).not.toBe(COLOUR_INK.blue.accent)
+    // jsdom normalises the inline style to rgb(); parse it back to confirm it is really purple, not blue
+    const [, r, g, b] = /rgb\((\d+), (\d+), (\d+)\)/.exec((portrait as HTMLElement).style.borderColor) ?? []
+    expect([r, g, b].map(Number)).toEqual([168, 85, 247])   // #a855f7, COLOUR_INK.purple.accent
   })
 
   it('R3.1: the strategy strip shows who holds each card and what it is worth', () => {

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
-import { MISC, SIGIL, tokenUrl } from '../art'
+import { COLOUR_INK, MISC, SIGIL, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
 import { ChevronIcon } from '../icons'
 import { isAi } from '../../engine'
@@ -48,7 +48,7 @@ function CompactPlayer({
       } : undefined}
       title={`${player.name} (${FACTIONS[player.faction].name})`}
     >
-      <div className="portrait mini" style={{ borderColor: `var(--player-${seat})` }}>
+      <div className="portrait mini" style={{ borderColor: COLOUR_INK[player.color].accent }}>
         <img
           className="face"
           src={SIGIL[player.faction] || tokenUrl(player.faction, 'control')}
