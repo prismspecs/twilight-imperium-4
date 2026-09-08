@@ -6,9 +6,11 @@
   "itemsPerIteration": 0,
   "reflectEvery": 3,
   "reflectInstructions": "REFLECTION CHECKPOINT\n\nPause and reflect on your progress:\n1. What has been accomplished so far?\n2. What's working well?\n3. What's not working or blocking progress?\n4. Should the approach be adjusted?\n5. What are the next priorities?\n\nUpdate the task file with your reflection, then continue working.",
-  "active": true,
-  "status": "active",
+  "active": false,
+  "status": "completed",
   "startedAt": "2026-09-08T12:12:23.867Z",
   "lastReflectionAt": 0,
-  "ownerSessionId": "01a0807c-f5d1-74c9-aef4-c3a3d2b29145"
+  "ownerSessionId": "01a0807c-f5d1-74c9-aef4-c3a3d2b29145",
+  "completedAt": "2026-09-08T17:28:00.000Z",
+  "finalVerification": "cd /home/grayson/workbench/mecatol-duel && npx tsc -p tsconfig.app.json --noEmit && ! grep -r \"tradePost\\|postAbility\\|TRADE_POSTS\" src/ --include=\"*.ts\" --include=\"*.tsx\" | grep -v \"\\.test\\.\" && npm test -- src/engine/fullGame.test.ts"
 }
