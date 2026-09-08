@@ -13,7 +13,7 @@ export type PlanetTrait = 'industrial' | 'hazardous' | 'cultural'
 /** A planet's technology specialty colour (lets a research skip one prerequisite), or null when it has none. */
 export type TechSkip = 'red' | 'blue' | 'green' | 'yellow'
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'black' | 'orange' | 'pink'
-export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock'
+export type UnitType = 'infantry' | 'fighter' | 'destroyer' | 'cruiser' | 'carrier' | 'dreadnought' | 'warsun' | 'flagship' | 'pds' | 'spacedock' | 'floating_factory'
 export type TechColor = 'blue' | 'red' | 'green' | 'yellow'
 export type Anomaly = 'asteroid_field' | 'nebula' | 'gravity_rift' | 'supernova'
 export type StrategyCardId = 'leadership' | 'diplomacy' | 'politics' | 'construction' | 'trade' | 'warfare' | 'technology' | 'imperial'
@@ -39,8 +39,10 @@ export interface System {
   wormhole: 'alpha' | 'beta' | 'delta' | null
   neighbours: string[]             // hex-adjacent system ids; wormhole links are added on top by adjacency.ts
   home: Seat | null                // the seat whose home system this is, or null for a non-home system
-  // ships, plus fighters and infantry being transported; NON_FIGHTER_SHIPS and isShip exclude infantry, so capacity and fleet-pool helpers work on this mixed array
-  space: Unit[]                    // ships
+  // ships, plus fighters and infantry being transported, plus a Saar Floating Factory (never a ship, never
+  // on a planet); NON_FIGHTER_SHIPS and isShip exclude infantry and floating_factory, so capacity and
+  // fleet-pool helpers work on this mixed array
+  space: Unit[]                    // ships (+ Saar's Floating Factory)
   activatedBy: Seat[]              // command tokens on the system this round
 }
 export interface Player {
@@ -146,7 +148,10 @@ export type Move =
   | { type: 'land'; planetId: string; infantryIds: number[] }
   | { type: 'groundCombatRound' }
   | { type: 'endInvasion' }
-  | { type: 'produce'; units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number }
+  // `groundTo`: where produced infantry lands when the producing structure is a Floating Factory, which is
+  // never on a planet — a planet id it controls in the system, or omitted/absent for the space area
+  // (lrr-factions.md 2108). Ignored for a normal space dock, whose ground forces always land on its planet.
+  | { type: 'produce'; units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number; groundTo?: string }
   | { type: 'endTactical' }
   | { type: 'endTurn' }                                  // R3.2: the action is spent, hand the turn over
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }

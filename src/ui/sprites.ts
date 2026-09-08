@@ -4,8 +4,16 @@ import type { ModelStyle } from './modelStyle'
 
 export interface SpriteDef { pxPerModelUnit: number; spriteW: number; spriteH: number }
 
+/** No Floating Factory miniature/sprite exists yet (Saar is the only faction that ever produces one) — it
+ * renders with the plain space dock's art until it gets its own. Keeps the manifest tables below a faithful,
+ * unmodified copy of the shipped `manifest.json` files rather than inventing entries no asset backs. */
+const SPRITE_ALIAS: Partial<Record<UnitType, Exclude<UnitType, 'floating_factory'>>> = { floating_factory: 'spacedock' }
+export function spriteUnitType(type: UnitType): Exclude<UnitType, 'floating_factory'> {
+  return SPRITE_ALIAS[type] ?? (type as Exclude<UnitType, 'floating_factory'>)
+}
+
 /** Copy of public/assets/sprites/manifest.json (`units`); src/ui/sprites.test.ts keeps the two in step. */
-const MINIATURES: Record<UnitType, SpriteDef> = {
+const MINIATURES: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
   dreadnought: { pxPerModelUnit: 144.4, spriteW: 548, spriteH: 503 },
   carrier: { pxPerModelUnit: 188.59, spriteW: 593, spriteH: 587 },
   cruiser: { pxPerModelUnit: 198.59, spriteW: 563, spriteH: 566 },
@@ -19,7 +27,7 @@ const MINIATURES: Record<UnitType, SpriteDef> = {
 }
 
 /** Copy of public/assets/sprites/topdown/manifest.json: the same models, orthographic and bow up. */
-const TOP_DOWN: Record<UnitType, SpriteDef> = {
+const TOP_DOWN: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
   dreadnought: { pxPerModelUnit: 144.4, spriteW: 392, spriteH: 795 },
   carrier: { pxPerModelUnit: 188.59, spriteW: 314, spriteH: 836 },
   cruiser: { pxPerModelUnit: 198.59, spriteW: 285, spriteH: 846 },
@@ -36,7 +44,7 @@ const TOP_DOWN: Record<UnitType, SpriteDef> = {
  * Copy of public/assets/sprites/counters/manifest.json. The counter art is drawn at its own proportions, so
  * the scale is derived: each unit is set to come out the same size on the board as the top down render.
  */
-const COUNTERS: Record<UnitType, SpriteDef> = {
+const COUNTERS: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
   dreadnought: { pxPerModelUnit: 113.46, spriteW: 308, spriteH: 308 },
   carrier: { pxPerModelUnit: 168.17, spriteW: 280, spriteH: 276 },
   cruiser: { pxPerModelUnit: 186.74, spriteW: 268, spriteH: 268 },
@@ -49,7 +57,7 @@ const COUNTERS: Record<UnitType, SpriteDef> = {
   pds: { pxPerModelUnit: 64.08, spriteW: 132, spriteH: 148 },
 }
 
-export const SPRITE_SETS: Record<ModelStyle, Record<UnitType, SpriteDef>> = {
+export const SPRITE_SETS: Record<ModelStyle, Record<Exclude<UnitType, 'floating_factory'>, SpriteDef>> = {
   models: MINIATURES, topdown: TOP_DOWN, counters: COUNTERS,
 }
 
@@ -62,7 +70,7 @@ export const BOARD_SCALE = 11.6
 export const PANEL_SCALE = 10.4
 
 function rawSize(type: UnitType, scale: number, style: ModelStyle): { width: number; height: number } {
-  const def = SPRITE_SETS[style][type]
+  const def = SPRITE_SETS[style][spriteUnitType(type)]
   return {
     width: Math.round(def.spriteW / def.pxPerModelUnit * scale),
     height: Math.round(def.spriteH / def.pxPerModelUnit * scale),
@@ -88,7 +96,7 @@ export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: M
  * from how the model actually looks everywhere else it is drawn.
  */
 export function iconFitSize(type: UnitType, box: number, style: ModelStyle = 'models'): { width: number; height: number } {
-  const def = SPRITE_SETS[style][type]
+  const def = SPRITE_SETS[style][spriteUnitType(type)]
   const scale = box / Math.max(def.spriteW, def.spriteH) * def.pxPerModelUnit
   return rawSize(type, scale, style)
 }

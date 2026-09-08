@@ -1,4 +1,4 @@
-import { SPRITE_FOLDER } from './sprites'
+import { SPRITE_FOLDER, spriteUnitType } from './sprites'
 import type { ModelStyle } from './modelStyle'
 import type { Color, FactionId, Owner, StrategyCardId, TechColor, UnitType } from '../engine/types'
 
@@ -42,8 +42,9 @@ const TECH_FILE: Record<string, string> = {
   non_euclidean_shielding: 'tech_faction_noneuclidean_shielding.jpg',
 }
 
-/** Reference cards for the production drawer; `flagship` is resolved by faction before this lookup. */
-const UNIT_CARD: Record<UnitType, string> = {
+/** Reference cards for the production drawer; `flagship` is resolved by faction before this lookup, and
+ * `floating_factory` is mapped onto `spacedock` in `unitCardUrl` for lack of its own card art. */
+const UNIT_CARD: Record<Exclude<UnitType, 'floating_factory'>, string> = {
   infantry: 'unit_generic_infantry.png', fighter: 'unit_generic_fighter.png',
   destroyer: 'unit_generic_destroyer.png', cruiser: 'unit_generic_cruiser.png',
   carrier: 'unit_generic_carrier.png', dreadnought: 'unit_generic_dreadnought.png',
@@ -265,7 +266,7 @@ export function tileNumberLabel(q: number | undefined, r: number | undefined): s
   return `${ring}${String(position + 1).padStart(2, '0')}`
 }
 export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
-  return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`
+  return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${spriteUnitType(type)}.png`
 }
 const KNOWN_TOKEN_FACTIONS = new Set<FactionId>([
   'l1z1x', 'letnev', 'arborec', 'saar', 'muaat', 'hacan', 'sol', 'creuss',
@@ -291,7 +292,8 @@ export function unitCardUrl(type: UnitType, faction: FactionId): string {
       : '/assets/factions/unit_letnev_flagship_arc_secundus.png'
   }
   if (type === 'dreadnought' && faction === 'l1z1x') return '/assets/factions/unit_l1z1x_superdreadnought.jpg'
-  return `/assets/cards/${UNIT_CARD[type]}`
+  // No dedicated Floating Factory reference card art yet; the plain space dock's stands in.
+  return `/assets/cards/${UNIT_CARD[type === 'floating_factory' ? 'spacedock' : type]}`
 }
 export function ownerKey(owner: Owner): string {
   return owner === 'guardian' ? 'guardian' : String(owner)

@@ -12,7 +12,8 @@ export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
 export const ALL_STRATEGY_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 // TI4 LRR 94.1: Infantry and fighters are unlimited (plastic + tokens).
 // Plastic piece limits apply to: destroyer (8), cruiser (8), carrier (4), dreadnought (5), warsun (2), flagship (1), pds (6), spacedock (3).
-export const REINFORCEMENTS: Readonly<Record<UnitType, number>> = { infantry: 99, fighter: 99, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 }
+// Saar's space docks are always molded as Floating Factories (3 pieces), never plain spacedock pieces.
+export const REINFORCEMENTS: Readonly<Record<UnitType, number>> = { infantry: 99, fighter: 99, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3, floating_factory: 3 }
 
 export const GUARDIAN_FLEETS: readonly Partial<Record<UnitType, number>>[] = [
   { dreadnought: 1, cruiser: 1, destroyer: 1, fighter: 2 },

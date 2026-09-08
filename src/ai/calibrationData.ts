@@ -10,7 +10,9 @@ export interface FactionCalibration {
   targetFleetTokens: number
   strategyCardWeights: Record<StrategyCardId, number>
   techBonuses: Record<string, number>
-  unitAffinities: Record<UnitType, number>
+  // Partial: this is empirical data from AsyncTI4 games and floating_factory is a newly-modelled unit type
+  // this dataset predates — getFactionUnitAffinity falls back to the neutral 1.0 for any unit it lacks.
+  unitAffinities: Partial<Record<UnitType, number>>
 }
 
 export interface CalibrationData {

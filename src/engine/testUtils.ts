@@ -20,9 +20,15 @@ export const DUEL_CONFIG: GameConfig = {
   speaker: 0,
 }
 
+/** Seat 0 is Saar, for exercising their Floating Factory. */
+export const SAAR_CONFIG: GameConfig = {
+  players: [{ faction: 'saar', color: 'orange', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }],
+  speaker: 0,
+}
+
 /** A new game plus the whole snake draft, so the state sits in the action phase with `active` to hand. */
-export function toActionPhase(seed = 1, active: Seat = 0): GameState {
-  let s = createGame(DUEL_CONFIG, seed)
+export function toActionPhase(seed = 1, active: Seat = 0, config: GameConfig = DUEL_CONFIG): GameState {
+  let s = createGame(config, seed)
   for (const card of ['warfare', 'leadership', 'imperial', 'technology'] as StrategyCardId[]) {
     const r = applyMove(s, { type: 'pickStrategyCard', card }, 0)
     if (!r.ok) throw new Error(r.error)
@@ -75,7 +81,7 @@ export function thirdSeat(): Player {
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0,
     inheritanceExhausted: false, shipyardUsed: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0,
-    reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 },
+    reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3, floating_factory: 3 },
   }
 }
 

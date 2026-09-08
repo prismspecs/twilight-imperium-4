@@ -78,14 +78,16 @@ export function generateRandomSetup(count: number = 6): {
 }
 
 // Display order for the fleet row; only the types a starting fleet can actually contain matter here.
-const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
+const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock', 'floating_factory']
 const UNIT_LABEL: Record<UnitType, string> = {
   dreadnought: 'Dreadnought', warsun: 'War Sun', flagship: 'Flagship', carrier: 'Carrier', cruiser: 'Cruiser',
   destroyer: 'Destroyer', fighter: 'Fighter', infantry: 'Infantry', pds: 'PDS', spacedock: 'Space Dock',
+  floating_factory: 'Floating Factory',
 }
 const UNIT_PLURAL: Record<UnitType, string> = {
   dreadnought: 'Dreadnoughts', warsun: 'War Suns', flagship: 'Flagships', carrier: 'Carriers', cruiser: 'Cruisers',
   destroyer: 'Destroyers', fighter: 'Fighters', infantry: 'Infantry', pds: 'PDS', spacedock: 'Space Docks',
+  floating_factory: 'Floating Factories',
 }
 // Fighters and infantry get a count badge instead of one sprite per unit; every other type is capped at one
 // in the starting fleets, so a badge would just always read "1".

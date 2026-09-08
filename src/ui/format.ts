@@ -15,7 +15,7 @@ export const CARD_NAME: Record<StrategyCardId, string> = {
 const UNIT_NAME: Record<UnitType, string> = {
   infantry: 'Infantry', fighter: 'Fighter', destroyer: 'Destroyer', cruiser: 'Cruiser',
   carrier: 'Carrier', dreadnought: 'Dreadnought', warsun: 'War Sun', flagship: 'Flagship',
-  pds: 'PDS', spacedock: 'Space dock',
+  pds: 'PDS', spacedock: 'Space dock', floating_factory: 'Floating Factory',
 }
 
 export function formatClock(ms: number): string {

@@ -7,7 +7,8 @@ export interface FactionDef {
    * `planetIndex` is the index into the faction's home-system planets (the catalogue home-tile order in
    * src/data/tiles.ts), not an absolute planet id, so the same starting layout works on the fixed duel map
    * and on a generated galaxy. Ships (no planetIndex) are placed in the home system's space; infantry and
-   * structures go on the named home planet.
+   * structures go on the named home planet — except Saar's `floating_factory`, which has no planetIndex
+   * either: it is never on a planet, so it is placed in the home system's space like a ship.
    */
   startingUnits: { type: UnitType; count: number; planetIndex?: number }[]
   abilities: string[]
@@ -50,9 +51,11 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
   saar: {
     id: 'saar', name: 'Clan of Saar', commodityValue: 3,
     startingTechs: ['antimass_deflectors'],
+    // Saar's space dock is a Floating Factory: it is never on a planet, so it has no planetIndex — it is
+    // placed in the home system's space area alongside their ships, exactly like the ships above.
     startingUnits: [
-      { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 2, planetIndex: 1 }, { type: 'spacedock', count: 1, planetIndex: 1 },
+      { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 }, { type: 'floating_factory', count: 1 },
+      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 2, planetIndex: 1 },
     ],
     abilities: ['scavenge', 'nomadic'],
   },

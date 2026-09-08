@@ -16,6 +16,9 @@ const LEVEL_I: Record<UnitType, UnitStats> = {
   flagship: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 3, sustain: true }),
   pds: base({ spaceCannon: { value: 6, dice: 1 }, planetaryShield: true }),
   spacedock: base({ production: 2 }),
+  // Saar's Floating Factory: a space dock that moves like a 1-move ship. Same production as a plain space
+  // dock (never upgraded by the generic Space Dock II tech — Saar has no dock left to research it onto).
+  floating_factory: base({ move: 1, production: 2 }),
 }
 
 const LEVEL_II: Partial<Record<UnitType, Partial<UnitStats>>> = {
@@ -110,3 +113,7 @@ export function unitStats(type: UnitType, owner: StatsOwner): Readonly<UnitStats
 export const SHIP_TYPES: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 export const NON_FIGHTER_SHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 export function isShip(type: UnitType): boolean { return SHIP_TYPES.includes(type) }
+
+/** A Saar Floating Factory is not a ship (it doesn't fight, doesn't count toward fleet pool), but it moves
+ * like one — it's the only non-ship unit that can be a move's `unitId`. */
+export function isMovable(type: UnitType): boolean { return isShip(type) || type === 'floating_factory' }
