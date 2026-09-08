@@ -16,9 +16,9 @@ const LEVEL_I: Record<UnitType, UnitStats> = {
   flagship: base({ cost: 8, combat: 5, combatDice: 2, move: 1, capacity: 3, sustain: true }),
   pds: base({ spaceCannon: { value: 6, dice: 1 }, planetaryShield: true }),
   spacedock: base({ production: 2 }),
-  // Saar's Floating Factory: a space dock that moves like a 1-move ship. Same production as a plain space
-  // dock (never upgraded by the generic Space Dock II tech — Saar has no dock left to research it onto).
-  floating_factory: base({ move: 1, production: 2 }),
+  // Saar's Floating Factory: a space dock that moves like a ship, and — unlike a plain space dock — carries
+  // cargo like one too. Stats per the printed Floating Factory I card, not a plain space dock's.
+  floating_factory: base({ move: 1, capacity: 4, production: 5 }),
 }
 
 const LEVEL_II: Partial<Record<UnitType, Partial<UnitStats>>> = {
@@ -46,12 +46,14 @@ const FACTION_UPGRADE_TECH: Partial<Record<UnitType, Partial<Record<FactionId, s
   infantry: { sol: 'spec_ops_ii' },
   carrier: { sol: 'advanced_carrier_ii' },
   fighter: { naalu: 'hybrid_crystal_fighter_ii' },
+  floating_factory: { saar: 'floating_factory_ii' },
 }
 
 const FACTION_LEVEL_II: Partial<Record<UnitType, Partial<Record<FactionId, Partial<UnitStats>>>>> = {
   infantry: { sol: { combat: 6 } },
   carrier: { sol: { move: 2, capacity: 8, sustain: true } },
   fighter: { naalu: { combat: 7, move: 2 } },
+  floating_factory: { saar: { move: 2, capacity: 5, production: 7 } },
 }
 
 /** The die roll Infantry II (or a faction's equivalent) needs to bring a destroyed infantry back. Sol's Spec
