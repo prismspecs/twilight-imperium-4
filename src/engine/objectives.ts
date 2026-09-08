@@ -159,7 +159,8 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'csl':
       return Object.values(state.systems).some(s =>
         s.space.some(u => u.owner === seat && isShip(u.type)) &&
-        s.planets.some(p => p.structures.some(u => u.owner !== seat && u.type === 'spacedock'))
+        (s.planets.some(p => p.structures.some(u => u.owner !== seat && u.type === 'spacedock'))
+          || s.space.some(u => u.owner !== seat && u.type === 'floating_factory'))
       )
     case 'ctr':
       return Object.values(state.systems).filter(s => s.space.some(u => u.owner === seat && isShip(u.type))).length >= 6
@@ -172,7 +173,8 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'fsn':
       return player.tokensSpentThisRound >= 3 || player.tradeGoodsSpentThisRound >= 3
     case 'fwm':
-      return Object.values(state.systems).flatMap(s => s.planets.flatMap(p => p.structures)).filter(u => u.owner === seat && u.type === 'spacedock').length >= 3
+      return Object.values(state.systems).flatMap(s => [...s.planets.flatMap(p => p.structures), ...s.space])
+        .filter(u => u.owner === seat && (u.type === 'spacedock' || u.type === 'floating_factory')).length >= 3
     case 'gamf':
       return Object.values(state.systems).flatMap(s => s.space).filter(u => u.owner === seat && u.type === 'dreadnought').length >= 5
     case 'lsc': {
