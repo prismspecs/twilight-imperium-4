@@ -107,6 +107,42 @@ describe('shouldAiStep and seatToAct', () => {
     expect(shouldAiStep(configWithHumanAndAi, s)).toBe(false)
   })
 
+  it('shouldAiStep returns true for an AI\'s own pending reaction, even with a human combatant in the fight', () => {
+    // Regression: rule 3 (block auto-roll whenever a human is a combatant) used to run with no reaction check
+    // first, so an AI's own reaction (e.g. declining Morale Boost) never resolved once a human was involved in
+    // the same combat - the window sat open forever, and the human's "roll dice" button stayed disabled with
+    // no way to ever clear it.
+    let s = withTactical(toActionPhase(), {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 1, attacker: 1, defender: 0, retreating: null, retreatTo: null, lastRolls: [], pending: [],
+      },
+    })
+    s = {
+      ...s,
+      active: 1,
+      pendingReactions: [{ kind: 'spaceCombatRound', source: 1, queue: [1, 0], resume: 1, systemId: 'bereg', round: 1 }],
+    }
+    expect(shouldAiStep(configWithHumanAndAi, s)).toBe(true)
+  })
+
+  it('shouldAiStep returns false when the pending reaction is waiting on the human', () => {
+    let s = withTactical(toActionPhase(), {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: {
+        round: 1, attacker: 1, defender: 0, retreating: null, retreatTo: null, lastRolls: [], pending: [],
+      },
+    })
+    s = {
+      ...s,
+      active: 0,
+      pendingReactions: [{ kind: 'spaceCombatRound', source: 1, queue: [0], resume: 1, systemId: 'bereg', round: 1 }],
+    }
+    expect(shouldAiStep(configWithHumanAndAi, s)).toBe(false)
+  })
+
   it('shouldAiStep returns true in space combat round initiation when both are AI', () => {
     let s = withTactical(toActionPhase(), {
       systemId: 'bereg',

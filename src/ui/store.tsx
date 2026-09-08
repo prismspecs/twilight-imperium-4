@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor } from '../engine'
+import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor, pendingReaction } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { aiChoose } from '../ai'
 import { DEFAULT_WEIGHTS } from '../ai/score'
@@ -77,7 +77,17 @@ export function shouldAiStep(config: GameConfig | undefined, state: GameState): 
     return queueSeat !== undefined && isAi(config, queueSeat)
   }
 
-  // 3. Space combat round rolls: if ANY human is a combatant, do NOT auto-roll!
+  // 3. Pending reaction window: only the seat at the head of its queue may answer it. This must be checked
+  // before the "any human combatant blocks auto-roll" rule below - an AI's own reaction (declining, or
+  // playing a card like Morale Boost) has to resolve on its own even when the opponent across the table is
+  // human, otherwise the window sits open forever waiting on a seat that was never asked (R9).
+  const reaction = pendingReaction(state)
+  if (reaction) {
+    const queueSeat = reaction.queue[0]
+    return queueSeat !== undefined && isAi(config, queueSeat)
+  }
+
+  // 4. Space combat round rolls: if ANY human is a combatant, do NOT auto-roll!
   // The human player clicks the roll button and chooses cards/tactics interactively.
   if (state.tactical?.step === 'spaceCombat' && state.tactical.combat) {
     const combat = state.tactical.combat
@@ -88,13 +98,13 @@ export function shouldAiStep(config: GameConfig | undefined, state: GameState): 
     }
   }
 
-  // 4. Strategy phase draft: check the drafting seat
+  // 5. Strategy phase draft: check the drafting seat
   if (state.phase === 'strategy') {
     const draftSeat = state.draft[0]
     return draftSeat !== undefined && isAi(config, draftSeat)
   }
 
-  // 5. Default action phase: check the active seat
+  // 6. Default action phase: check the active seat
   return isAi(config, state.active)
 }
 
