@@ -134,6 +134,7 @@ export function BoardScreen() {
   const { session, legal, apply, clockRunning } = useGame()
   // the single side panel follows the active player by default; the seat tabs override it during the turn
   const [sideSeat, setSideSeat] = useState<Seat | null>(null)
+  const [hoveredSystemId, setHoveredSystemId] = useState<string | null>(null)
   const [mode, setMode] = useState<ActionMode>(null)
   const [inspecting, setInspecting] = useState<string | null>(null)
   const [highlightedSystemId, setHighlightedSystemId] = useState<string | null>(null)
@@ -212,7 +213,11 @@ export function BoardScreen() {
   const humanSeatIndex = session.config?.players.findIndex(p => p.playerType === 'human') ?? -1
   const humanSeat: Seat | undefined = humanSeatIndex !== -1 ? (humanSeatIndex as Seat) : undefined
   const viewingSeat: Seat = humanSeat !== undefined ? humanSeat : (state.active as Seat)
-  const panelSeat = (sideSeat ?? state.active) as Seat
+  // Hovering a tile previews whichever faction owns a planet there in the side panel, without disturbing
+  // whatever seat the player had pinned there by clicking a tab - it reverts the moment the mouse leaves.
+  const hoveredSystem = hoveredSystemId ? state.systems[hoveredSystemId] : undefined
+  const hoveredOwner = hoveredSystem?.planets.find(p => p.owner !== null)?.owner ?? null
+  const panelSeat = (hoveredOwner ?? sideSeat ?? state.active) as Seat
   const drafting = state.phase === 'strategy'
   const onPick = drafting ? (card: StrategyCardId) => { apply({ type: 'pickStrategyCard', card }) } : undefined
 
@@ -345,6 +350,7 @@ export function BoardScreen() {
               if (apply({ type: 'startTactical', systemId })) setMode(null)
             }}
             onInspect={setInspecting}
+            onHover={setHoveredSystemId}
           />
           {inspecting ? <SystemInfo state={state} systemId={inspecting} onClose={() => setInspecting(null)} /> : null}
           {!isAiTurn ? (

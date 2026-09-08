@@ -17,9 +17,11 @@ export interface BoardMapProps {
   onSelect?: (systemId: string) => void
   /** Any system not currently selectable for an action opens its info panel here instead. */
   onInspect?: (systemId: string) => void
+  /** The mouse entered or left a tile - the side panel previews whichever faction owns a planet there. */
+  onHover?: (systemId: string | null) => void
 }
 
-export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, highlightedSystemId = null, onSelect, onInspect }: BoardMapProps) {
+export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, highlightedSystemId = null, onSelect, onInspect, onHover }: BoardMapProps) {
   const panZoom = useMapPanZoom()
   const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
   const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
@@ -69,6 +71,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               isPlayerHome={system.home !== null && (humanSeat !== undefined ? system.home === humanSeat : system.home === 0)}
               onSelect={onSelect}
               onInspect={onInspect}
+              onHover={onHover}
             />
           ))}
           {isDuel && <TradePosts state={state} seat={state.active} />}

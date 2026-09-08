@@ -125,9 +125,12 @@ export interface TileProps {
   onSelect?: (systemId: string) => void
   /** Not currently selectable for an action - clicking it instead opens the system's info panel. */
   onInspect?: (systemId: string) => void
+  /** The mouse is over (or has left) this tile, regardless of whether it is otherwise interactive - the side
+   * panel uses this to preview whichever faction owns a planet here. */
+  onHover?: (systemId: string | null) => void
 }
 
-export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, highlighted = false, onSelect, onInspect }: TileProps) {
+export function Tile({ state, system, active, selectable, outOfReach = false, isGalaxy: isGalaxyProp, isPlayerHome = false, highlighted = false, onSelect, onInspect, onHover }: TileProps) {
   const isGalaxy = isGalaxyProp ?? (state.players.length > 2)
   const pos = !isGalaxy && TILE_POS[system.id]
     ? TILE_POS[system.id]
@@ -186,6 +189,8 @@ export function Tile({ state, system, active, selectable, outOfReach = false, is
       tabIndex={act ? 0 : undefined}
       title={titleText}
       aria-label={actAriaLabel}
+      onMouseEnter={onHover ? () => onHover(system.id) : undefined}
+      onMouseLeave={onHover ? () => onHover(null) : undefined}
       onPointerDown={act ? event => { pointerDown.current = { x: event.clientX, y: event.clientY } } : undefined}
       onClick={act
         ? event => {
