@@ -1544,17 +1544,7 @@ button { font-family: inherit; }
 }
 .frd-ability-text { font-size: 12px; line-height: 1.4; color: var(--ink); }
 
-.frd-flagship { display: flex; flex-direction: column; gap: 6px; background: rgba(255, 255, 255, 0.03); padding: 8px; }
-.frd-flagship-name { font-size: 14px; font-weight: 700; color: var(--ink-bright); }
-.frd-flagship-ability { font-size: 12px; line-height: 1.4; color: var(--ink); }
-.frd-flagship-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  font-family: var(--font-data);
-  font-size: 11px;
-  color: var(--ink);
-}
+.frd-flagship { display: flex; flex-direction: column; }
 
 .frd-speaker-tag { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font-size: 11px; color: var(--ink-muted); }
 .frd-speaker-tag img { width: 14px; height: 14px; }

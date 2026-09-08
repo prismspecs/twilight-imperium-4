@@ -2,12 +2,10 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { factionAbility } from '../../data/factionAbilities'
-import { FLAGSHIP_INFO } from '../../data/flagships'
 import { MANDATES, objectiveDef } from '../../data/objectives'
 import { HAND_LIMIT, cardOwner, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { techDef } from '../../data/techs'
-import { unitStats } from '../../data/units'
 import { BADGE, MISC, SIGIL, spriteUrl, strategyCardUrl, tokenUrl, unitCardUrl } from '../art'
 import { CARD_NAME, ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { CloseIcon } from '../icons'
@@ -172,21 +170,7 @@ export function FloatingRightDeck({
           {/* Flagship */}
           <div className="frd-section-title">Flagship</div>
           <div className="frd-flagship" data-testid={`frd-flagship-${safeSeat}`}>
-            <div className="frd-flagship-name">{FLAGSHIP_INFO[myPlayer.faction].name}</div>
-            {FLAGSHIP_INFO[myPlayer.faction].ability ? <div className="frd-flagship-ability">{FLAGSHIP_INFO[myPlayer.faction].ability}</div> : null}
-            <div className="frd-flagship-stats">
-              {(() => {
-                const s = unitStats('flagship', { faction: myPlayer.faction, techs: myPlayer.techs })
-                return (
-                  <>
-                    <span>Cost {s.cost}</span>
-                    <span>Combat {s.combat}{s.combatDice > 1 ? `×${s.combatDice}` : ''}</span>
-                    <span>Move {s.move}</span>
-                    <span>Capacity {s.capacity}</span>
-                  </>
-                )
-              })()}
-            </div>
+            <FlagshipCard faction={myPlayer.faction} colour={myPlayer.color} />
           </div>
 
           {/* Starting Technology */}
