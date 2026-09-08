@@ -80,7 +80,7 @@ export function thirdSeat(): Player {
     actionCards: [], strategyCards: [], passed: false, scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0,
-    inheritanceExhausted: false, shipyardUsed: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0,
+    inheritanceExhausted: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0,
     reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3, floating_factory: 3 },
   }
 }

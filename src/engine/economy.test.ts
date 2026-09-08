@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { capacity, cheapestPayment, fleetPoolLimit, nonFighterShips, payCost, productionCost, productionLimit, readyResources } from './economy'
 import { applyMove } from './index'
 import { createGame } from './setup'
-import { deepFreeze, toActionPhase, withCards, withPlanetOwner, withPlayer, withTactical } from './testUtils'
+import { toActionPhase, withCards, withPlanetOwner, withPlayer, withTactical } from './testUtils'
 import type { GameConfig, GameState, Result } from './types'
 
 const config: GameConfig = { players: [{ faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }], speaker: 0 }
@@ -97,14 +97,6 @@ describe('a caller-supplied trade good count must be a non-negative integer', ()
     if (!r.ok) throw new Error(r.error)
     return r.value
   }
-  /** The emergency shipyard is only legal without a space dock, so the seat's docks come off the board first. */
-  const withoutDocks = (state: GameState, seat: 0 | 1): GameState => deepFreeze({
-    ...state,
-    systems: Object.fromEntries(Object.entries(state.systems).map(([id, sys]) => [id, {
-      ...sys, planets: sys.planets.map(p => ({ ...p, structures: p.structures.filter(u => !(u.type === 'spacedock' && u.owner === seat)) })),
-    }])),
-  })
-
   it('payCost rejects them before it compares', () => {
     const fresh = createGame(config, 1)
     for (const [, bad] of BAD) expect(payCost(fresh, 0, 1, ['000'], bad).ok).toBe(false)
@@ -116,10 +108,6 @@ describe('a caller-supplied trade good count must be a non-negative integer', ()
     it(`R4.4: produce rejects ${label} as trade goods`, () => {
       const s = withTactical(toActionPhase(), { systemId: 'home-n', step: 'production' })
       expect(applyMove(s, { type: 'produce', units: { infantry: 2 }, planets: [], tradeGoods: bad }, 0).ok).toBe(false)
-    })
-    it(`R6: the emergency shipyard rejects ${label} as trade goods`, () => {
-      const s = withoutDocks(toActionPhase(), 0)
-      expect(applyMove(s, { type: 'shipyard', planetId: '000', planets: [], tradeGoods: bad }, 0).ok).toBe(false)
     })
     it(`R5/R6: the Technology primary and secondary reject ${label} as trade goods`, () => {
       const s = withPlayer(withCards(withCards(toActionPhase(), 1, []), 0, ['technology']), 0, { tradeGoods: 1 })

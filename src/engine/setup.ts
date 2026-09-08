@@ -39,7 +39,7 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0,
-    inheritanceExhausted: false, shipyardUsed: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0, reinforcements,
+    inheritanceExhausted: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0, reinforcements,
   }
 }
 

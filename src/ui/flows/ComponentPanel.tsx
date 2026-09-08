@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { planetLabel } from '../format'
-import { inheritanceTechIds, productionBiomesTargets, shipyardOffers } from '../moveOptions'
+import { inheritanceTechIds, productionBiomesTargets } from '../moveOptions'
 import { TechDrawer } from './TechDrawer'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
@@ -12,7 +11,6 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
   if (!session) return null
   const state = session.state
   const techs = inheritanceTechIds(legal)
-  const yards = shipyardOffers(legal)
   const biomeTargets = productionBiomesTargets(legal)
   return (
     <div className="dialog" data-testid="component-panel">
@@ -24,12 +22,6 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="rowline">
-          {yards.map(offer => (
-            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`}
-              onClick={() => { if (apply({ type: 'shipyard', planetId: offer.planetId, planets: offer.planets, tradeGoods: offer.tradeGoods })) onClose() }}>
-              Emergency shipyard on {planetLabel(state, offer.planetId)}
-            </button>
-          ))}
           {biomeTargets.map(target => (
             <button key={target} type="button" className="btn quiet" data-testid={`btn-production-biomes-${target}`}
               onClick={() => { if (apply({ type: 'productionBiomes', target })) onClose() }}>

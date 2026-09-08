@@ -44,7 +44,6 @@ export interface PublicPlayer {
   tokensSpentThisRound: number
   spaceCombatWins: number
   inheritanceExhausted: boolean
-  shipyardUsed: boolean
   pendingInfantry: number
   reinforcements: Record<UnitType, number>
 }

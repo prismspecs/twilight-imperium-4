@@ -34,7 +34,7 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
   const can = {
     tactical: legal.some(m => m.type === 'startTactical'),
     strategic: legal.some(m => m.type === 'strategic'),
-    component: legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'productionBiomes'),
+    component: legal.some(m => m.type === 'research' || m.type === 'productionBiomes'),
     // R9: the hand is always worth opening when it holds something, even when nothing in it is playable
     actionCard: myPlayer.actionCards.length > 0,
     pass: legal.some(m => m.type === 'pass'),

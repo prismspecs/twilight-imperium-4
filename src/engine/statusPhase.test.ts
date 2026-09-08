@@ -67,7 +67,7 @@ describe('R3.3 status phase', () => {
       players: [
         {
           ...base.players[0], inheritanceExhausted: true, resourcesSpentThisRound: 8, tradedThisRound: { west: true, east: true },
-          passed: true, scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'], shipyardUsed: true,
+          passed: true, scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'],
         },
         { ...base.players[1], passed: true },
       ] as GameState['players'],
@@ -78,7 +78,7 @@ describe('R3.3 status phase', () => {
     expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
     expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, resourcesSpentThisRound: 0, passed: false, tradedThisRound: { west: false, east: false } })
     // these are once-per-game (or once-ever) flags, not per-round state: the reset must leave them untouched
-    expect(done.players[0]).toMatchObject({ scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'], shipyardUsed: true })
+    expect(done.players[0]).toMatchObject({ scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'] })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft

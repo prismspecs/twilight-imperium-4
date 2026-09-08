@@ -70,7 +70,6 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'strategic': return scoreStrategic(view, move, seat, w)
     case 'secondary': return scoreSecondary(view, move, seat, w)
     case 'research': return scoreResearch(view, move, seat, w)
-    case 'shipyard': return scoreShipyard(view, seat, w)
     // R9: an action card played as an action is a free effect; the enumerator only offers plays that do
     // something, so taking one is generally worth a turn, but never more than a real tactical action
     case 'playActionCard': return w.economy
@@ -575,6 +574,3 @@ function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: ScoreWeig
   return w.economy
 }
 
-function scoreShipyard(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
-  return w.economy
-}

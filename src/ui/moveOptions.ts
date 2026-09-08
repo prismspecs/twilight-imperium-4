@@ -56,10 +56,6 @@ export function inheritanceTechIds(legal: Move[]): string[] {
   return legal.flatMap(m => m.type === 'research' ? [m.techId] : [])
 }
 
-export function shipyardOffers(legal: Move[]): { planetId: string; planets: string[]; tradeGoods: number }[] {
-  return legal.flatMap(m => m.type === 'shipyard' ? [{ planetId: m.planetId, planets: m.planets, tradeGoods: m.tradeGoods }] : [])
-}
-
 export function productionBiomesTargets(legal: Move[]): Seat[] {
   return legal.flatMap(m => m.type === 'productionBiomes' ? [m.target] : [])
 }

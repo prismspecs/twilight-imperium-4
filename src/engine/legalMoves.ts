@@ -3,7 +3,7 @@ import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { agendaMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
-import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, productionBiomesTargets, shipyardPlanets } from './componentActions'
+import { canInheritance, canProductionBiomes, inheritanceTechs, productionBiomesTargets } from './componentActions'
 import { cheapestPayment, cheapestPlanets, hasOwnDock, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
@@ -267,10 +267,6 @@ export function legalMoves(state: GameState): Move[] {
   if (canInheritance(state, seat)) {
     for (const techId of inheritanceTechs(state, seat)) out.push({ type: 'research', techId, via: 'inheritance' })
   }
-  if (canShipyard(state, seat)) {
-    const planets = cheapestPlanets(state, seat, SHIPYARD_COST) ?? []
-    for (const planetId of shipyardPlanets(state, seat)) out.push({ type: 'shipyard', planetId, planets, tradeGoods: 0 })
-  }
   if (canProductionBiomes(state, seat)) {
     for (const target of productionBiomesTargets(state, seat)) out.push({ type: 'productionBiomes', target })
   }
@@ -310,12 +306,10 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'secondary' && candidate.card === move.card && candidate.accept === move.accept
     case 'research':
       return candidate.type === 'research' && candidate.techId === move.techId
-    case 'shipyard':
-      return candidate.type === 'shipyard' && candidate.planetId === move.planetId
     case 'productionBiomes':
       return candidate.type === 'productionBiomes' && candidate.target === move.target
     // R10: which planets pay for the vote is the voter's own choice, checked by castVote itself, the only
-    // place that knows what is legal — same idiom as research/shipyard/productionBiomes above
+    // place that knows what is legal — same idiom as research/productionBiomes above
     case 'castVote':
       return candidate.type === 'castVote' && candidate.outcome === move.outcome
     default:

@@ -243,17 +243,16 @@ function runGame(seed: number): GameRun {
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
-  'shipyard', 'playActionCard', 'pass', 'status', 'castVote',
+  'playActionCard', 'pass', 'status', 'castVote',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 
 /**
- * Two move kinds random legal play never reaches in these seeds, left out rather than faked:
- * `research` needs Inheritance Systems, itself two yellow technologies deep, which no seeded game buys inside
- * six rounds; `shipyard` is legal only while the seat controls no space dock, and the printed home dock is only
- * lost when the home planet is invaded, which never happens either. Both have their own unit tests.
+ * One move kind random legal play never reaches in these seeds, left out rather than faked: `research` needs
+ * Inheritance Systems, itself two yellow technologies deep, which no seeded game buys inside six rounds. It
+ * has its own unit tests.
  */
-const UNREACHABLE: readonly Move['type'][] = ['research', 'shipyard', 'assignHits', 'retreat', 'bombard', 'land', 'groundCombatRound', 'endInvasion', 'produce']
+const UNREACHABLE: readonly Move['type'][] = ['research', 'assignHits', 'retreat', 'bombard', 'land', 'groundCombatRound', 'endInvasion', 'produce']
 
 /** Log events whose code paths the smoke run must have taken at least once across the seeds. */
 const COUNTERS: readonly [string, RegExp][] = [

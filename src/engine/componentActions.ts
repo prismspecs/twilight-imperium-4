@@ -1,14 +1,11 @@
 import { TECHS } from '../data/techs'
 import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
-import { controlledPlanets } from './objectives'
 import { canResearch } from './research'
-import { unitsOf } from './setup'
 import { grantTech } from './strategicActions'
-import type { GameState, Result, Seat, Unit } from './types'
+import type { GameState, Result, Seat } from './types'
 
 const INHERITANCE_COST = 2
-export const SHIPYARD_COST = 4
 
 /**
  * R3.2/R8: your own turn in the action phase, with no tactical action running and no open secondary window.
@@ -63,58 +60,6 @@ export function research(state: GameState, techId: string): Result<GameState> {
   players[seat] = { ...players[seat], inheritanceExhausted: true }
   // R3.2: the action is spent, the turn is not; `endTurn` hands it over
   return { ok: true, value: { ...granted.value, players, turnDone: true } }
-}
-
-export function canShipyard(state: GameState, seat: Seat): boolean {
-  const player = state.players[seat]
-  return !player.shipyardUsed && player.tokens.strategy >= 1 && player.reinforcements.spacedock >= 1
-    && !unitsOf(state, seat).some(u => u.type === 'spacedock')
-    && cheapestPlanets(state, seat, SHIPYARD_COST) !== null
-    && controlledPlanets(state, seat).length > 0
-}
-
-export function shipyardPlanets(state: GameState, seat: Seat): string[] {
-  return controlledPlanets(state, seat).map(p => p.planetId)
-}
-
-/** R6: once per game, only without a space dock, one strategy token plus 4 resources. */
-export function shipyard(state: GameState, planetId: string, planets: string[], tradeGoods: number): Result<GameState> {
-  const ready = actionReady(state)
-  if (!ready.ok) return ready
-  const seat = ready.value
-  const player = state.players[seat]
-  if (player.shipyardUsed) return { ok: false, error: 'R6: the emergency shipyard is used up' }
-  if (unitsOf(state, seat).some(u => u.type === 'spacedock')) return { ok: false, error: 'R6: only while you control no space dock' }
-  if (player.reinforcements.spacedock < 1) return { ok: false, error: 'no space dock in the reinforcements' }
-  if (player.tokens.strategy < 1) return { ok: false, error: 'R6: no token in the strategy pool' }
-  const sysId = Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId))
-  if (!sysId) return { ok: false, error: `unknown planet ${planetId}` }
-  const target = state.systems[sysId].planets.find(p => p.id === planetId)
-  if (!target || target.owner !== seat) return { ok: false, error: `planet ${planetId} not controlled` }
-  const paid = payCost(state, seat, SHIPYARD_COST, planets, tradeGoods)
-  if (!paid.ok) return paid
-  const dock: Unit = { id: paid.value.nextUnitId, type: 'spacedock', owner: seat, damaged: false }
-  const players = [...paid.value.players] as GameState['players']
-  const me = players[seat]
-  players[seat] = {
-    ...me, shipyardUsed: true,
-    tokens: { ...me.tokens, strategy: me.tokens.strategy - 1 },
-    tokensSpentThisRound: me.tokensSpentThisRound + 1,
-    reinforcements: { ...me.reinforcements, spacedock: me.reinforcements.spacedock - 1 },
-  }
-  const sys = paid.value.systems[sysId]
-  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
-  return {
-    ok: true,
-    value: {
-      ...paid.value, players, nextUnitId: paid.value.nextUnitId + 1, turnDone: true,
-      systems: {
-        ...paid.value.systems,
-        [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, structures: [...p.structures, dock] } : p) },
-      },
-      log: [...paid.value.log, { t: 'info', text: `seat ${seat} builds an emergency space dock on ${planetId}` }],
-    },
-  }
 }
 
 export function canProductionBiomes(state: GameState, seat: Seat): boolean {

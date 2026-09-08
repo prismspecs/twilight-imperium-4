@@ -41,7 +41,6 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'playActionCard': return `${name} plays the action card ${actionCardName(move.cardId)}`
     case 'secondary': return `${name} ${move.accept ? 'uses' : 'declines'} the ${CARD_NAME[move.card]} secondary`
     case 'research': return `${name} researches ${techLabel(move.techId)} with Inheritance Systems`
-    case 'shipyard': return `${name} builds an emergency shipyard on ${planetLabel(state, move.planetId)}`
     case 'exhaustSpatialConduit': return `${name} exhausts Spatial Conduit Cylinder`
     case 'productionBiomes': return `${name} uses Production Biomes, gifting trade goods to ${who(state, move.target)}`
     case 'removeCustodians': return `${name} spends 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)`

@@ -61,7 +61,7 @@ export interface Player {
   tradeGoodsSpentThisRound: number
   tokensSpentThisRound: number
   spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
-  inheritanceExhausted: boolean; shipyardUsed: boolean
+  inheritanceExhausted: boolean
   productionBiomesExhausted: boolean   // Hacan faction tech: readies with every other exhausted card
   spatialConduitExhausted: boolean     // Jol-Nar faction tech: readies with every other exhausted card
   pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
@@ -161,7 +161,6 @@ export type Move =
   | { type: 'playActionCard'; cardId: string; params?: ActionCardParams }
   | { type: 'declineReaction' }                          // R9: play nothing into the open reaction window
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
-  | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   // Jol-Nar faction tech Spatial Conduit Cylinder: exhaust the card so the activated system counts as
   // adjacent to every other system holding the seat's ships, for the rest of this tactical action.
   | { type: 'exhaustSpatialConduit' }
