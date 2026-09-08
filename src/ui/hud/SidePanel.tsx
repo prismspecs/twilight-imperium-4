@@ -87,6 +87,10 @@ export function SidePanel({
         )}
       </div>
       <div className="pcontent">
+        <div className="panel-player-header" data-testid={`panel-player-header-${seat}`}>
+          <span className="panel-player-faction">{FACTIONS[player.faction].name}</span>
+          <span className="panel-player-name">{player.name}</span>
+        </div>
         <Section title="Victory points" id="vp">
           <div className="vp">
             <span data-testid={`vp-${seat}`}>{player.vp} of {targetVp}</span>

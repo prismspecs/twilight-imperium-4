@@ -34,6 +34,13 @@ describe('the HUD', () => {
     expect([r, g, b].map(Number)).toEqual([168, 85, 247])   // #a855f7, COLOUR_INK.purple.accent
   })
 
+  it('the side panel names the faction and player it is showing, below the seat tabs', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    const header = screen.getByTestId('panel-player-header-0')
+    expect(header.textContent).toContain('L1Z1X Mindnet')
+    expect(header.textContent).toContain('A')
+  })
+
   it('R3.1: the strategy strip shows who holds each card and what it is worth', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     expect(screen.getByTestId('strategy-state-warfare').textContent).toBe('A, ready')

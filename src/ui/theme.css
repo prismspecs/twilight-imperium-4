@@ -925,6 +925,27 @@ button { font-family: inherit; }
   background: #22c55e;
 }
 
+/* R10/UX: below the P1/P2 seat tabs, name which faction and player the panel below is actually showing -
+   the tabs alone don't say that once there are more than two seats. */
+.panel-player-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 10px 6px;
+  border-bottom: 1px solid var(--alpha-separator);
+}
+.panel-player-faction {
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: var(--weight-title);
+  color: var(--ink-bright);
+}
+.panel-player-name {
+  font-family: var(--font-text);
+  font-size: var(--text-data);
+  color: var(--ink-muted);
+}
+
 /* ---- Side panel sections (collapsible) ------------------------------- */
 .pcontent {
   padding: 4px 0 16px;
