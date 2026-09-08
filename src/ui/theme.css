@@ -3514,6 +3514,21 @@ button { font-family: inherit; }
   to { opacity: 1; transform: scale(1); }
 }
 
+/* R9: above the combat modal overlay (950) too, since a combat-round reaction window opens while that
+   dialog is still showing and must stay resolvable. */
+.reaction-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 960;
+  background: rgba(4, 7, 18, 0.78);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInModal 0.2s ease-out;
+}
+
 .combat-dialog-modal {
   /* `.dialog` centers itself with position:absolute + left/top:50% + a translate(-50%,-50%) transform.
      Overriding position alone (without also resetting left/top/transform) turned those into a relative-

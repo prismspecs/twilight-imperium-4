@@ -7,7 +7,7 @@ import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
 import { FloatingRightDeck } from '../hud/FloatingRightDeck'
-import { productionLimit, shipsThatCanReach } from '../../engine'
+import { pendingReaction, productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
@@ -26,6 +26,7 @@ import { ProduceDrawer } from '../flows/ProduceDrawer'
 import { ActionCardPanel } from '../flows/ActionCardPanel'
 import { AgendaDialog } from '../flows/AgendaDialog'
 import { ComponentPanel } from '../flows/ComponentPanel'
+import { ReactionPanel } from '../flows/ReactionPanel'
 import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
 import { StrategicDialog } from '../flows/StrategicDialog'
@@ -251,6 +252,7 @@ export function BoardScreen() {
     combatOutcome ||
     state.phase === 'status' ||
     state.phase === 'agenda' ||
+    pendingReaction(state) !== null ||
     mode === 'strategic' ||
     mode === 'component' ||
     mode === 'actionCard' ||
@@ -438,6 +440,7 @@ export function BoardScreen() {
           </div>
         </div>
       ) : null}
+      <ReactionPanel />
       <HandoffOverlay />
     </>
   )

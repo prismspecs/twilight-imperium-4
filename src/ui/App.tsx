@@ -82,6 +82,28 @@ function useDemoBootstrap() {
       })
       return
     }
+    // `&panel=reaction` is the R9 manual QA hook: resumes with a combat-round reaction window already open
+    // on the defender (Morale Boost in hand), so the reaction panel's layout and buttons can be checked
+    // without engineering a real combat round that opens one.
+    if (panel === 'reaction') {
+      void Promise.all([import('../engine/testUtils'), import('../engine/reactions')]).then(([
+        { toActionPhase, withPlayer, withTactical, withUnits },
+        { openCombatWindows },
+      ]) => {
+        let state = withUnits(toActionPhase(1, 0), 'bereg', 0, ['cruiser', 'fighter'])
+        state = withUnits(state, 'bereg', 1, ['destroyer'])
+        state = withPlayer(state, 1, { actionCards: ['morale_boost_1'] })
+        state = withTactical(state, {
+          systemId: 'bereg',
+          step: 'spaceCombat',
+          combat: { round: 1, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
+        })
+        state = openCombatWindows(state)
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
     // `&panel=agenda` is the R10 manual QA hook: resumes straight into a live vote (Mutiny, with an
     // influence planet ready) so the dialog, the clock and the hot-seat handoff can all be checked
     // without playing a game up to Mecatol capture first.
