@@ -1,7 +1,7 @@
 {
   "name": "mecatol-online",
   "taskFile": ".ralph/mecatol-online.md",
-  "iteration": 1,
+  "iteration": 2,
   "maxIterations": 30,
   "itemsPerIteration": 0,
   "reflectEvery": 3,

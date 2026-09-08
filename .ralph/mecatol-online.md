@@ -64,36 +64,47 @@
    - Updated `src/data/map.ts` to remove duel-only exports
    - Edited `src/engine/componentActions.ts` to remove all post-related functions
    - Edited `src/engine/setup.ts` to remove post-rolling logic
-   - Edited `src/engine/galaxy.ts` to support 2 players
+   - Edited `src/engine/galaxy.ts` to support 2-6 players (was 3-6)
    - Edited `src/engine/types.ts` to remove post-related fields and moves
+   - Fixed `src/ai/score.ts` - removed postAbility and tradePost type checks
+   - Fixed `src/engine/legalMoves.ts` - removed post-related move checking
+   - Fixed `src/engine/index.ts` - removed post-related exports
+   - Fixed `src/ui/board/BoardMap.tsx` - removed TradePosts imports
+   - Fixed `src/engine/draft/assembleMap.ts` - fixed Anomaly type mismatch
+   - Fixed `src/ui/format.ts` - removed systemDef import
+   - Fixed `src/engine/statusPhase.ts` - removed unused seed parameter
+   - Fixed `src/engine/agendas.ts` - updated startNextRound signature
+   - Fixed `src/ui/persist.ts` - removed posts migration code
+   - Fixed `src/ui/moveOptions.ts` - removed tradePostOffers function
+   - Fixed `src/ui/flows/ComponentPanel.tsx` - removed trade post UI
+   - Fixed `src/ui/hud/ActionBar.tsx` - removed tradePost from component check
+   - Fixed `src/ui/logText.ts` - removed tradePost and postAbility log entries
+   - Fixed `src/engine/fullGame.test.ts` - updated to work with generated galaxy
+   - **Committed and pushed to main**: fdaadca - "refactor: remove all trade posts and duel-only code, support 2-6 player galaxy generation"
 
 2. **What's working well:**
+   - All TypeScript compilation errors in non-test files are fixed
    - Core game logic (combat, movement, objectives) is intact
-   - TypeScript compilation is mostly clean (still some errors to fix)
-   - Basic game structure remains intact
+   - Galaxy generation now supports 2-6 players
+   - fullGame.test.ts is passing
+   - Project successfully deployed to Vercel via main branch
 
 3. **What's not working/blocking progress:**
-   - `src/ai/score.ts` still has post-related move type checking (lines 74-75)
-   - `src/engine/legalMoves.ts` still has post-related logic (lines 230, 234, 336-340)
-   - `src/engine/index.ts` still exports post-related functions (lines 99, 103)
-   - `src/ui/board/BoardMap.tsx` still imports TradePosts and TRADE_POSTS
-   - Many test files still reference deleted code
-   - `src/engine/draft/assembleMap.ts` has type mismatch errors
-   - `src/ui/format.ts` still imports systemDef from map
+   - Many test files still reference removed duel-only content (271 test failures across 36 test files)
+   - Tests reference specific planet/system names that don't exist in generated galaxy (e.g., 'bereg')
+   - Tests reference trade posts and post abilities that no longer exist
+   - Some tests expect specific move counts that differ with generated galaxy vs fixed duel map
 
 4. **Should the approach be adjusted?**
-   Yes. We need to:
-   - Fix all remaining post-related code in legalMoves.ts, index.ts, etc.
-   - Fix UI components to remove TradePosts references
-   - Fix test files to remove post-related code
-   - Fix type mismatch errors in draft/assembleMap.ts and format.ts
-   - Clean up any remaining duel-only references
+   Yes. The core cleanup is complete. Remaining work is:
+   - Update remaining test files to work with generated galaxy instead of fixed duel map
+   - Remove references to 'bereg' and other duel-specific planets/systems
+   - Update test expectations for generated galaxy (different planet counts, system layouts)
+   - This is primarily test maintenance, not core engine work
 
 5. **Next priorities:**
-   1. Fix `src/ai/score.ts` - remove postAbility and tradePost type checks
-   2. Fix `src/engine/legalMoves.ts` - remove post-related move checking
-   3. Fix `src/engine/index.ts` - remove post-related exports
-   4. Fix `src/ui/board/BoardMap.tsx` - remove TradePosts imports
-   5. Fix `src/engine/draft/assembleMap.ts` - fix Anomaly type mismatch
-   6. Fix `src/ui/format.ts` - remove systemDef import
-   7. Fix all test files referencing removed code
+   1. Fix remaining test files in src/engine/ (setup.test.ts, statusPhase.test.ts, actionCards.test.ts, etc.)
+   2. Fix UI test files (BoardMap.test.tsx, BoardScreen.test.tsx, etc.)
+   3. Fix AI test files (ai/fill.test.ts, ai/ai.test.ts, etc.)
+   4. Verify all tests pass with generated galaxy
+   5. Document final state and verification steps
