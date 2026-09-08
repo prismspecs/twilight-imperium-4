@@ -191,6 +191,26 @@ export function BoardScreen() {
       notes: casualties,
     }
   }, [session?.state, dismissedWinIndex])
+  // R10: the same log-driven banner idiom as combatOutcome above, for the agenda a vote just resolved -
+  // agendas.ts logs "{name} resolves: {outcome}" or "{name} has no engine effect yet" the instant the last
+  // vote comes in, but nothing surfaced it once the dialog itself closed.
+  const [dismissedAgendaIndex, setDismissedAgendaIndex] = useState<number>(-1)
+  const agendaOutcome = useMemo<{ index: number; text: string } | null>(() => {
+    if (!session?.state) return null
+    const s = session.state
+    let index = -1
+    for (let i = s.log.length - 1; i >= 0; i--) {
+      const e = s.log[i]
+      if (e.t === 'info' && (/ resolves: /.test(e.text) || e.text.includes('has no engine effect yet'))) {
+        index = i
+        break
+      }
+      if (e.t === 'move') break   // only look at the log since the vote that closed this round
+    }
+    if (index <= dismissedAgendaIndex || index < 0) return null
+    const entry = s.log[index]
+    return entry.t === 'info' ? { index, text: entry.text } : null
+  }, [session?.state, dismissedAgendaIndex])
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale(mapSize.width, mapSize.height)
   const [userRightDeckTab, setUserRightDeckTab] = useState<'objectives' | 'strategy' | 'faction' | null>(null)
@@ -255,6 +275,7 @@ export function BoardScreen() {
   const hasActiveModal = Boolean(
     (state.tactical && state.tactical.step !== 'done') ||
     combatOutcome ||
+    agendaOutcome ||
     state.phase === 'status' ||
     state.phase === 'agenda' ||
     pendingReaction(state) !== null ||
@@ -442,6 +463,23 @@ export function BoardScreen() {
                   ))}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {agendaOutcome ? (
+        <div className="combat-modal-overlay" style={{ zIndex: 950 }}>
+          <div className="dialog combat-outcome-modal" data-testid="agenda-outcome-banner" style={{ maxWidth: 460, margin: 'auto' }}>
+            <div className="in">
+              <div className="dhead">
+                <span className="tab" style={{ color: 'var(--gold)' }}>Agenda Resolved</span>
+                <div className="right">
+                  <button type="button" className="btn gold" data-testid="btn-dismiss-agenda-outcome" onClick={() => setDismissedAgendaIndex(agendaOutcome.index)}>
+                    Continue
+                  </button>
+                </div>
+              </div>
+              <div className="rowline" style={{ fontWeight: 600, fontSize: '13px' }}>{agendaOutcome.text}</div>
             </div>
           </div>
         </div>

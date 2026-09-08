@@ -43,4 +43,17 @@ describe('R10 the agenda dialog', () => {
     expect(screen.getByTestId('agenda-outcome-0').textContent).toContain('A')
     expect(screen.getByTestId('agenda-outcome-1').textContent).toContain('B')
   })
+
+  it('shows a dismissible banner naming the resolved outcome once the round closes', () => {
+    const s = { ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] }   // one round only
+    renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('agenda-outcome-For'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 1 votes For
+    fireEvent.click(screen.getByTestId('agenda-outcome-Against'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 0 (speaker) votes Against, round resolves
+    const banner = screen.getByTestId('agenda-outcome-banner')
+    expect(banner.textContent).toContain('Mutiny resolves: Against')   // a 0-0 tie goes to the speaker's own vote
+    fireEvent.click(screen.getByTestId('btn-dismiss-agenda-outcome'))
+    expect(screen.queryByTestId('agenda-outcome-banner')).toBeNull()
+  })
 })
