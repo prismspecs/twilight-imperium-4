@@ -46,3 +46,36 @@ already-documented `posts`/`postAbilityUsed` test debt from the duel-post remova
 `npx vitest run`: 429 passing / 269 failing, exactly the pre-existing 269 (the duel-map-removal test debt noted
 in `.ralph/mecatol-online.md`) plus this plan's 9 new passing tests — zero regressions, confirmed by running the
 full suite against `git stash` of this plan's changes and diffing the pass/fail counts.
+
+### 2026-09-08 — Gravity Rift implemented; Direct Hit parked
+
+The user asked to close both "explicitly deferred" prerequisites above. Gravity Rift landed on `main`
+(commit `2b2cdd3`): `movement.ts`'s `pathLength` became `shortestPath`, a least-cost search (Bellman-Ford
+over the system graph, since a rift's +1 is a per-crossing cost refund, not a flat bonus, so a longer detour
+through one can out-reach a shorter path that avoids one) that also returns the actual path taken, which
+`moveShips` needs to know which systems to roll removal for. `moveShips` gained a `seed` parameter — its
+first source of randomness. Floating Factory is subject to this too (lrr-factions.md 2110-2111), for free,
+through the same `isMovable()` path every ship already uses. Tested in `gravityRift.test.ts` (removal,
+survival, cargo lost with a removed carrier, the +1 reach extension via a real generated-galaxy topology
+search).
+
+Direct Hit did not land. Building it required a new `sustainDamage` reaction-window kind (opening mid-round,
+right after a sustain, not just at round start like every existing kind) and a `pendingSustainReactions`
+queue on `CombatState` so a round's `finish()` can be withheld until any newly-sustained unit's window has
+been offered and answered. While wiring this in, `npx vitest run` surfaced two full-game-simulation
+regressions. One was real and is fixed on the WIP branch: `legalMoves()` checked `pendingFor()` (queued hits)
+before `pendingReaction()` (an open window) — backwards priority, latent until `sustainDamage` became the
+first window kind able to open while hits from the same round were still queued elsewhere. The second is
+still open: `fullGame.test.ts`'s "seeds exercise every reachable move kind" test stops reaching `castVote`
+across its whole 21-seed fixture once Direct Hit's plumbing lands, and 39 additional seeds tried ad hoc
+didn't restore it either — bad-luck reseeding (the test's `1000 + moves` per-move seed scheme means any
+change in move count cascades into different dice for the rest of that game, and the file's own comments
+already document this exact kind of churn from past features) does not usually fail *that* comprehensively,
+so there is likely a second, subtler bug in the sustain-reaction queue rather than pure coverage drift.
+
+Ruling: parked rather than pushed half-verified during a live play session — the user was actively testing
+the app and hit three real, unrelated UI bugs (Saar's Floating Factory not selectable in the movement panel,
+wrong flagship art for every faction but two, and the setup screen randomizing which seat is human instead of
+defaulting it to Player 1) that took priority. The Direct Hit work is preserved in full on branch
+`direct-hit-wip` (commit `aaa0040`, pushed), not merged to `main`. Resuming it should start by instrumenting
+one specific failing seed's move trace rather than trying more seeds blind.
