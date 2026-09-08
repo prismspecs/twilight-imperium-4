@@ -2827,6 +2827,11 @@ button { font-family: inherit; }
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Without this a flex column defaults to min-height:auto, which never shrinks below its content's natural
+     height - so .tcol-cards' own flex:1/overflow-y:auto below never actually engages, and the whole card list
+     just grows past the drawer instead of scrolling inside its own column (each tech colour, e.g. Propulsion
+     or Warfare, needs to scroll on its own rather than stretching the whole drawer). */
+  min-height: 0;
 }
 
 .tcol.units {
