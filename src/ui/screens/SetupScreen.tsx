@@ -48,7 +48,7 @@ export function generateDefaultNames(playerTypes: PlayerType[], factions: Factio
   return playerTypes.map((type, i) => getDefaultName(type, factions[i]))
 }
 
-export function generateRandomSetup(count: number = 6): {
+export function generateRandomSetup(): {
   factions: FactionId[]
   colours: Color[]
   playerTypes: PlayerType[]
@@ -66,9 +66,9 @@ export function generateRandomSetup(count: number = 6): {
     ;[shuffledColours[i], shuffledColours[j]] = [shuffledColours[j], shuffledColours[i]]
   }
 
-  const validCount = Math.min(6, Math.max(2, count))
-  const humanSeat = Math.floor(Math.random() * validCount)
-  const playerTypes: PlayerType[] = Array.from({ length: 6 }, (_, i) => (i === humanSeat ? 'human' : 'ai'))
+  // Player 1 (seat 0) is always the human seat by default; everything after that — factions, colours,
+  // speaker — is randomized above and below.
+  const playerTypes: PlayerType[] = Array.from({ length: 6 }, (_, i) => (i === 0 ? 'human' : 'ai'))
 
   return {
     factions: shuffledFactions.slice(0, 6),
@@ -232,7 +232,7 @@ export function SetupScreen() {
   const route = useHashRoute()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
-  const [initialSetup] = useState(() => generateRandomSetup(6))
+  const [initialSetup] = useState(() => generateRandomSetup())
   const [playerCount, setPlayerCount] = useState<number>(6)
   const [factions, setFactions] = useState<FactionId[]>(() => initialSetup.factions)
   const [colours, setColours] = useState<Color[]>(() => initialSetup.colours)
@@ -328,10 +328,10 @@ export function SetupScreen() {
     setPlayerTypes(prev => {
       const next = [...prev]
       const humanIdx = next.slice(0, newCount).findIndex(pt => pt === 'human')
+      // Player 1 (seat 0) is the default human seat, same as the initial setup.
       if (humanIdx === -1) {
-        const randomSeat = Math.floor(Math.random() * newCount)
         for (let s = 0; s < 6; s++) {
-          next[s] = s === randomSeat ? 'human' : 'ai'
+          next[s] = s === 0 ? 'human' : 'ai'
         }
       }
       setNames(namesPrev => {
@@ -351,7 +351,7 @@ export function SetupScreen() {
     if (isDrafting) setIsDrafting(false)
   }
   function handleRandomize() {
-    const random = generateRandomSetup(playerCount)
+    const random = generateRandomSetup()
     setFactions(random.factions)
     setColours(random.colours)
     setPlayerTypes(random.playerTypes)
@@ -371,7 +371,9 @@ export function SetupScreen() {
         name: names[seat].trim() || getDefaultName(playerTypes[seat], factions[seat]),
         playerType: playerTypes[seat],
       })),
-      speaker: 0,
+      // Player 1 always sits in seat 0, but who actually goes first is random, same as a real table's
+      // speaker determination — it is not always the human.
+      speaker: Math.floor(Math.random() * playerCount),
     }, seed, clockEnabled ? minutes : 0)
   }
   function forget(code: string) {
