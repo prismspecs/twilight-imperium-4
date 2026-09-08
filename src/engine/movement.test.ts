@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { pendingFor } from './combat'
 import { applyMove, legalMoves } from './index'
 import { movementObstacle, shipsThatCanReach } from './movement'
-import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withUnits } from './testUtils'
+import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withThirdSeat, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
 function activate(state: GameState, seat: Seat, systemId: string): GameState {
@@ -185,6 +185,27 @@ describe('R3.2 movement', () => {
     expect(after.value.systems['home-n'].space.filter(u => u.owner === 1)).toHaveLength(0)
     expect(after.value.players[1].reinforcements.carrier).toBe(before.carrier + 1)
     expect(after.value.players[1].reinforcements.infantry).toBe(before.infantry + 2)
+  })
+  it('R4.1 step 1 (3+ players): a bystander\'s PDS still fires even though the tracked defender is a different seat', () => {
+    // seat 1's ship makes seat 1 the tracked `combat.defender` (movement.ts picks the first enemy ship's
+    // owner); seat 2 also has a planet with a PDS in the same system but no ships there at all. The PDS must
+    // still fire at the attacker: `spaceCannonOffense` scans every owner in the system, not just the one
+    // `combat.defender` happens to name.
+    let s = withThirdSeat(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 2))
+    s = withUnits(s, 'bereg', 2, ['pds'], 'bereg')
+    s = withUnits(s, 'bereg', 1, ['destroyer'])
+    const activated = activate(s, 0, 'bereg')
+    const carrier = shipId(activated, 'home-n', 'carrier')
+    const moved = move(activated, carrier, 'home-n')
+    if (!moved.ok) throw new Error(moved.error)
+    const inCombat = applyMove(moved.value, { type: 'endMovement' }, 0)
+    if (!inCombat.ok) throw new Error(inCombat.error)
+    expect(inCombat.value.tactical?.combat?.defender).toBe(1)   // the ship owner, not the PDS owner
+    const fired = applyMove(inCombat.value, { type: 'combatRound' }, 7)
+    if (!fired.ok) throw new Error(fired.error)
+    const entries = fired.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ owner: 2 })   // seat 2's bystander PDS fired, attributed correctly
   })
 })
 
