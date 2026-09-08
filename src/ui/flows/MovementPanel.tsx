@@ -321,13 +321,22 @@ export function MovementPanel() {
               })
             } else {
               const allShips: Partial<Record<UnitType, number>> = {}
+              const allChosen: Unit[] = []
               for (const type of allMovers) {
-                allShips[type] = movers.get(type)?.length ?? 0
+                const units = movers.get(type) ?? []
+                allShips[type] = units.length
+                allChosen.push(...units)
               }
               setPicked(prev => ({
                 ...prev,
                 [from]: allShips,
               }))
+              // Bring every fighter and infantry the fleet has room for too, not just the ships themselves.
+              const allRoom = roomAt(allChosen)
+              const allPool = availableCargo(state, seat, from, allChosen)
+              const wantFighter = Math.min(allPool.fighter.length, allRoom)
+              const wantInfantry = Math.min(allPool.infantry.length, allRoom - wantFighter)
+              setCargo(prev => ({ ...prev, [from]: { fighter: wantFighter, infantry: wantInfantry } }))
             }
           }
           return (
