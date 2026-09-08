@@ -409,3 +409,23 @@ Consequences of having all eight cards, each taken deliberately:
 
 Verification: 576 tests, tsc clean, lint clean, `npm run ai:stress -- 300` clean (300/300). A 20-game AI
 sample plays both new cards as primaries and secondaries and plays all 14 action cards.
+
+### 2026-09-08 — Complete LRR imported; duel remnants removed from the spec
+
+Documentation fixes so an LLM coding against the repo stops overlooking full-game rules:
+
+- **Complete LRR v2.0 imported** into `docs/spec/lrr.md` (109-section glossary), `docs/spec/lrr-components.md`
+  (all component/card text incl. Ω/Codex variants), `docs/spec/lrr-quick.md`, `docs/spec/lrr-index.md`,
+  `docs/spec/lrr-factions.md`. Provenance: `/tmp/ti4-rules`, `ti4rules.github.io`, LRR v2.0, base + Codices I–IV.
+- **Removed** the pre-Codex, duel-framed `docs/spec/lrr-excerpts.md` (superseded by `lrr.md`).
+- **Rewrote `docs/spec/game-rules.md`** to describe the full base game + Codices for 2–6 players, dropping the
+  "Bereg Standoff" 2-player flower map, the custom duel objective pool + mandates, the 7VP/6-round duel
+  victory, and the duel-specific rules section. Kept genuine base-game mechanics (Mecatol Rex + Custodians
+  guardian fleet, 10 VP, Stage I/II objectives, agenda phase, all 8 strategy cards).
+- **Removed `docs/spec/trade-posts.md`** — the trade-post minigame is a duel-only invention, not base TI4.
+- **CLAUDE.md** now states the project is the full TI4 base game + Codices, NOT a 2-player duel; the 2-player
+  trade-post/map code is flagged as legacy to-remove.
+- **Ruling:** the trade posts, `Bereg Standoff` map, emergency shipyard, and `posts.ts`/`postAbilities.ts`
+  remain in the *engine code* (duel-only legacy) and are marked as such in `docs/spec/engine-design.md`.
+  Removing them from the code is a separate, code-touching task deferred to a later increment (would touch
+  `src/` and needs the full test gate). For now the *documentation* no longer presents them as base-game rules.
