@@ -91,7 +91,7 @@ Research via Technology strategy card (primary: one technology; secondary: one t
 - Imperial secondary: spend one strategy token to gain 2 trade goods (replaces "draw a secret objective").
 - Diplomacy uses the errata text (ready up to 2 exhausted planets you control; the opponent places a command token from reinforcements in the chosen system, which they then cannot activate this round).
 - Emergency shipyard: once per game, component action: spend one strategy token and 4 resources to place a space dock on a planet you control, only if you control no space dock.
-- No promissory notes and no agenda phase yet; action cards and secret objectives are in (section 9).
+- No promissory notes yet; action cards, secret objectives and the agenda phase are in (sections 9 and 10).
 - Chess clock: 15 minutes per player, running whenever it is that player's turn to decide something, in every phase: picking a strategy card, taking an action, answering a secondary, distributing status tokens. It stops only while the handoff screen is up and once the game is over, so neither player can hold the other one hostage by sitting on a draft pick. At zero the player automatically passes for the rest of the round and receives 3 extra minutes at the start of each later round. The engine is time-free; the transport records a timestamp per move (see lobby-architecture.md) and enforces the clock.
 
 ## 7. Objectives and victory
@@ -125,3 +125,27 @@ Two neutral posts outside the map: west (linked to systems `sakulag` and `starpo
 During your own turn in the action phase, at most once per round per post, you may sell commodities for 1 trade good each at a post, if you control at least one planet in one of its linked systems. How many commodities one sale takes is that post's own limit. On top of the sale, each post has one special ability, which is once per round for the whole table: the first player to use it takes it, and the other player cannot use that post's ability until the posts turn over. Sale and ability are both free moves, not actions.
 
 Trade posts are not systems: no movement, no activation, no combat. Commodities replenish through the Trade card. Engine narrowing: a sale and an ability are offered on your own turn, before or after your action, but never while a tactical action, a combat or a secondary window is open, and never after you have passed.
+
+## 10. Agenda phase (R10)
+
+- Entry: once the Custodians token has left Mecatol Rex, the status phase reveals an agenda instead of
+  starting the next round straight away. While the token is still on Mecatol Rex, or the agenda deck has run
+  dry, the game goes straight to the next round exactly as before.
+- Vote order: clockwise starting with the seat left of the speaker, the speaker voting last. On a tie, the
+  outcome the speaker themself voted for wins, which falls out for free from voting last rather than needing
+  its own rule.
+- Casting a vote: name one of the agenda's legal outcomes (For/Against; one candidate for an Elect Player
+  agenda; a 0-vote abstain for every other elect target this increment does not enumerate yet) and exhaust
+  any number of your ready planets that print influence to weight it — planets only, no trade goods, per the
+  printed rule. An empty planet list is a legal 0-influence vote, not a forced abstain.
+- Two agendas are revealed and voted on per phase, exactly as in the full game; the second is skipped only if
+  the deck runs dry mid-phase. Victory is re-checked after each one resolves, since Mutiny and Seed of an
+  Empire can hand out the deciding point before the status phase's own check would run again.
+- Every one of the 50 base agendas is real and can be revealed and voted on — the deck is never filtered the
+  way the action and reaction card decks are, because Politics's primary already peeks and reorders the real,
+  full deck and locks its exact order down in a test. What differs is which outcomes the engine actually
+  enacts: Economic Equality, Mutiny, Seed of an Empire, Swords to Plowshares, Unconventional Measures,
+  Archived Secret and Public Execution are fully resolved. Every other agenda's vote and influence spend are
+  genuine, but an elected outcome with no resolver is logged as recorded, not enforced, rather than silently
+  applied or silently skipped. Laws (persistent ongoing effects) and the agenda-timing action cards (Riders,
+  Veto, Bribery, Assassinate Representative, Distinguished Councilor) are later increments.
