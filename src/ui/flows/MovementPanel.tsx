@@ -13,7 +13,7 @@ import type { GameState, Seat, Unit, UnitType } from '../../engine/types'
 interface Cargo { fighter: number; infantry: number }
 type Picked = Record<string, Partial<Record<UnitType, number>>>
 
-const SHIP_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter']
+const SHIP_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'floating_factory']
 const CARGO_ORDER: (keyof Cargo)[] = ['fighter', 'infantry']
 
 /** Undamaged ships first: moving a healthy hull into a fight is what a player means by "send two dreadnoughts". */

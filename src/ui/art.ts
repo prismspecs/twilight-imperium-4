@@ -286,11 +286,10 @@ export function techArtUrl(techId: string): string {
   return `/assets/cards/${TECH_FILE[techId] ?? 'cardback_public2.png'}`
 }
 export function unitCardUrl(type: UnitType, faction: FactionId): string {
-  if (type === 'flagship') {
-    return faction === 'l1z1x'
-      ? '/assets/factions/unit_l1z1x_flagship_001.png'
-      : '/assets/factions/unit_letnev_flagship_arc_secundus.png'
-  }
+  // Only l1z1x and letnev have their own flagship reference art; every other faction falls through to the
+  // generic flagship card below rather than showing a real but wrong faction's named ship.
+  if (type === 'flagship' && faction === 'l1z1x') return '/assets/factions/unit_l1z1x_flagship_001.png'
+  if (type === 'flagship' && faction === 'letnev') return '/assets/factions/unit_letnev_flagship_arc_secundus.png'
   if (type === 'dreadnought' && faction === 'l1z1x') return '/assets/factions/unit_l1z1x_superdreadnought.jpg'
   // No dedicated Floating Factory reference card art yet; the plain space dock's stands in.
   return `/assets/cards/${UNIT_CARD[type === 'floating_factory' ? 'spacedock' : type]}`

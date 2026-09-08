@@ -5,7 +5,7 @@ import type { Color, Owner, UnitType } from '../../engine/types'
 
 export interface UnitGroup { owner: Owner; type: UnitType; count: number }
 
-const ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'spacedock', 'pds']
+const ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'spacedock', 'floating_factory', 'pds']
 
 /** Groups units by owner and type in a stable order, so the board never reshuffles between renders. */
 export function groupUnits(units: { owner: Owner; type: UnitType }[]): UnitGroup[] {

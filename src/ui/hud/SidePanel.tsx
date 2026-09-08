@@ -12,7 +12,7 @@ import { useModelStyle } from '../modelStyle'
 import type { GameState, Seat, UnitType } from '../../engine/types'
 
 const POOLS = ['tactic', 'fleet', 'strategy'] as const
-const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
+const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock', 'floating_factory']
 
 export interface SidePanelProps {
   state: GameState

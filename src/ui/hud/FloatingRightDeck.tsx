@@ -17,7 +17,7 @@ import type { GameState, Seat, StrategyCardId, UnitType } from '../../engine/typ
 
 const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
 const POOLS = ['tactic', 'fleet', 'strategy'] as const
-const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
+const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock', 'floating_factory']
 
 export interface FloatingRightDeckProps {
   state: GameState
