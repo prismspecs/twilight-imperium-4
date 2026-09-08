@@ -33,7 +33,7 @@ const AFB_SALT_BASE = 3
 const SPACE_CANNON_SALT_BASE = 5
 const AMBUSH_SALT_BASE = 7
 
-interface Ctx { systemId: string; attacker: Seat; defender: Owner; round: number }
+export interface Ctx { systemId: string; attacker: Seat; defender: Owner; round: number }
 
 /**
  * R4.1 steps 4 and 6, the automatic assignment: sustain first, then the destruction order; restricted hits with
@@ -276,6 +276,28 @@ function summarizeUnitTypes(types: readonly UnitType[]): string {
 }
 
 /**
+ * R9 Direct Hit: "After another player's ship uses SUSTAIN DAMAGE to cancel a hit produced by your units or
+ * abilities: destroy that ship." Queues each newly-sustained unit for a "sustainDamage" window rather than
+ * offering it inline — `openSustainReactionWindows` (reactions.ts) drains the queue after every move, opening
+ * one only when the opposing seat actually holds a playable Direct Hit, and only then does the round's
+ * `finish` (see `maybeFinish`) wait on it. Scoped to actual combat rounds only: the round 0 pre-combat steps
+ * (space cannon offense, Mentak Ambush, Assault Cannon, anti-fighter barrage) do not offer this window this
+ * pass — see the plan ledger.
+ */
+function queueSustainReactions(state: GameState, owner: Owner, sustainedIds: number[], context: string): GameState {
+  const tac = state.tactical
+  if (!tac?.combat || !isRoundContext(context) || !sustainedIds.length) return state
+  const queued = sustainedIds.map(unitId => ({ owner, unitId }))
+  return {
+    ...state,
+    tactical: {
+      ...tac,
+      combat: { ...tac.combat, pendingSustainReactions: [...(tac.combat.pendingSustainReactions ?? []), ...queued], awaitingFinish: true },
+    },
+  }
+}
+
+/**
  * R4.1 step 4: hands a batch of hits to the owner of the ships. The engine resolves it itself for the guardian
  * fleet (which has no player) and whenever rule 4 leaves no real decision, logging what it did; otherwise the
  * batch is appended to the queue and the combat waits. `context` names the step that scored the hits: it labels
@@ -312,7 +334,7 @@ function resolveHits(state: GameState, systemId: string, owner: Owner, groups: H
       log: [...logged.log, { t: 'info' as const, text: `${ownerName} loses: ${details.join(', ')}` }],
     }
   }
-  return repair(logged, auto.sustainedIds)
+  return queueSustainReactions(repair(logged, auto.sustainedIds), owner, auto.sustainedIds, context)
 }
 
 /** R4.1 step 4: the owner's answer to the head of the queue — which ships die and which ones sustain instead. */
@@ -348,6 +370,7 @@ export function assignHits(state: GameState, destroy: number[], sustain: number[
   next = { ...next, log: [...next.log, { t: 'info', text: `${state.players[head.owner].name} assigns ${taken} hits: ${detail || 'nothing'}` }] }
   next = withPending(next, (next.tactical?.combat?.pending ?? []).slice(1))
   if (isRoundContext(head.context)) next = repairAfterRound(next, tac.systemId, head.owner, sustain)
+  next = queueSustainReactions(next, head.owner, sustain, head.context)
   if (pendingFor(next)) return { ok: true, value: next }              // the other side still owes an assignment
   return { ok: true, value: resumeAfterAssignment(next, head.context, seed) }
 }
@@ -364,7 +387,7 @@ function resumeAfterAssignment(state: GameState, context: string, seed: number):
   if (!tac?.combat) return state
   const ctx: Ctx = { systemId: tac.systemId, attacker: tac.combat.attacker, defender: tac.combat.defender, round: tac.combat.round }
   if (tac.step === 'movement') return afterSpaceCannonOnly(state, ctx.systemId, ctx.attacker)
-  if (isRoundContext(context)) return finish(state, ctx)
+  if (isRoundContext(context)) return maybeFinish(state, ctx)
   if (context === 'space cannon offense') {
     const sys = state.systems[ctx.systemId]
     const defenderShips = shipsOf(sys, ctx.defender).length
@@ -393,7 +416,7 @@ function preCombat(state: GameState, from: 'ambush' | 'assault cannon' | 'anti-f
     if (pendingFor(next)) return next
   }
   if (bothAlive(next, ctx)) next = antiFighterBarrage(next, ctx, seed)
-  return finish(next, ctx)
+  return maybeFinish(next, ctx)
 }
 
 /**
@@ -692,14 +715,25 @@ function destroyEscortlessFloatingFactories(state: GameState, systemId: string, 
   return { ...next, log: [...next.log, { t: 'info', text: `seat ${victims[0].owner}'s Floating Factory in ${systemId} is destroyed with no ships left to escort it` }] }
 }
 
+/**
+ * R9 Direct Hit: a round cannot close while any of its sustains still owes a "sustainDamage" window —
+ * `openSustainReactionWindows` (reactions.ts) drains `pendingSustainReactions` after every move and calls
+ * `finish` itself, exported for exactly that, once the queue is empty.
+ */
+function maybeFinish(state: GameState, ctx: Ctx): GameState {
+  if (state.tactical?.combat?.pendingSustainReactions?.length) return state
+  return finish(state, ctx)
+}
+
 /** Closes a round (or the round 0 pre-combat steps); `lastRolls` was stored when the dice were thrown. */
-function finish(state: GameState, ctx: Ctx): GameState {
+export function finish(state: GameState, ctx: Ctx): GameState {
   const tac = state.tactical
   if (!tac || !tac.combat) return state
   const attackerShips = shipsOf(state.systems[ctx.systemId], ctx.attacker).length
   const defenderShips = shipsOf(state.systems[ctx.systemId], ctx.defender).length
   const next = destroyEscortlessFloatingFactories(state, ctx.systemId, attackerShips, defenderShips, ctx.attacker, ctx.defender)
-  const combat: CombatState = { ...tac.combat, round: ctx.round + 1 }
+  // R9 Direct Hit: this round's sustain-reaction bookkeeping is spent the moment the round actually closes.
+  const combat: CombatState = { ...tac.combat, round: ctx.round + 1, pendingSustainReactions: [], awaitingFinish: false }
   if (!attackerShips) {
     // the defender holding the field wins the combat and earns the same mandate the attacker would have
     const done = defenderShips ? wonBy(next, ctx, ctx.defender) : next
@@ -791,7 +825,7 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   next = resolveHits(next, ctx.systemId, ctx.attacker, [{ count: d.hits - d.restricted, mode: 'any' }, { count: d.restricted, mode: 'preferNonFighters' }], context)
   next = resolveHits(next, ctx.systemId, ctx.defender, [{ count: a.hits - a.restricted, mode: 'any' }, { count: a.restricted, mode: 'preferNonFighters' }], context)
   if (pendingFor(next)) return { ok: true, value: next }
-  return { ok: true, value: finish(next, ctx) }
+  return { ok: true, value: maybeFinish(next, ctx) }
 }
 
 /** R4.1 step 5: adjacent systems that hold the retreating player's units or command token and no enemy ships. */

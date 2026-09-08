@@ -86,6 +86,14 @@ export interface CombatState {
   pending: PendingHits[]           // hits waiting to be assigned, head first; empty when the combat may continue
   // R9: the highest combat round whose reaction window has already been offered; -1 (or absent) means none.
   reacted?: number
+  // R9 Direct Hit: units that sustained a hit this combat round and have not yet had a "sustainDamage" window
+  // offered, head first. The round cannot close (`finish`) while this holds anything — see
+  // `openSustainReactionWindows` in reactions.ts, which drains it and only then lets the round conclude.
+  pendingSustainReactions?: { owner: Owner; unitId: number }[]
+  // Set alongside the first entry ever queued above, for this round; distinguishes "nothing was ever
+  // deferred, `finish` already ran inline" from "the queue was deferred and has now fully drained, so this
+  // is the moment to actually call `finish`" once `pendingSustainReactions` empties back out.
+  awaitingFinish?: boolean
 }
 export interface InvasionState {
   planetId: string | null; landed: number[]; bombarded: string[]; round: number
@@ -213,7 +221,7 @@ export interface ActionCardParams {
  * R9: the engine points at which a player may interrupt with an action card. Every kind names a moment the
  * engine really stops at, and the window carries the context its cards need to name a target.
  */
-export type ReactionKind = 'systemActivated' | 'spaceCombatRound' | 'groundCombatRound'
+export type ReactionKind = 'systemActivated' | 'spaceCombatRound' | 'groundCombatRound' | 'sustainDamage'
 
 /**
  * R9: an open reaction window. It follows the shape `pendingSecondary` proved: a queue of seats answered in
@@ -223,16 +231,19 @@ export type ReactionKind = 'systemActivated' | 'spaceCombatRound' | 'groundComba
  */
 export interface ReactionWindow {
   kind: ReactionKind
-  /** the seat whose action opened the window (the active player, for every window built so far) */
-  source: Seat
+  /** whose action opened the window: the active player for every other kind, or (Direct Hit) the owner of
+   * the unit that just sustained a hit — which can be the guardian fleet, holding no cards of its own */
+  source: Owner
   /** the seats that may still answer, head first; the window closes when the queue empties */
   queue: Seat[]
   /** the seat that was on turn when the window opened; play resumes there */
   resume: Seat
   /** the system the window is about: the activated system, or the system the combat is being fought in */
   systemId: string
-  /** the combat round (space or ground) the window opens at the start of */
+  /** the combat round (space or ground) the window opens at the start of, or (Direct Hit) mid-round */
   round?: number
+  /** Direct Hit: the unit id that just sustained the hit it may destroy */
+  unitId?: number
 }
 
 /**

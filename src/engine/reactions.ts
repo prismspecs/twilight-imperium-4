@@ -1,8 +1,8 @@
 import { effectOf, findActionCard } from '../data/actionCards'
 import { isShip } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, shipsOf, trimCargo } from './board'
-import { trimFleetPool } from './combat'
+import { checkFleet, destroyUnits, shipsOf, trimCargo } from './board'
+import { finish, trimFleetPool, type Ctx } from './combat'
 import { afterSpaceStep } from './invasion'
 import { shipsThatCanReach } from './movement'
 import type { ActionCardParams, ActiveEffect, GameState, Move, Result, Seat, System, Unit } from './types'
@@ -29,6 +29,7 @@ import type { ReactionKind, ReactionWindow } from './types'
  * when its whole printed ability resolves.
  */
 export const PLAYABLE_REACTION_CARDS: readonly string[] = [
+  'direct_hit_1', 'direct_hit_2', 'direct_hit_3', 'direct_hit_4',
   'emergency_repairs',
   'fighter_prototype',
   'flank_speed_1', 'flank_speed_2', 'flank_speed_3', 'flank_speed_4',
@@ -54,6 +55,8 @@ const WINDOWS_OF: Readonly<Record<string, readonly ReactionKind[]>> = {
   // "at the start of the first round of a space combat" / "at the start of a [space] combat round"
   fighter_prototype: ['spaceCombatRound'],
   skilled_retreat: ['spaceCombatRound'],
+  // "After another player's ship uses SUSTAIN DAMAGE to cancel a hit produced by your units or abilities"
+  direct_hit: ['sustainDamage'],
 }
 
 /** The window being answered: the innermost of the stack, or null when no window is open. */
@@ -119,12 +122,21 @@ function activationWindowLive(state: GameState, window: ReactionWindow): boolean
   return state.tactical?.systemId === window.systemId && state.tactical.step === 'movement'
 }
 
+/** R9 Direct Hit: the sustained ship it names is still there, in the same round of the same combat. */
+function sustainDamageWindowLive(state: GameState, window: ReactionWindow): boolean {
+  const tac = state.tactical
+  if (!tac?.combat || tac.step !== 'spaceCombat') return false
+  if (tac.systemId !== window.systemId || tac.combat.round !== window.round || window.unitId === undefined) return false
+  return state.systems[window.systemId].space.some(u => u.id === window.unitId)
+}
+
 /** Whether the window's own moment is still the moment the game is at. */
 function windowLive(state: GameState, window: ReactionWindow): boolean {
   switch (window.kind) {
     case 'systemActivated': return activationWindowLive(state, window)
     case 'spaceCombatRound': return spaceWindowLive(state, window)
     case 'groundCombatRound': return groundWindowLive(state, window)
+    case 'sustainDamage': return sustainDamageWindowLive(state, window)
   }
 }
 
@@ -194,6 +206,11 @@ export function reactionMoves(state: GameState, seat: Seat, window: ReactionWind
         break
       case 'emergency_repairs':
         if (damagedUnits(state.systems[window.systemId], seat).length) out.push({ type: 'playActionCard', cardId, params: {} })
+        break
+      case 'direct_hit':
+        // window.queue is only ever the seat whose hit caused the sustain (built by openSustainReactionWindows),
+        // so holding the card and being asked here already is the whole legality check.
+        out.push({ type: 'playActionCard', cardId, params: {} })
         break
       case 'skilled_retreat':
         if (shipsOf(state.systems[window.systemId], seat).length) {
@@ -334,8 +351,22 @@ function resolveReaction(state: GameState, seat: Seat, window: ReactionWindow, c
       return emergencyRepairs(state, seat, window.systemId)
     case 'skilled_retreat':
       return skilledRetreat(state, seat, window, params.systemId)
+    case 'direct_hit':
+      return directHit(state, window)
     default:
       return { ok: false, error: `R9: ${cardId} is not implemented yet` }
+  }
+}
+
+/** R9 Direct Hit: "Destroy that ship." — the ship named by the window, which just used SUSTAIN DAMAGE. */
+function directHit(state: GameState, window: ReactionWindow): Result<GameState> {
+  if (window.unitId === undefined) return { ok: false, error: 'R9: no ship named for Direct Hit' }
+  const target = state.systems[window.systemId]?.space.find(u => u.id === window.unitId)
+  if (!target) return { ok: false, error: 'R9: that ship is no longer there' }
+  const next = destroyUnits(state, window.systemId, [target])
+  return {
+    ok: true,
+    value: { ...next, log: [...next.log, { t: 'info', text: `seat ${String(target.owner)}'s ${target.type} is destroyed` }] },
   }
 }
 
@@ -426,6 +457,45 @@ export function openActivationWindow(state: GameState, seat: Seat, systemId: str
 /** The two sides of the running space combat, attacker first; the guardian fleet holds no cards. */
 function combatSeats(attacker: Seat, defender: Seat | 'guardian'): Seat[] {
   return defender === 'guardian' ? [attacker] : [attacker, defender]
+}
+
+/**
+ * R9 Direct Hit: drains `combat.pendingSustainReactions` (queued by `queueSustainReactions` in combat.ts)
+ * after every applied move. An entry nobody can answer — every entry, at a table without the card in a live
+ * hand — is simply discarded, so the round closes in the very same move exactly as it always did; only a
+ * seat that actually holds a playable Direct Hit ever sees the game pause here. Once the queue is empty the
+ * round was only ever being held open for this, so `finish` (withheld by `maybeFinish` in combat.ts) runs.
+ */
+export function openSustainReactionWindows(state: GameState): GameState {
+  if (state.pendingReactions.length || state.winner !== null) return state
+  const tac = state.tactical
+  const combat = tac?.combat
+  if (!tac || !combat || tac.step !== 'spaceCombat' || !combat.awaitingFinish) return state
+  let cur = state
+  let queue = combat.pendingSustainReactions ?? []
+  while (queue.length) {
+    const head = queue[0]
+    const rest = queue.slice(1)
+    const withoutHead: GameState = {
+      ...cur,
+      tactical: { ...cur.tactical!, combat: { ...cur.tactical!.combat!, pendingSustainReactions: rest } },
+    }
+    const opposing = head.owner === combat.attacker ? combat.defender : combat.attacker
+    if (typeof opposing !== 'number') {
+      cur = withoutHead
+    } else {
+      const window: ReactionWindow = {
+        kind: 'sustainDamage', source: head.owner, queue: [opposing], resume: withoutHead.active,
+        systemId: tac.systemId, round: combat.round, unitId: head.unitId,
+      }
+      const opened = openReaction(withoutHead, window)
+      if (opened.pendingReactions.length) return opened
+      cur = opened
+    }
+    queue = rest
+  }
+  const ctx: Ctx = { systemId: tac.systemId, attacker: combat.attacker, defender: combat.defender, round: cur.tactical?.combat?.round ?? combat.round }
+  return finish(cur, ctx)
 }
 
 /**

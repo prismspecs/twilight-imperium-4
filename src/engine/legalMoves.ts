@@ -220,15 +220,18 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
 
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
-  // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
-  if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
-  // R9: an open reaction window blocks everything else too; the seat it is waiting on may play a matching
-  // card or decline, and nothing else, until the window closes
+  // R9: an open reaction window blocks everything else, queued hits included — Direct Hit's "sustainDamage"
+  // window can open while another batch from the same round still awaits assignment (R9 Direct Hit reacts the
+  // instant a ship sustains, not once the whole round is fully assigned), so this has to outrank the pendingFor
+  // check below rather than the other way around. The seat the window is waiting on may play a matching card
+  // or decline, and nothing else, until it closes.
   const reaction = pendingReaction(state)
   if (reaction) {
     const seat = reaction.queue[0]
     return seat === undefined ? [] : [{ type: 'declineReaction' }, ...reactionMoves(state, seat, reaction)]
   }
+  // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
+  if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
   if (state.phase === 'strategy') {
     const seat = state.draft[0]
     if (seat === undefined || seat !== state.active) return []

@@ -2,7 +2,7 @@ import { playActionCard } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { castVote } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
-import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
+import { declineReaction, openActivationWindow, openCombatWindows, openSustainReactionWindows, pendingReaction, playReactionCard } from './reactions'
 import { productionBiomes, research, shipyard } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
 import { endMovement, exhaustSpatialConduit, moveShips } from './movement'
@@ -70,9 +70,10 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
     // an exception is an engine bug, not a rules rejection; `internal` keeps the two apart for callers
     return { ok: false, error: e instanceof Error ? e.message : String(e), internal: true }
   }
-  // R9: "at the start of a combat round" — checked after every move, so the window opens wherever the engine
-  // came to rest at the start of one, whatever move brought it there.
-  return result.ok ? { ok: true, value: openCombatWindows(result.value) } : result
+  // R9 Direct Hit: drains any sustains still owed a window before a round is allowed to close; then, "at the
+  // start of a combat round" — checked after every move, so the window opens wherever the engine came to rest
+  // at the start of one, whatever move brought it there.
+  return result.ok ? { ok: true, value: openCombatWindows(openSustainReactionWindows(result.value)) } : result
 }
 
 export { createGame } from './setup'
