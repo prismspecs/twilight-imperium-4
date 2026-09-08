@@ -129,11 +129,8 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     expect(stage.className).toContain('has-modal')
   })
 
-  it('switches to My Faction tab in FloatingRightDeck and displays player faction overview and secret objectives', () => {
-    let state = toActionPhase()
-    state = withPlayer(state, 0, {
-      secretObjectives: ['fwm'],
-    })
+  it('switches to My Faction tab in FloatingRightDeck and displays player faction overview', () => {
+    const state = toActionPhase()
 
     renderWithSession(state, <BoardScreen />)
 
@@ -151,11 +148,23 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     expect(screen.getByTestId('frd-abilities-0').textContent).toContain('Assimilate')
     expect(screen.getByTestId('frd-flagship-0').textContent).toContain('Cost')
     expect(screen.getByTestId('frd-starting-tech-0-neural_motivator')).toBeTruthy()
+  })
 
-    // Secret objective is fully visible to owner
+  it('shows secret objectives on the Objectives tab, faded once scored', () => {
+    let state = toActionPhase()
+    state = withPlayer(state, 0, {
+      secretObjectives: ['fwm'],
+      scoredObjectives: ['fwm'],
+    })
+
+    renderWithSession(state, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('topbar-btn-objectives'))
+    expect(screen.getByTestId('tab-btn-objectives').className).toContain('active')
+
     const secretCard = screen.getByTestId('frd-secret-0-fwm')
     expect(secretCard).toBeTruthy()
     expect(secretCard.textContent).toContain('Fuel the War Machine')
+    expect(secretCard.className).toContain('scored')
   })
 
   it('collapses and restores the left player panel via collapse and open buttons', () => {

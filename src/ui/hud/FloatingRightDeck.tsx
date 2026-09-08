@@ -223,33 +223,6 @@ export function FloatingRightDeck({
             <span className="econ"><img src={MISC.mandateBack} alt="Action cards" /> <b data-testid={`frd-action-cards-${safeSeat}`}>{myPlayer.actionCards.length} of {HAND_LIMIT}</b></span>
           </div>
 
-          {/* Secret Objectives */}
-          <div className="frd-section-title">Secret Objectives ({myPlayer.secretObjectives.length})</div>
-          <div className="frd-secrets-list" data-testid={`frd-secret-objectives-${safeSeat}`}>
-            {myPlayer.secretObjectives.length === 0 ? (
-              <div className="frd-empty-hint">No secret objectives held</div>
-            ) : (
-              myPlayer.secretObjectives.map(id => {
-                const def = objectiveDef(id)
-                const scored = myPlayer.scoredObjectives.includes(id)
-                return (
-                  <div
-                    key={id}
-                    className={`frd-obj-card secret-card${scored ? ' scored' : ''}`}
-                    data-testid={`frd-secret-${safeSeat}-${id}`}
-                  >
-                    <div className="frd-obj-top">
-                      <span className="frd-tier-badge">SECRET</span>
-                      <span className="frd-vp-badge">{scored ? 'SCORED · 1 VP' : '1 VP'}</span>
-                    </div>
-                    <div className="frd-obj-name">{def?.name ?? id}</div>
-                    {def?.text && <div className="frd-obj-desc">{def.text}</div>}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
           {/* Technologies */}
           <div className="frd-section-title">Technologies ({myPlayer.techs.length})</div>
           <div className="tech-list frd-tech-list">
@@ -315,6 +288,32 @@ export function FloatingRightDeck({
           aria-labelledby="tab-objectives"
           style={{ display: activeTab === 'objectives' ? 'flex' : 'none' }}
         >
+          <div className="frd-section-title">Secret Objectives ({myPlayer.secretObjectives.length})</div>
+          <div className="frd-secrets-list" data-testid={`frd-secret-objectives-${safeSeat}`}>
+            {myPlayer.secretObjectives.length === 0 ? (
+              <div className="frd-empty-hint">No secret objectives held</div>
+            ) : (
+              myPlayer.secretObjectives.map(id => {
+                const def = objectiveDef(id)
+                const scored = myPlayer.scoredObjectives.includes(id)
+                return (
+                  <div
+                    key={id}
+                    className={`frd-obj-card secret-card${scored ? ' scored' : ''}`}
+                    data-testid={`frd-secret-${safeSeat}-${id}`}
+                  >
+                    <div className="frd-obj-top">
+                      <span className="frd-tier-badge">SECRET</span>
+                      <span className="frd-vp-badge">{scored ? 'SCORED · 1 VP' : '1 VP'}</span>
+                    </div>
+                    <div className="frd-obj-name">{def?.name ?? id}</div>
+                    {def?.text && <div className="frd-obj-desc">{def.text}</div>}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
           <div className="frd-section-title">Public Objectives</div>
           <div className="frd-objs-list">
             {state.publicObjectives.map((id, index) => {
@@ -322,15 +321,17 @@ export function FloatingRightDeck({
               if (!def) return null
               const isStage2 = def.points === 2
               const scorers = scoredBy(seat => state.players[seat].scoredObjectives.includes(id))
+              const scoredByMe = scorers.includes(safeSeat)
               return (
                 <div
                   key={id}
-                  className={`frd-obj-card ${isStage2 ? 'stage-2' : 'stage-1'}`}
+                  className={`frd-obj-card ${isStage2 ? 'stage-2' : 'stage-1'}${scoredByMe ? ' scored' : ''}`}
                   data-testid={`objective-${id}`}
                 >
                   <div className="frd-obj-top">
                     <span className="frd-tier-badge">
                       {isStage2 ? 'STAGE II' : `STAGE I · R${index + 1}`}
+                      {scoredByMe ? ' · SCORED' : ''}
                     </span>
                     <span className="frd-vp-badge">{def.points} VP</span>
                   </div>

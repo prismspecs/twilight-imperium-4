@@ -1584,6 +1584,16 @@ button { font-family: inherit; }
   border-left: 3px solid #a855f7;
 }
 
+.frd-obj-card.scored {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.frd-obj-card.scored:hover {
+  opacity: 0.85;
+  filter: none;
+}
+
 .frd-obj-top {
   display: flex;
   align-items: center;
@@ -1716,7 +1726,13 @@ button { font-family: inherit; }
 }
 .frd-obj-card.secret-card.scored {
   border-left: 3px solid #22c55e;
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.frd-obj-card.secret-card.scored:hover {
   opacity: 0.85;
+  filter: none;
 }
 .frd-secrets-list {
   display: flex;
