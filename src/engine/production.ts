@@ -13,13 +13,22 @@ export function isBlockaded(state: GameState, seat: Seat, systemId: string): boo
   return space.some(u => u.owner !== seat && isShip(u.type)) && !space.some(u => u.owner === seat && isShip(u.type))
 }
 
-export function produce(state: GameState, units: Partial<Record<UnitType, number>>, planets: string[], tradeGoods: number): Result<GameState> {
+export function produce(state: GameState, units: Partial<Record<UnitType, number>>, planets: string[], tradeGoods: number, groundTo?: string): Result<GameState> {
   const tac = state.tactical
   if (!tac || tac.step !== 'production') return { ok: false, error: 'not in the production step' }
   const seat = state.active
   const player = state.players[seat]
-  const dockPlanet = state.systems[tac.systemId].planets.find(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
-  if (!dockPlanet) return { ok: false, error: 'R4.4: no space dock of your own in the active system' }
+  const sysBefore = state.systems[tac.systemId]
+  const dockPlanet = sysBefore.planets.find(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  // lrr-components.md 1810: a Floating Factory is never on a planet, so Saar produces from the space area.
+  const floatingFactory = sysBefore.space.find(u => u.type === 'floating_factory' && u.owner === seat)
+  if (!dockPlanet && !floatingFactory) return { ok: false, error: 'R4.4: no space dock of your own in the active system' }
+  // lrr-factions.md 2108: a Floating Factory's ground forces land in the space area, or on a planet the seat
+  // controls in this system if named. A normal dock's ground forces always land on the dock's own planet.
+  const groundPlanet = floatingFactory
+    ? (groundTo ? sysBefore.planets.find(p => p.id === groundTo && p.owner === seat) : undefined)
+    : dockPlanet
+  if (floatingFactory && groundTo && !groundPlanet) return { ok: false, error: `R4.4: you do not control ${groundTo} in this system` }
   const blockaded = isBlockaded(state, seat, tac.systemId)
   for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
     if (n === 0) continue
@@ -76,8 +85,8 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
       ...paid.value.systems,
       [tac.systemId]: {
         ...sys,
-        space: [...sys.space, ...ships],
-        planets: sys.planets.map(p => p.id === dockPlanet.id ? { ...p, ground: [...p.ground, ...ground] } : p),
+        space: groundPlanet ? [...sys.space, ...ships] : [...sys.space, ...ships, ...ground],
+        planets: groundPlanet ? sys.planets.map(p => p.id === groundPlanet.id ? { ...p, ground: [...p.ground, ...ground] } : p) : sys.planets,
       },
     },
   }

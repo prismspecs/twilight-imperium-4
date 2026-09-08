@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { INFANTRY_REVIVAL_TECH, isShip, type StatsOwner } from '../data/units'
-import { capacity, fleetPoolLimit, nonFighterShips } from './economy'
+import { capacity, fleetPoolLimit, hasOwnDock, nonFighterShips } from './economy'
 import { deriveSeed, mulberry32, rollDice, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Result, Seat, System, Unit, UnitType } from './types'
 
@@ -109,9 +109,9 @@ export function rollRevival(state: GameState, destroyed: Unit[], seed: number): 
   return next
 }
 
-/** R4.4: a space dock (I or II) lets up to 3 fighters in the system ignore capacity. */
+/** R4.4: a space dock (I or II), or a Saar Floating Factory, lets up to 3 fighters in the system ignore capacity. */
 export function freeFighterSlots(state: GameState, seat: Seat, systemId: string): number {
-  return state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat)) ? 3 : 0
+  return hasOwnDock(state.systems[systemId], seat) ? 3 : 0
 }
 
 /**

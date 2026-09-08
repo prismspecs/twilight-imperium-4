@@ -1,5 +1,12 @@
 import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
-import type { GameState, Owner, Player, Result, Seat, Unit, UnitType } from './types'
+import type { GameState, Owner, Player, Result, Seat, System, Unit, UnitType } from './types'
+
+/** A seat's own producing structure in a system: a planet-bound space dock, or Saar's Floating Factory in
+ * the space area (lrr-components.md 1810: it is never on a planet). */
+export function hasOwnDock(sys: System, seat: Seat): boolean {
+  return sys.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+    || sys.space.some(u => u.type === 'floating_factory' && u.owner === seat)
+}
 
 export function readyResources(state: GameState, seat: Seat): number {
   let sum = 0
@@ -141,6 +148,12 @@ export function productionLimit(state: GameState, seat: Seat, systemId: string):
   for (const p of sys.planets) {
     const dock = p.structures.find(u => u.type === 'spacedock' && u.owner === seat)
     if (dock) total += p.resources + (unitStats('spacedock', { faction: player.faction, techs: player.techs }).production ?? 0)
+  }
+  // A Floating Factory is never on a planet, so its own resources come from every planet the seat controls
+  // in the system rather than one dock planet's own.
+  if (sys.space.some(u => u.type === 'floating_factory' && u.owner === seat)) {
+    total += (unitStats('floating_factory', { faction: player.faction, techs: player.techs }).production ?? 0)
+      + sys.planets.filter(p => p.owner === seat).reduce((sum, p) => sum + p.resources, 0)
   }
   return total
 }

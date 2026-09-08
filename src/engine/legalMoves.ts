@@ -4,7 +4,7 @@ import { agendaMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
 import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, productionBiomesTargets, shipyardPlanets } from './componentActions'
-import { cheapestPayment, cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
+import { cheapestPayment, cheapestPlanets, hasOwnDock, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
@@ -191,7 +191,7 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
       // R6: the secondary is the space dock's full PRODUCTION ability, so the window opens as soon as any one
       // unit is affordable; the responder picks the units and the payment, the handler checks them.
       const home = state.systems[homeSystemOf(state, seat)]
-      const dock = home.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+      const dock = hasOwnDock(home, seat)
       if (!dock || productionLimit(state, seat, home.id) < 1) return []
       const stats = { faction: player.faction, techs: player.techs }
       for (const type of PRODUCIBLE) {

@@ -1,7 +1,7 @@
 import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
-import { cheapestInfluencePlanets, payInfluence } from './economy'
+import { cheapestInfluencePlanets, hasOwnDock, payInfluence } from './economy'
 import { moraleBoost } from './effects'
 import { addVp } from './objectives'
 import { deriveSeed, mulberry32, type Rng } from './rng'
@@ -329,7 +329,7 @@ export function afterSpaceStep(state: GameState, systemId: string, seat: Seat): 
   )
   const worth = landablePlanets(staged).length > 0 || bombardablePlanets(staged).length > 0 || groundCombatPending(staged) || canRemoveCustodians
   if (worth) return opened
-  const dock = state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  const dock = hasOwnDock(state.systems[systemId], seat)
   return { systemId, step: dock ? 'production' : 'done' }
 }
 
@@ -338,6 +338,6 @@ export function endInvasion(state: GameState): Result<GameState> {
   if (!tac || tac.step !== 'invasion') return { ok: false, error: 'not in the invasion step' }
   if (groundCombatPending(state)) return { ok: false, error: 'the ground combat is unresolved' }
   const seat = state.active
-  const dock = state.systems[tac.systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  const dock = hasOwnDock(state.systems[tac.systemId], seat)
   return { ok: true, value: { ...state, tactical: { ...tac, step: dock ? 'production' : 'done' } } }
 }
