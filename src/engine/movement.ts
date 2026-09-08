@@ -1,9 +1,10 @@
 import { tileByNumber } from '../data/tiles'
 import { isMovable, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, hasTech, statsOwner, trimCargo } from './board'
+import { checkFleet, hasTech, returnToReinforcements, statsOwner, trimCargo } from './board'
 import { ignoresFleets, moveBonus, tacticalEffect, wormholesLinked } from './effects'
 import { afterSpaceStep } from './invasion'
+import { deriveSeed, mulberry32 } from './rng'
 import type { Anomaly, CombatState, GameState, Result, Seat, System, Unit } from './types'
 
 export interface MoveSpec { unitId: number; from: string; carrying: number[] }
@@ -58,12 +59,24 @@ function withSpatialConduit(state: GameState, seat: Seat, id: string, base: read
   return [...base]
 }
 
+/** A system's own gravity rift status (not a neighbour's), independent of who is asking. */
+function hasGravityRift(state: GameState, id: string): boolean {
+  const sys = state.systems[id]
+  return sys ? anomaliesOf(sys).includes('gravity_rift') : false
+}
+
 /**
- * Shortest legal path length in steps, or null when the destination is out of reach. `ignoreFleets` drops
- * the rule that a fleet in the way stops movement; only `movementObstacle` uses it, to tell a blocked path
- * apart from one that was always too long.
+ * Shortest legal path, or null when the destination is out of reach. `ignoreFleets` drops the rule that a
+ * fleet in the way stops movement; only `movementObstacle` uses it, to tell a blocked path apart from one
+ * that was always too long.
+ *
+ * LRR Gravity Rift 1: a system exited or passed through (never the final destination) that holds a gravity
+ * rift refunds its own step — "+1 to move value" for a ship's whole movement is the same thing as that step
+ * costing nothing. `steps` is what the move value actually spends, which can be less than `path.length - 1`
+ * once a rift is on the path; this is a least-cost search rather than plain BFS because a longer detour
+ * through a rift can beat a shorter path that avoids one.
  */
-export function pathLength(state: GameState, seat: Seat, from: string, to: string, moveValue: number, ignoreFleets = false): number | null {
+export function shortestPath(state: GameState, seat: Seat, from: string, to: string, moveValue: number, ignoreFleets = false): { steps: number; path: string[] } | null {
   if (from === to || moveValue < 1) return null
   // R9 In The Silence Of Space: ships starting from the named system ignore fleets in the way for the whole
   // path, on top of whatever the caller (movementObstacle's diagnostic probe) already asked to ignore.
@@ -71,19 +84,47 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
   // R9 Lost Star Chart: alpha and beta wormholes count as the same class for this tactical action.
   const linkAlphaBeta = wormholesLinked(state, seat)
   if (!passable(state, seat, to, true, effectiveIgnoreFleets)) return null
-  const seen = new Set([from])
-  let frontier = [from]
-  for (let d = 1; d <= moveValue && frontier.length; d++) {
-    const next: string[] = []
-    for (const id of frontier) for (const n of withSpatialConduit(state, seat, id, neighbours(state.systems, id, state.players[seat]?.faction, linkAlphaBeta))) {
-      if (n === to) return d
-      if (seen.has(n)) continue
-      seen.add(n)
-      if (passable(state, seat, n, false, effectiveIgnoreFleets)) next.push(n)
+  const ids = Object.keys(state.systems)
+  const dist = new Map<string, number>(ids.map(id => [id, Infinity]))
+  const parent = new Map<string, string>()
+  dist.set(from, 0)
+  // Bellman-Ford over the whole (small) galaxy graph rather than a depth-bounded BFS: a rift's refund means
+  // the cheapest path to a system is not always the one with the fewest hops, so depth can't be capped early.
+  for (let pass = 0; pass < ids.length; pass++) {
+    let changed = false
+    for (const u of ids) {
+      if (u === to) continue   // nothing moves onward from its own destination
+      const du = dist.get(u) ?? Infinity
+      if (!Number.isFinite(du)) continue
+      const edgeWeight = hasGravityRift(state, u) ? 0 : 1
+      for (const n of withSpatialConduit(state, seat, u, neighbours(state.systems, u, state.players[seat]?.faction, linkAlphaBeta))) {
+        if (!passable(state, seat, n, n === to, effectiveIgnoreFleets)) continue
+        const nd = du + edgeWeight
+        if (nd < (dist.get(n) ?? Infinity)) {
+          dist.set(n, nd)
+          parent.set(n, u)
+          changed = true
+        }
+      }
     }
-    frontier = next
+    if (!changed) break
   }
-  return null
+  const total = dist.get(to) ?? Infinity
+  if (!Number.isFinite(total) || total > moveValue) return null
+  const path = [to]
+  let cur = to
+  while (cur !== from) {
+    const p = parent.get(cur)
+    if (!p) return null
+    path.unshift(p)
+    cur = p
+  }
+  return { steps: total, path }
+}
+
+/** Shortest legal path length alone, for the many callers that only need to know reachability. */
+export function pathLength(state: GameState, seat: Seat, from: string, to: string, moveValue: number, ignoreFleets = false): number | null {
+  return shortestPath(state, seat, from, to, moveValue, ignoreFleets)?.steps ?? null
 }
 
 function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
@@ -169,7 +210,11 @@ function abandonedFloatingFactory(sys: System, arrivingSeat: Seat): Unit | null 
   return hasEscort ? null : ff
 }
 
-export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState> {
+/** Disjoint from every other salt scheme in this file: `moveShips` is the only place in `movement.ts` that
+ * rolls dice, one per ship per gravity rift it crosses, all off the move's own seed. */
+const GRAVITY_RIFT_SALT_BASE = 300
+
+export function moveShips(state: GameState, specs: MoveSpec[], seed: number): Result<GameState> {
   const tac = state.tactical
   if (!tac || tac.step !== 'movement') return { ok: false, error: 'not in the movement step' }
   const seat = state.active
@@ -179,6 +224,9 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   let gravityDriveUsedThisCall = false
   const taken = new Set<number>()
   const arriving: Unit[] = []
+  // LRR Gravity Rift 2/6: one roll per rift system a mover exits or passes through on the path it actually
+  // takes; carried cargo never rolls on its own (2.1). Keyed by the moving unit's id.
+  const riftCrossings = new Map<number, string[]>()
   for (const spec of specs) {
     const src = state.systems[spec.from]
     if (!src) return { ok: false, error: `unknown system ${spec.from}` }
@@ -188,17 +236,20 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     if (!ship || taken.has(ship.id)) return { ok: false, error: `no movable ship ${spec.unitId} in ${spec.from}` }
     const value = moveValueOf(state, seat, ship)
     if (value < 1) return { ok: false, error: `a ${ship.type} cannot move on its own` }
-    let steps = pathLength(state, seat, spec.from, tac.systemId, value)
-    if (steps === null && gravityDrive) {
-      steps = pathLength(state, seat, spec.from, tac.systemId, value + 1)
-      if (steps !== null) {
+    let found = shortestPath(state, seat, spec.from, tac.systemId, value)
+    if (!found && gravityDrive) {
+      const withGd = shortestPath(state, seat, spec.from, tac.systemId, value + 1)
+      if (withGd) {
+        found = withGd
         gravityDrive = false     // R3.2: Gravity Drive helps one ship per activation
         gravityDriveUsedThisCall = true
       }
     }
-    if (steps === null) return { ok: false, error: `${ship.type} ${ship.id} cannot reach ${tac.systemId}` }
+    if (!found) return { ok: false, error: `${ship.type} ${ship.id} cannot reach ${tac.systemId}` }
     taken.add(ship.id)
     arriving.push(ship)
+    const rifts = found.path.slice(0, -1).filter(id => hasGravityRift(state, id))
+    if (rifts.length) riftCrossings.set(ship.id, rifts)
     if (spec.carrying.length > unitStats(ship.type, stats).capacity) return { ok: false, error: `${ship.type} ${ship.id} carries more than its capacity` }
     for (const id of spec.carrying) {
       const cargo = src.space.find(u => u.id === id) ?? src.planets.flatMap(p => p.ground).find(u => u.id === id)
@@ -209,6 +260,35 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     }
   }
   if (!arriving.length) return { ok: false, error: 'no ships moved' }
+
+  // LRR Gravity Rift Notes 3: every mover above is already fully declared, so the rolls below cannot be
+  // influenced by seeing an earlier one. A removed ship's own cargo (its `carrying` list) is removed with it
+  // (Rules Reference 2.2) rather than delivered or left at the origin.
+  const carryingOf = new Map(specs.map(s => [s.unitId, s.carrying]))
+  const removed: Unit[] = []
+  const rollLog: { t: 'info'; text: string }[] = []
+  let rollIndex = 0
+  for (const [unitId, rifts] of riftCrossings) {
+    const unit = arriving.find(u => u.id === unitId)
+    if (!unit) continue
+    for (const riftId of rifts) {
+      const rng = mulberry32(deriveSeed(seed, GRAVITY_RIFT_SALT_BASE + rollIndex++))
+      const roll = 1 + Math.floor(rng() * 10)
+      const hit = roll <= 3
+      rollLog.push({ t: 'info', text: `seat ${seat}'s ${unit.type} ${unit.id} rolls ${roll} for the gravity rift in ${riftId}${hit ? ' — removed from the board' : ''}` })
+      if (hit) {
+        removed.push(unit)
+        for (const cargoId of carryingOf.get(unitId) ?? []) {
+          const cargo = arriving.find(u => u.id === cargoId)
+          if (cargo) removed.push(cargo)
+        }
+        break   // Notes 2: removed, not destroyed — and no longer there to roll again for a later rift
+      }
+    }
+  }
+  const removedIds = new Set(removed.map(u => u.id))
+  const survivors = arriving.filter(u => !removedIds.has(u.id))
+
   const systems: Record<string, System> = {}
   for (const [id, sys] of Object.entries(state.systems)) {
     systems[id] = {
@@ -218,8 +298,8 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     }
   }
   const dest = systems[tac.systemId]
-  const arrived = { ...dest, space: [...dest.space, ...arriving] }
-  const abandoned = arriving.some(u => u.owner === seat && isShip(u.type)) ? abandonedFloatingFactory(arrived, seat) : null
+  const arrived = { ...dest, space: [...dest.space, ...survivors] }
+  const abandoned = survivors.some(u => u.owner === seat && isShip(u.type)) ? abandonedFloatingFactory(arrived, seat) : null
   systems[tac.systemId] = abandoned ? { ...arrived, space: arrived.space.filter(u => u.id !== abandoned.id) } : arrived
   let next: GameState = {
     ...state,
@@ -228,10 +308,14 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
       ...tac,
       gravityDriveUsed: Boolean(tac.gravityDriveUsed || gravityDriveUsedThisCall),
     },
-    log: abandoned
-      ? [...state.log, { t: 'info', text: `seat ${abandoned.owner}'s Floating Factory in ${tac.systemId} is destroyed — seat ${seat}'s ships arrived and it had no escort` }]
-      : state.log,
+    log: [
+      ...state.log,
+      ...rollLog,
+      ...(abandoned ? [{ t: 'info' as const, text: `seat ${abandoned.owner}'s Floating Factory in ${tac.systemId} is destroyed — seat ${seat}'s ships arrived and it had no escort` }] : []),
+    ],
   }
+  // Notes 3: removed ships (LRR Gravity Rift 2.3) go back to reinforcements, not to the destination.
+  next = returnToReinforcements(next, removed)
   // R3.2/16.2: fighters or infantry left behind by a departing ship are excess if the origin's remaining
   // ships can no longer carry them; trim them the same way a combat or retreat does.
   for (const from of new Set(specs.map(s => s.from))) next = trimCargo(next, from, seat)

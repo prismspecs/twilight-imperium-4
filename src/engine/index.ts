@@ -36,7 +36,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'pass': result = pass(logged); break
       case 'endTactical': result = endTactical(logged); break
       case 'endTurn': result = endTurn(logged); break
-      case 'moveShips': result = moveShips(logged, move.moves); break
+      case 'moveShips': result = moveShips(logged, move.moves, seed); break
       case 'endMovement': result = endMovement(logged, seed); break
       case 'exhaustSpatialConduit': result = exhaustSpatialConduit(logged); break
       case 'combatRound': result = combatRound(logged, move.munitions, seed); break
