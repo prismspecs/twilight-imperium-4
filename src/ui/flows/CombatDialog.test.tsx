@@ -73,6 +73,21 @@ describe('CombatDialog and combat outcome visibility', () => {
     expect(screen.getByText(/B loses: 1 destroyer destroyed in \[104\] Bereg/i)).toBeTruthy()
   })
 
+  it('shows which ships are actually fighting on each side', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser', 'fighter'])
+    s = withUnits(s, 'bereg', 1, ['destroyer'])
+    s = withTactical(s, {
+      systemId: 'bereg',
+      step: 'spaceCombat',
+      combat: { round: 1, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
+    })
+    renderWithSession(s, <BoardScreen />)
+    const forces = screen.getByTestId('combat-forces')
+    expect(forces.querySelector('[data-testid="stack-combat-forces-attacker-cruiser"]')).toBeTruthy()
+    expect(forces.querySelector('[data-testid="stack-combat-forces-attacker-fighter"]')).toBeTruthy()
+    expect(forces.querySelector('[data-testid="stack-combat-forces-defender-destroyer"]')).toBeTruthy()
+  })
+
   it('renders combat-outcome-banner when combat ends and dismisses on click', () => {
     let s = toActionPhase()
     s = withTactical(s, {

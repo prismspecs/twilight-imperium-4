@@ -20,7 +20,7 @@ const INSET_HEX = '59.5,3.2 172.5,3.2 228.8,100.5 172.5,197.8 59.5,197.8 3.2,100
  * flag from the pan/zoom handler - the map's own drag threshold is for when panning itself should start. */
 const CLICK_DRAG_TOLERANCE = 14
 
-function colourOf(state: GameState, owner: Owner): Color | 'grey' {
+export function colourOf(state: GameState, owner: Owner): Color | 'grey' {
   return owner === 'guardian' ? 'grey' : state.players[owner].color
 }
 

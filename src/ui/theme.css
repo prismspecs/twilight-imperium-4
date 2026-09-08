@@ -3527,8 +3527,9 @@ button { font-family: inherit; }
   position: fixed;
   inset: 0;
   z-index: 950;
-  background: rgba(4, 7, 18, 0.78);
-  backdrop-filter: blur(8px);
+  /* Deliberately light: the board behind a fight is context the player wants (which systems are near it,
+     what else is in play), not something to hide - a heavy blur or a near-opaque scrim erased all of that. */
+  background: rgba(4, 7, 18, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3625,6 +3626,24 @@ button { font-family: inherit; }
   border: 1px solid rgba(234, 179, 8, 0.3);
   border-radius: 0;
   flex-shrink: 0;
+}
+
+.combat-forces-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+.combat-forces-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.combat-forces-side:last-child {
+  justify-content: flex-end;
 }
 
 .combat-roll-group {

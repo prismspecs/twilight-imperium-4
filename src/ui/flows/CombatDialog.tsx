@@ -8,6 +8,8 @@ import { findActionCard } from '../../data/actionCards'
 import { COLOUR_INK, SIGIL, tokenUrl } from '../art'
 import { isAi } from '../../engine'
 import { isShip } from '../../data/units'
+import { colourOf } from '../board/Tile'
+import { UnitStack, groupUnits } from '../board/UnitStack'
 import type { Owner, Seat } from '../../engine/types'
 
 export function CombatDialog() {
@@ -131,6 +133,12 @@ export function CombatDialog() {
     ? (combat.round === 0 ? 'Defense Cannon Fire' : 'Defense Resolved')
     : `Round ${combat.round}`
 
+  // R4.1: which ships are actually fighting, grouped by type - the matchup names the two sides, but not
+  // what either of them brought, which is exactly what a player needs to judge the fight.
+  const currentSystem = currentSystemId ? state.systems[currentSystemId] : undefined
+  const attackerFleet = currentSystem ? groupUnits(currentSystem.space.filter(u => u.owner === combat.attacker && isShip(u.type))) : []
+  const defenderFleet = currentSystem ? groupUnits(currentSystem.space.filter(u => u.owner === combat.defender && isShip(u.type))) : []
+
   const combatEvents = (() => {
     // If round is 0 and no rolls or pending hits exist, combat just started: no events have occurred yet
     if (combat.round === 0 && combat.lastRolls.length === 0 && combat.pending.length === 0) {
@@ -228,6 +236,22 @@ export function CombatDialog() {
                 <span className="combat-matchup-name" style={{ color: defenderInk.accent }}>{name(combat.defender)}</span>
                 <span className="combat-matchup-role">{isPdsDefense ? 'Defender (PDS)' : 'Defender'}</span>
               </div>
+            </div>
+          </div>
+
+          {/* R4.1: the ships actually fighting, so a player can judge the fight without leaving the dialog */}
+          <div className="combat-forces-bar" data-testid="combat-forces">
+            <div className="combat-forces-side">
+              {attackerFleet.length === 0 ? <span className="sub">No ships</span> : attackerFleet.map(group => (
+                <UnitStack key={`attacker-${group.type}`} group={group} colour={colourOf(state, combat.attacker)}
+                  testId={`combat-forces-attacker-${group.type}`} alwaysCount />
+              ))}
+            </div>
+            <div className="combat-forces-side">
+              {defenderFleet.length === 0 ? <span className="sub">No ships</span> : defenderFleet.map(group => (
+                <UnitStack key={`defender-${group.type}`} group={group} colour={colourOf(state, combat.defender)}
+                  testId={`combat-forces-defender-${group.type}`} alwaysCount />
+              ))}
             </div>
           </div>
 
