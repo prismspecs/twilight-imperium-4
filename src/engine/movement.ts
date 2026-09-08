@@ -1,5 +1,5 @@
 import { tileByNumber } from '../data/tiles'
-import { isShip, unitStats, type StatsOwner } from '../data/units'
+import { isMovable, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, hasTech, statsOwner, trimCargo } from './board'
 import { ignoresFleets, moveBonus, tacticalEffect, wormholesLinked } from './effects'
@@ -95,7 +95,8 @@ function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
   return base > 0 ? base + moveBonus(state, seat) : base
 }
 
-/** Every ship of the seat that could reach `systemId`, whether or not that system is activated yet. */
+/** Every ship (plus a Saar Floating Factory) of the seat that could reach `systemId`, whether or not that
+ * system is activated yet. */
 export function shipsThatCanReach(state: GameState, seat: Seat, systemId: string): { unitId: number; from: string }[] {
   const gdAvailable = state.players[seat].techs.includes('gravity_drive') && !state.tactical?.gravityDriveUsed
   const bonus = gdAvailable ? 1 : 0
@@ -103,7 +104,7 @@ export function shipsThatCanReach(state: GameState, seat: Seat, systemId: string
   for (const sys of Object.values(state.systems)) {
     if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
     for (const u of sys.space) {
-      if (u.owner !== seat || !isShip(u.type)) continue
+      if (u.owner !== seat || !isMovable(u.type)) continue
       const baseMove = moveValueOf(state, seat, u)
       if (baseMove < 1) continue
       if (pathLength(state, seat, sys.id, systemId, baseMove + bonus) !== null) {
@@ -142,7 +143,7 @@ export function movementObstacle(state: GameState, seat: Seat, systemId: string)
   for (const sys of Object.values(state.systems)) {
     if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
     for (const u of sys.space) {
-      if (u.owner !== seat || !isShip(u.type)) continue
+      if (u.owner !== seat || !isMovable(u.type)) continue
       const baseMove = moveValueOf(state, seat, u)
       if (baseMove < 1) continue
       anyShip = true
@@ -153,6 +154,19 @@ export function movementObstacle(state: GameState, seat: Seat, systemId: string)
   }
   if (!anyShip) return 'none'
   return blocked ? 'blocked' : 'range'
+}
+
+/**
+ * lrr-factions.md 2129/2131: if a system holds a Floating Factory and none of its owner's own ships, another
+ * seat's ships arriving there destroys it immediately — before Space Cannon Offense, so it never gets to
+ * fire and it is never itself a legal combat target. Only ships arriving trigger this: `moveShips` only calls
+ * this when the arriving seat brought at least one ship, never for a Floating Factory moving in alone.
+ */
+function abandonedFloatingFactory(sys: System, arrivingSeat: Seat): Unit | null {
+  const ff = sys.space.find(u => u.type === 'floating_factory' && u.owner !== arrivingSeat)
+  if (!ff) return null
+  const hasEscort = sys.space.some(u => u.owner === ff.owner && isShip(u.type))
+  return hasEscort ? null : ff
 }
 
 export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState> {
@@ -170,7 +184,7 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     if (!src) return { ok: false, error: `unknown system ${spec.from}` }
     if (spec.from === tac.systemId) return { ok: false, error: 'ships in the active system do not move' }
     if (src.activatedBy.includes(seat)) return { ok: false, error: `R3.2: ships in ${spec.from} already carry your command token` }
-    const ship = src.space.find(u => u.id === spec.unitId && u.owner === seat && isShip(u.type))
+    const ship = src.space.find(u => u.id === spec.unitId && u.owner === seat && isMovable(u.type))
     if (!ship || taken.has(ship.id)) return { ok: false, error: `no movable ship ${spec.unitId} in ${spec.from}` }
     const value = moveValueOf(state, seat, ship)
     if (value < 1) return { ok: false, error: `a ${ship.type} cannot move on its own` }
@@ -204,7 +218,9 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     }
   }
   const dest = systems[tac.systemId]
-  systems[tac.systemId] = { ...dest, space: [...dest.space, ...arriving] }
+  const arrived = { ...dest, space: [...dest.space, ...arriving] }
+  const abandoned = arriving.some(u => u.owner === seat && isShip(u.type)) ? abandonedFloatingFactory(arrived, seat) : null
+  systems[tac.systemId] = abandoned ? { ...arrived, space: arrived.space.filter(u => u.id !== abandoned.id) } : arrived
   let next: GameState = {
     ...state,
     systems,
@@ -212,6 +228,9 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
       ...tac,
       gravityDriveUsed: Boolean(tac.gravityDriveUsed || gravityDriveUsedThisCall),
     },
+    log: abandoned
+      ? [...state.log, { t: 'info', text: `seat ${abandoned.owner}'s Floating Factory in ${tac.systemId} is destroyed — seat ${seat}'s ships arrived and it had no escort` }]
+      : state.log,
   }
   // R3.2/16.2: fighters or infantry left behind by a departing ship are excess if the origin's remaining
   // ships can no longer carry them; trim them the same way a combat or retreat does.

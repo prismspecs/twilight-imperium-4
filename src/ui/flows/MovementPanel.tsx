@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isShip, unitStats } from '../../data/units'
+import { isMovable, isShip, unitStats } from '../../data/units'
 import { movableShips, movementObstacle, productionLimit } from '../../engine'
 import type { MovementObstacle } from '../../engine'
 import { spriteUrl } from '../art'
@@ -142,7 +142,7 @@ export function MovementPanel() {
     ? Object.values(state.systems).filter(sys =>
         sys.id !== target &&
         sys.activatedBy.includes(seat) &&
-        sys.space.some(u => u.owner === seat && isShip(u.type))
+        sys.space.some(u => u.owner === seat && isMovable(u.type))
       )
     : []
 
@@ -265,7 +265,7 @@ export function MovementPanel() {
           <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target, state))}</div>
         ) : null}
         {lockedSystemsWithShips.map(sys => {
-          const lockedShips = sys.space.filter(u => u.owner === seat && isShip(u.type))
+          const lockedShips = sys.space.filter(u => u.owner === seat && isMovable(u.type))
           const counts: Record<string, number> = {}
           for (const s of lockedShips) {
             const label = unitLabel(s.type, player)
