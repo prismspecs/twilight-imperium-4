@@ -174,6 +174,9 @@ export interface StrategicParams {
   systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
   planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)
   techId?: string; secondTechId?: string
+  // Technology: planets exhausted for their technology specialty (LRR "Technology Specialties" 12), each
+  // ignoring one matching prerequisite symbol on the tech named by techId / secondTechId respectively.
+  techSkipPlanets?: string[]; secondTechSkipPlanets?: string[]
   tradeGoods?: number
   units?: Partial<Record<UnitType, number>>
   tokens?: { tactic: number; fleet: number; strategy: number }   // the resulting command sheet after Leadership or Warfare

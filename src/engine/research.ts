@@ -21,15 +21,41 @@ function availableTo(player: TechOwner, techId: string): boolean {
   return true
 }
 
-export function canResearch(player: TechOwner, techId: string, ignorePrereqs = false): boolean {
+/**
+ * `skips`: one entry per technology specialty planet exhausted alongside this research, LRR "Technology
+ * Specialties" 12 — each ignores one prerequisite symbol of the matching colour on the card being
+ * researched. A skip of a colour the tech does not need, or beyond what it needs, simply does nothing (the
+ * caller decides which planets are worth exhausting; this just checks the result is legal).
+ */
+export function canResearch(player: TechOwner, techId: string, ignorePrereqs = false, skips: TechColor[] = []): boolean {
   if (!findTech(techId)) return false
   if (player.techs.includes(techId) || !availableTo(player, techId)) return false
   if (ignorePrereqs) return true
   const have = colourCounts(player.techs)
-  const need = techDef(techId).prereq
+  const need = { ...techDef(techId).prereq }
+  for (const colour of skips) {
+    if ((need[colour] ?? 0) > 0) need[colour] = (need[colour] ?? 0) - 1
+  }
   return (Object.keys(need) as TechColor[]).every(colour => have[colour] >= (need[colour] ?? 0))
 }
 
 export function researchable(player: TechOwner): string[] {
   return TECHS.map(t => t.id).filter(id => canResearch(player, id))
+}
+
+/** Every technology `skips` (in any combination up to `maxSkips` planets) could newly unlock, beyond what
+ * `researchable` already offers with no skips at all. */
+export function researchableWithSkips(player: TechOwner, availableSkipColours: TechColor[]): string[] {
+  if (!availableSkipColours.length) return []
+  return TECHS.map(t => t.id).filter(id => {
+    if (canResearch(player, id)) return false   // already offered without spending a planet
+    // try every non-empty subset of the available skip colours actually usable on this tech's own prereqs
+    const need = techDef(id).prereq
+    const usable = availableSkipColours.filter(c => (need[c] ?? 0) > 0)
+    for (let mask = 1; mask < 1 << usable.length; mask++) {
+      const combo = usable.filter((_, i) => mask & (1 << i))
+      if (canResearch(player, id, false, combo)) return true
+    }
+    return false
+  })
 }

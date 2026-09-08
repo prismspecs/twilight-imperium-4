@@ -9,14 +9,59 @@ import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
-import { researchable } from './research'
+import { canResearch, researchable, researchableWithSkips } from './research'
 import { FACTIONS } from '../data/factions'
+import { techDef } from '../data/techs'
 import { hasTech, homeSystemOf, maxFightersAllowed } from './board'
 import { isShip } from '../data/units'
 import { constructionPlanets, diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { MECATOL_ID } from '../data/map'
 import { tokensGained } from './statusPhase'
-import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
+import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
+
+/**
+ * LRR "Technology Specialties" 12: the seat's own ready planets that carry one, each worth ignoring one
+ * matching prerequisite symbol on whatever technology is being researched.
+ */
+function techSkipCandidates(state: GameState, seat: Seat): { planetId: string; colour: TechColor }[] {
+  const out: { planetId: string; colour: TechColor }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat && !p.exhausted && p.techSkip) out.push({ planetId: p.id, colour: p.techSkip })
+  }
+  return out
+}
+
+/**
+ * One legal (not the only possible) set of the seat's specialty planets that gets `techId` researchable —
+ * greedily one planet per still-needed colour, cheapest in the sense of "fewest planets spent" since it never
+ * takes a second planet of a colour the tech only needs once. Empty array if no skip is needed at all; null if
+ * no combination of the seat's own specialty planets reaches it.
+ */
+function skipPlanetsFor(state: GameState, seat: Seat, techId: string, owned: string[]): string[] | null {
+  const player = { faction: state.players[seat].faction, techs: owned }
+  if (canResearch(player, techId)) return []
+  const need = { ...techDef(techId).prereq }
+  const chosen: { planetId: string; colour: TechColor }[] = []
+  for (const c of techSkipCandidates(state, seat)) {
+    if ((need[c.colour] ?? 0) > chosen.filter(x => x.colour === c.colour).length) chosen.push(c)
+  }
+  const skips = chosen.map(c => c.colour)
+  return canResearch(player, techId, false, skips) ? chosen.map(c => c.planetId) : null
+}
+
+/** `cheapestPayment`, but treating `avoid` as already exhausted first — so a resource payment never lands
+ * on a planet the same move is also spending as a technology-specialty skip. */
+function paymentAvoiding(state: GameState, seat: Seat, cost: number, avoid: string[]): { planets: string[]; tradeGoods: number } | null {
+  if (!avoid.length) return cheapestPayment(state, seat, cost)
+  const avoidSet = new Set(avoid)
+  const systems: GameState['systems'] = {}
+  for (const [id, sys] of Object.entries(state.systems)) {
+    systems[id] = sys.planets.some(p => avoidSet.has(p.id))
+      ? { ...sys, planets: sys.planets.map(p => (avoidSet.has(p.id) ? { ...p, exhausted: true } : p)) }
+      : sys
+  }
+  return cheapestPayment({ ...state, systems }, seat, cost)
+}
 
 function tacticalMoves(state: GameState): Move[] {
   const tac = state.tactical
@@ -92,28 +137,68 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
     }
     case 'technology': {
       const player = state.players[seat]
+      const skipColours = techSkipCandidates(state, seat).map(c => c.colour)
       const techs = researchable(player)
-      if (!techs.length) return [{ type: 'strategic', card, params: {} }]
-      const out: Move[] = techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } }))
+      // techs that need a specialty planet skip to reach at all, each with one legal set of planets for it
+      const skipTechs = researchableWithSkips(player, skipColours)
+        .flatMap((techId): { id: string; skip: string[] }[] => {
+          const planets = skipPlanetsFor(state, seat, techId, player.techs)
+          return planets ? [{ id: techId, skip: planets }] : []
+        })
+      const out: Move[] = [
+        ...techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } })),
+        ...skipTechs.map((t): Move => ({ type: 'strategic', card, params: { techId: t.id, techSkipPlanets: t.skip } })),
+      ]
       const affordSecond = cheapestPayment(state, seat, 6)
       if (affordSecond) {
-        for (const first of techs) {
-          const secondTechs = researchable({ ...player, techs: [...player.techs, first] }).filter(id => id !== first)
-          for (const second of secondTechs) {
+        const firstChoices = [...techs.map(id => ({ id, skip: [] as string[] })), ...skipTechs]
+        for (const first of firstChoices) {
+          const ownedAfterFirst = [...player.techs, first.id]
+          const secondTechs = researchable({ ...player, techs: ownedAfterFirst }).filter(id => id !== first.id)
+          // Payment for the second tech must avoid whatever the first tech's own skip already spends —
+          // otherwise the same planet could be offered as both payment and skip in one move.
+          const paymentAfterFirstSkip = first.skip.length ? paymentAvoiding(state, seat, 6, first.skip) : affordSecond
+          if (paymentAfterFirstSkip) {
+            for (const second of secondTechs) {
+              out.push({
+                type: 'strategic',
+                card,
+                params: {
+                  techId: first.id,
+                  secondTechId: second,
+                  techSkipPlanets: first.skip.length ? first.skip : undefined,
+                  planets: paymentAfterFirstSkip.planets,
+                  tradeGoods: paymentAfterFirstSkip.tradeGoods,
+                },
+              })
+            }
+          }
+          // The second tech's own skip is only offered when the first needed none, so every specialty planet
+          // is still free for it — otherwise the same planet could get offered for both, which would never
+          // actually be playable (a planet cannot be exhausted twice).
+          if (first.skip.length) continue
+          const secondSkipTechs = researchableWithSkips({ ...player, techs: ownedAfterFirst }, skipColours).filter(id => id !== first.id)
+          for (const second of secondSkipTechs) {
+            const secondSkip = skipPlanetsFor(state, seat, second, ownedAfterFirst)
+            if (!secondSkip) continue
+            // Payment for the second tech must equally avoid the second tech's own skip planets.
+            const paymentForSecondSkip = paymentAvoiding(state, seat, 6, secondSkip)
+            if (!paymentForSecondSkip) continue
             out.push({
               type: 'strategic',
               card,
               params: {
-                techId: first,
+                techId: first.id,
                 secondTechId: second,
-                planets: affordSecond.planets,
-                tradeGoods: affordSecond.tradeGoods,
+                secondTechSkipPlanets: secondSkip,
+                planets: paymentForSecondSkip.planets,
+                tradeGoods: paymentForSecondSkip.tradeGoods,
               },
             })
           }
         }
       }
-      return out
+      return out.length ? out : [{ type: 'strategic', card, params: {} }]
     }
     case 'imperial': {
       const open = state.publicObjectives.filter(id => !state.players[seat].scoredObjectives.includes(id) && fulfils(state, seat, id))
@@ -206,12 +291,32 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
     case 'technology': {
       const payment = cheapestPayment(state, seat, 4)
       if (!payment) return []
-      return researchable(state.players[seat]).map((techId): Move => ({
+      const player = state.players[seat]
+      const skipColours = techSkipCandidates(state, seat).map(c => c.colour)
+      const techs = researchable(player).map(id => ({ id, skip: [] as string[] }))
+      const skipTechs = researchableWithSkips(player, skipColours)
+        .flatMap((techId): { id: string; skip: string[] }[] => {
+          const planets = skipPlanetsFor(state, seat, techId, player.techs)
+          return planets ? [{ id: techId, skip: planets }] : []
+        })
+      const out: Move[] = techs.map((t): Move => ({
         type: 'secondary',
         card,
         accept: true,
-        params: { techId, planets: payment.planets, tradeGoods: payment.tradeGoods },
+        params: { techId: t.id, planets: payment.planets, tradeGoods: payment.tradeGoods },
       }))
+      // Payment must avoid whatever this specific tech's own skip already spends.
+      for (const t of skipTechs) {
+        const paymentForSkip = paymentAvoiding(state, seat, 4, t.skip)
+        if (!paymentForSkip) continue
+        out.push({
+          type: 'secondary',
+          card,
+          accept: true,
+          params: { techId: t.id, techSkipPlanets: t.skip, planets: paymentForSkip.planets, tradeGoods: paymentForSkip.tradeGoods },
+        })
+      }
+      return out
     }
     case 'imperial':
       return [{ type: 'secondary', card, accept: true, params }]

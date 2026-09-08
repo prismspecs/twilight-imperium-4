@@ -7,7 +7,7 @@ import { cheapestPayment, distributeTokens, exhaustPlanets, payCost } from './ec
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch } from './research'
-import type { GameState, Result, Seat, StrategicParams, StrategyCardId } from './types'
+import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
 
 /** The seat holding the card, used or not. */
 export function cardOwner(state: GameState, card: StrategyCardId): Seat | null {
@@ -80,13 +80,45 @@ export function readyPlanets(state: GameState, seat: Seat, planets: string[], ma
   return { ok: true, value: { ...state, systems } }
 }
 
-/** R5: adds the technology after the prerequisite check; Inheritance Systems ignores the prerequisites. */
-export function grantTech(state: GameState, seat: Seat, techId: string, ignorePrereqs: boolean): Result<GameState> {
-  const player = state.players[seat]
-  if (!canResearch(player, techId, ignorePrereqs)) return { ok: false, error: `R5: ${techId} cannot be researched` }
-  const players = [...state.players] as GameState['players']
+/**
+ * LRR "Technology Specialties" 12: exhausts each named planet (controlled, ready, carrying that specialty)
+ * before the research itself is checked, and hands back the colour it ignores one prerequisite of.
+ */
+function exhaustTechSkipPlanets(state: GameState, seat: Seat, planetIds: string[]): Result<{ state: GameState; skips: TechColor[] }> {
+  let next = state
+  const skips: TechColor[] = []
+  for (const planetId of planetIds) {
+    const sysId = Object.keys(next.systems).find(id => next.systems[id].planets.some(p => p.id === planetId))
+    if (!sysId) return { ok: false, error: `unknown planet ${planetId}` }
+    const sys = next.systems[sysId]
+    const planet = sys.planets.find(p => p.id === planetId)
+    if (!planet || planet.owner !== seat) return { ok: false, error: `planet ${planetId} not controlled` }
+    if (planet.exhausted) return { ok: false, error: `planet ${planetId} is exhausted` }
+    if (!planet.techSkip) return { ok: false, error: `planet ${planetId} has no technology specialty` }
+    skips.push(planet.techSkip)
+    next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, exhausted: true } : p) } } }
+  }
+  return { ok: true, value: { state: next, skips } }
+}
+
+/**
+ * R5: adds the technology after the prerequisite check; Inheritance Systems ignores the prerequisites.
+ * `techSkipPlanets` names planets exhausted for their technology specialty, each ignoring one matching
+ * prerequisite symbol (LRR "Technology Specialties" 12) — irrelevant, but harmless to pass, when
+ * `ignorePrereqs` already waives every prerequisite.
+ */
+export function grantTech(state: GameState, seat: Seat, techId: string, ignorePrereqs: boolean, techSkipPlanets: string[] = []): Result<GameState> {
+  const exhausted = exhaustTechSkipPlanets(state, seat, techSkipPlanets)
+  if (!exhausted.ok) return exhausted
+  const player = exhausted.value.state.players[seat]
+  if (!canResearch(player, techId, ignorePrereqs, exhausted.value.skips)) return { ok: false, error: `R5: ${techId} cannot be researched` }
+  const players = [...exhausted.value.state.players] as GameState['players']
   players[seat] = { ...player, techs: [...player.techs, techId] }
-  return { ok: true, value: { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} researches ${techId}` }] } }
+  const skipNote = exhausted.value.skips.length ? ` (${String(exhausted.value.skips.length)} prerequisite${exhausted.value.skips.length > 1 ? 's' : ''} skipped with a technology specialty)` : ''
+  return {
+    ok: true,
+    value: { ...exhausted.value.state, players, log: [...exhausted.value.state.log, { t: 'info', text: `seat ${seat} researches ${techId}${skipNote}` }] },
+  }
 }
 
 function replenish(state: GameState, seat: Seat): GameState {
@@ -361,7 +393,7 @@ function constructionSecondary(state: GameState, seat: Seat, params: StrategicPa
 function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   let next = state
   if (params.techId !== undefined) {
-    const first = grantTech(next, seat, params.techId, false)
+    const first = grantTech(next, seat, params.techId, false, params.techSkipPlanets ?? [])
     if (!first.ok) return first
     next = first.value
   }
@@ -372,7 +404,7 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
     const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
     const paid = payCost(next, seat, 6, planets, tradeGoods)
     if (!paid.ok) return paid
-    const second = grantTech(paid.value, seat, params.secondTechId, false)
+    const second = grantTech(paid.value, seat, params.secondTechId, false, params.secondTechSkipPlanets ?? [])
     if (!second.ok) return second
     next = second.value
   }
@@ -386,7 +418,7 @@ function technologySecondary(state: GameState, seat: Seat, params: StrategicPara
   const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
   const paid = payCost(state, seat, 4, planets, tradeGoods)
   if (!paid.ok) return paid
-  return grantTech(paid.value, seat, params.techId, false)
+  return grantTech(paid.value, seat, params.techId, false, params.techSkipPlanets ?? [])
 }
 
 /** R6/R7 Imperial: score one fulfilled public objective, then 1 VP for Mecatol Rex or draw 1 secret objective. */

@@ -86,11 +86,21 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
       case 'construction': return { structures }
       case 'trade': return { shareWith: shared }
       case 'warfare': return systemId ? { systemId, tokens: sheet } : { tokens: sheet }
-      case 'technology':
+      case 'technology': {
+        // The enumerator already worked out which technology-specialty planets (if any) each offered
+        // combination needs — the offer itself is the source of truth, not something re-derived here.
         if (secondTechEnabled && secondTechId) {
-          return { techId: techId ?? undefined, secondTechId, planets: secondPlanets, tradeGoods: secondTradeGoods }
+          const match = variants.find(v => v.techId === (techId ?? undefined) && v.secondTechId === secondTechId)
+          return {
+            techId: techId ?? undefined, secondTechId,
+            techSkipPlanets: match?.techSkipPlanets, secondTechSkipPlanets: match?.secondTechSkipPlanets,
+            planets: secondPlanets, tradeGoods: secondTradeGoods,
+          }
         }
-        return techId ? { techId } : {}
+        if (!techId) return {}
+        const match = variants.find(v => v.techId === techId && v.secondTechId === undefined)
+        return { techId, techSkipPlanets: match?.techSkipPlanets }
+      }
       case 'imperial': return objectiveId ? { objectiveId } : {}
     }
   }
