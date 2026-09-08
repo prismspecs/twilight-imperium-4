@@ -5,6 +5,7 @@ import { HAND_LIMIT, fleetPoolLimit, readyResources, unitsOf } from '../../engin
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BADGE, MISC, spriteUrl, tokenUrl, unitCardUrl } from '../art'
+import { FlagshipCard } from './FlagshipCard'
 import { TechIcon } from '../TechIcon'
 import { ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { PANEL_SCALE, spriteSize } from '../sprites'
@@ -207,7 +208,9 @@ export function SidePanel({
       </div>
       {shown && typeof document !== 'undefined' ? createPortal(
         <div className="unitcard" data-testid={`unitcard-${seat}-${shown}`}>
-          <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />
+          {shown === 'flagship'
+            ? <FlagshipCard faction={player.faction} colour={player.color} />
+            : <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />}
         </div>,
         document.body,
       ) : null}

@@ -1,3 +1,4 @@
+import { FLAGSHIP_INFO } from '../data/flagships'
 import { techDef } from '../data/techs'
 import { TILES } from '../data/tiles'
 import { UPGRADE_TECH } from '../data/units'
@@ -53,7 +54,7 @@ export function relativeTime(then: number, now: number): string {
 
 /** R5: the label follows the owner's technologies, so an upgraded unit reads II. */
 export function unitLabel(type: UnitType, player: Player): string {
-  if (type === 'flagship') return player.faction === 'l1z1x' ? 'Flagship [0.0.1]' : 'Flagship Arc Secundus'
+  if (type === 'flagship') return `Flagship ${FLAGSHIP_INFO[player.faction].name}`
   if (type === 'dreadnought' && player.faction === 'l1z1x') {
     return player.techs.includes('super_dreadnought_ii') ? 'Super-Dreadnought II' : 'Super-Dreadnought I'
   }

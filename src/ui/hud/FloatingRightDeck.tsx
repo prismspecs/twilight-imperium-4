@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { factionAbility } from '../../data/factionAbilities'
+import { FLAGSHIP_INFO } from '../../data/flagships'
 import { MANDATES, objectiveDef } from '../../data/objectives'
 import { HAND_LIMIT, cardOwner, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { INITIATIVE } from '../../engine/strategyPhase'
@@ -10,6 +11,7 @@ import { unitStats } from '../../data/units'
 import { BADGE, MISC, SIGIL, spriteUrl, strategyCardUrl, tokenUrl, unitCardUrl } from '../art'
 import { CARD_NAME, ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { CloseIcon } from '../icons'
+import { FlagshipCard } from './FlagshipCard'
 import { TechIcon } from '../TechIcon'
 import { PANEL_SCALE, spriteSize } from '../sprites'
 import { useModelStyle } from '../modelStyle'
@@ -170,7 +172,8 @@ export function FloatingRightDeck({
           {/* Flagship */}
           <div className="frd-section-title">Flagship</div>
           <div className="frd-flagship" data-testid={`frd-flagship-${safeSeat}`}>
-            <img src={unitCardUrl('flagship', myPlayer.faction)} alt={`${myFaction.name} flagship`} className="frd-flagship-art" />
+            <div className="frd-flagship-name">{FLAGSHIP_INFO[myPlayer.faction].name}</div>
+            {FLAGSHIP_INFO[myPlayer.faction].ability ? <div className="frd-flagship-ability">{FLAGSHIP_INFO[myPlayer.faction].ability}</div> : null}
             <div className="frd-flagship-stats">
               {(() => {
                 const s = unitStats('flagship', { faction: myPlayer.faction, techs: myPlayer.techs })
@@ -510,7 +513,9 @@ export function FloatingRightDeck({
       {/* Floating Hover Unit Card Preview */}
       {isOpen && shownForce !== null && typeof document !== 'undefined' ? createPortal(
         <div className="unitcard" data-testid={`frd-unitcard-${safeSeat}-${shownForce}`}>
-          <img src={unitCardUrl(shownForce, myPlayer.faction)} alt={unitLabel(shownForce, myPlayer)} />
+          {shownForce === 'flagship'
+            ? <FlagshipCard faction={myPlayer.faction} colour={myPlayer.color} />
+            : <img src={unitCardUrl(shownForce, myPlayer.faction)} alt={unitLabel(shownForce, myPlayer)} />}
         </div>,
         document.body,
       ) : null}
