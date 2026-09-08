@@ -163,6 +163,17 @@ export function MovementPanel() {
                   : 'Pick the ships that move, then the units they carry.'}
           </span>
           <div className="right">
+            {legal.some(m => m.type === 'exhaustSpatialConduit') ? (
+              <button
+                type="button"
+                className="btn quiet"
+                data-testid="btn-exhaust-spatial-conduit"
+                title="Treat this system as adjacent to every system holding your ships, for this tactical action"
+                onClick={() => apply({ type: 'exhaustSpatialConduit' })}
+              >
+                Exhaust Spatial Conduit Cylinder
+              </button>
+            ) : null}
             {totalPicked === 0 ? (
               <>
                 {origins.length > 0 ? (

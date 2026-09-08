@@ -5,7 +5,7 @@ import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
 import { productionBiomes, research, shipyard, tradePost } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
-import { endMovement, moveShips } from './movement'
+import { endMovement, exhaustSpatialConduit, moveShips } from './movement'
 import { postAbility } from './postAbilities'
 import { produce } from './production'
 import { secondary, strategic } from './strategicActions'
@@ -39,6 +39,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'endTurn': result = endTurn(logged); break
       case 'moveShips': result = moveShips(logged, move.moves); break
       case 'endMovement': result = endMovement(logged, seed); break
+      case 'exhaustSpatialConduit': result = exhaustSpatialConduit(logged); break
       case 'combatRound': result = combatRound(logged, move.munitions, seed); break
       case 'assignHits': result = assignHits(logged, move.destroy, move.sustain, seed); break
       case 'retreat': result = retreat(logged, move.to); break

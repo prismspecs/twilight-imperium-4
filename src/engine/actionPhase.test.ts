@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove, legalMoves } from './index'
-import { cardsUsed, deepFreeze, toActionPhase, withPlayer } from './testUtils'
+import { cardsUsed, deepFreeze, toActionPhase, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
 const start = (state: GameState, systemId: string) => applyMove(deepFreeze(state), { type: 'startTactical', systemId }, 0)
@@ -91,5 +91,18 @@ describe('R3.2 action phase', () => {
     expect(legalMoves(cardsUsed(s)).some(m => m.type === 'pass')).toBe(true)
     expect(legalMoves(withPlayer(s, 0, { passed: true }))).toEqual([])
     expect(legalMoves({ ...s, tactical: { systemId: 'bereg', step: 'done' } })).toEqual([{ type: 'endTactical' }])
+  })
+  it('R5 Jol-Nar faction tech E-Res Siphons: activating a system with a bystander\'s ship grants them 4 trade goods', () => {
+    let s = withTechs(toActionPhase(), 1, ['e_res_siphons'])
+    s = withUnits(s, 'bereg', 1, ['destroyer'])
+    const before = s.players[1].tradeGoods
+    const r = applyMove(deepFreeze(s), { type: 'startTactical', systemId: 'bereg' }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.players[1].tradeGoods).toBe(before + 4)
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('E-Res Siphons'))).toBe(true)
+    // no ship of the owner's in the activated system: nothing triggers
+    const empty = applyMove(deepFreeze(withTechs(toActionPhase(), 1, ['e_res_siphons'])), { type: 'startTactical', systemId: 'bereg' }, 0)
+    if (!empty.ok) throw new Error(empty.error)
+    expect(empty.value.players[1].tradeGoods).toBe(before)
   })
 })

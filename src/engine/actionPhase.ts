@@ -1,4 +1,4 @@
-import { homeSystemOf } from './board'
+import { hasTech, homeSystemOf } from './board'
 import { clearTacticalEffects } from './effects'
 import type { GameState, Result, Seat, Unit } from './types'
 
@@ -88,6 +88,15 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
     tokens: { ...player.tokens, tactic: player.tokens.tactic - 1 },
     tokensSpentThisRound: player.tokensSpentThisRound + 1,
   }
+  // Jol-Nar faction tech E-Res Siphons: after another player activates a system that contains 1 or more of
+  // your ships, gain 4 trade goods. Read against the system as it stood before this activation's movement.
+  let log = state.log
+  for (const other of players.map((_, i) => i as Seat)) {
+    if (other === seat || !hasTech(state, other, 'e_res_siphons')) continue
+    if (!sys.space.some(u => u.owner === other)) continue
+    players[other] = { ...players[other], tradeGoods: players[other].tradeGoods + 4 }
+    log = [...log, { t: 'info', text: `seat ${other} gains 4 trade goods from E-Res Siphons` }]
+  }
   return {
     ok: true,
     value: {
@@ -95,6 +104,7 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
       players,
       systems: { ...state.systems, [systemId]: { ...sys, activatedBy: [...sys.activatedBy, seat] } },
       tactical: { systemId, step: 'movement' },
+      log,
     },
   }
 }

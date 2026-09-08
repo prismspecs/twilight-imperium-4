@@ -7,7 +7,7 @@ describe('R5 technology', () => {
     expect(TECHS.filter(t => t.kind === 'general')).toHaveLength(16)
     expect(TECHS.filter(t => t.kind === 'upgrade' && t.faction === undefined).map(t => t.id).sort()).toEqual(['carrier_ii', 'cruiser_ii', 'destroyer_ii', 'dreadnought_ii', 'fighter_ii', 'infantry_ii', 'space_dock_ii'])
     expect(TECHS.filter(t => t.kind === 'upgrade' && t.faction !== undefined).map(t => t.id).sort()).toEqual(['advanced_carrier_ii', 'hybrid_crystal_fighter_ii', 'spec_ops_ii'])
-    expect(TECHS.filter(t => t.kind === 'faction').map(t => t.id).sort()).toEqual(['bioplasmosis', 'inheritance_systems', 'l4_disruptors', 'non_euclidean_shielding', 'production_biomes', 'super_dreadnought_ii', 'valefar_assimilator_x', 'valefar_assimilator_y'])
+    expect(TECHS.filter(t => t.kind === 'faction').map(t => t.id).sort()).toEqual(['bioplasmosis', 'e_res_siphons', 'inheritance_systems', 'l4_disruptors', 'non_euclidean_shielding', 'production_biomes', 'spatial_conduit_cylinder', 'super_dreadnought_ii', 'valefar_assimilator_x', 'valefar_assimilator_y'])
     expect(TECHS.find(t => t.id === 'pds_ii')).toBeUndefined()
     expect(TECHS.find(t => t.id === 'war_sun')).toBeUndefined()     // War Suns need no technology, see R4.4
   })

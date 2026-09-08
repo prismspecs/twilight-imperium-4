@@ -1,8 +1,8 @@
 import { tileByNumber } from '../data/tiles'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, statsOwner, trimCargo } from './board'
-import { ignoresFleets, moveBonus, wormholesLinked } from './effects'
+import { checkFleet, hasTech, statsOwner, trimCargo } from './board'
+import { ignoresFleets, moveBonus, tacticalEffect, wormholesLinked } from './effects'
 import { afterSpaceStep } from './invasion'
 import type { Anomaly, CombatState, GameState, Result, Seat, System, Unit } from './types'
 
@@ -42,6 +42,23 @@ function passable(state: GameState, seat: Seat, id: string, destination: boolean
 }
 
 /**
+ * R5 Jol-Nar faction tech Spatial Conduit Cylinder: once exhausted for this tactical action, the activated
+ * system is adjacent to every other system holding the seat's own ships, and each of those systems is
+ * adjacent to the activated one right back.
+ */
+function withSpatialConduit(state: GameState, seat: Seat, id: string, base: readonly string[]): string[] {
+  const tac = state.tactical
+  if (!tac || !tacticalEffect(state, seat, 'spatial_conduit_cylinder')) return [...base]
+  const hasMyShips = (sysId: string) => state.systems[sysId]?.space.some(u => u.owner === seat && isShip(u.type)) ?? false
+  if (id === tac.systemId) {
+    const linked = Object.keys(state.systems).filter(sysId => sysId !== id && hasMyShips(sysId))
+    return [...new Set([...base, ...linked])]
+  }
+  if (id !== tac.systemId && hasMyShips(id)) return [...new Set([...base, tac.systemId])]
+  return [...base]
+}
+
+/**
  * Shortest legal path length in steps, or null when the destination is out of reach. `ignoreFleets` drops
  * the rule that a fleet in the way stops movement; only `movementObstacle` uses it, to tell a blocked path
  * apart from one that was always too long.
@@ -58,7 +75,7 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
   let frontier = [from]
   for (let d = 1; d <= moveValue && frontier.length; d++) {
     const next: string[] = []
-    for (const id of frontier) for (const n of neighbours(state.systems, id, state.players[seat]?.faction, linkAlphaBeta)) {
+    for (const id of frontier) for (const n of withSpatialConduit(state, seat, id, neighbours(state.systems, id, state.players[seat]?.faction, linkAlphaBeta))) {
       if (n === to) return d
       if (seen.has(n)) continue
       seen.add(n)
@@ -202,6 +219,26 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   const fleet = checkFleet(next, seat, tac.systemId)
   if (!fleet.ok) return { ok: false, error: fleet.error }
   return { ok: true, value: next }
+}
+
+/** R5 Jol-Nar faction tech Spatial Conduit Cylinder: exhaust the card for the rest of this tactical action. */
+export function exhaustSpatialConduit(state: GameState): Result<GameState> {
+  const tac = state.tactical
+  if (!tac || tac.step !== 'movement') return { ok: false, error: 'not in the movement step' }
+  const seat = state.active
+  const player = state.players[seat]
+  if (!hasTech(state, seat, 'spatial_conduit_cylinder')) return { ok: false, error: 'Spatial Conduit Cylinder has not been researched' }
+  if (player.spatialConduitExhausted) return { ok: false, error: 'Spatial Conduit Cylinder is already exhausted this round' }
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...player, spatialConduitExhausted: true }
+  return {
+    ok: true,
+    value: {
+      ...state, players,
+      effects: [...state.effects, { effect: 'spatial_conduit_cylinder', seat, scope: 'tactical' }],
+      log: [...state.log, { t: 'info', text: `seat ${seat} exhausts Spatial Conduit Cylinder` }],
+    },
+  }
 }
 
 export function endMovement(state: GameState, _seed?: number): Result<GameState> {

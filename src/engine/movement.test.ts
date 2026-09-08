@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { pendingFor } from './combat'
 import { applyMove, legalMoves } from './index'
-import { movementObstacle, shipsThatCanReach } from './movement'
+import { movementObstacle, pathLength, shipsThatCanReach } from './movement'
 import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withThirdSeat, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
@@ -206,6 +206,32 @@ describe('R3.2 movement', () => {
     const entries = fired.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ owner: 2 })   // seat 2's bystander PDS fired, attributed correctly
+  })
+  it('R5 Jol-Nar faction tech Spatial Conduit Cylinder: once exhausted, the activated system is adjacent to every system holding your ships', () => {
+    const s = withTechs(activate(toActionPhase(), 0, 'starpoint'), 0, ['spatial_conduit_cylinder'])
+    // starpoint sits two hops from home-n (sakulag between them), out of reach for a move-1 ship
+    expect(pathLength(s, 0, 'home-n', 'starpoint', 1)).toBeNull()
+    const exhausted = applyMove(deepFreeze(s), { type: 'exhaustSpatialConduit' }, 0)
+    if (!exhausted.ok) throw new Error(exhausted.error)
+    expect(exhausted.value.players[0].spatialConduitExhausted).toBe(true)
+    expect(pathLength(exhausted.value, 0, 'home-n', 'starpoint', 1)).toBe(1)
+    expect(applyMove(exhausted.value, { type: 'exhaustSpatialConduit' }, 0).ok).toBe(false)   // already exhausted
+  })
+  it('R5 Spatial Conduit Cylinder is rejected without the technology, lasts the whole tactical action, then clears', () => {
+    const s = activate(toActionPhase(), 0, 'starpoint')
+    expect(applyMove(deepFreeze(s), { type: 'exhaustSpatialConduit' }, 0).ok).toBe(false)
+    const withTech = withTechs(s, 0, ['spatial_conduit_cylinder'])
+    const exhausted = applyMove(deepFreeze(withTech), { type: 'exhaustSpatialConduit' }, 0)
+    if (!exhausted.ok) throw new Error(exhausted.error)
+    const ended = applyMove(exhausted.value, { type: 'endMovement' }, 0)
+    if (!ended.ok) throw new Error(ended.error)
+    expect(ended.value.tactical?.step).toBe('done')                          // no dock, nothing to invade at starpoint
+    expect(ended.value.effects).toHaveLength(1)                              // the effect outlives the movement step
+    expect(pathLength(ended.value, 0, 'home-n', 'starpoint', 1)).toBe(1)
+    const closed = applyMove(ended.value, { type: 'endTactical' }, 0)
+    if (!closed.ok) throw new Error(closed.error)
+    expect(closed.value.effects).toEqual([])                                 // clearTacticalEffects wipes it
+    expect(pathLength(closed.value, 0, 'home-n', 'starpoint', 1)).toBeNull()
   })
 })
 

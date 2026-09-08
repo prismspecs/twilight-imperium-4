@@ -12,7 +12,7 @@ import { postAbilityOptions } from './postAbilities'
 import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
-import { homeSystemOf, maxFightersAllowed } from './board'
+import { hasTech, homeSystemOf, maxFightersAllowed } from './board'
 import { isShip } from '../data/units'
 import { constructionPlanets, diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { MECATOL_ID } from '../data/map'
@@ -27,6 +27,9 @@ function tacticalMoves(state: GameState): Move[] {
     case 'movement': {
       const out: Move[] = []
       if (movableShips(state, seat).length) out.push({ type: 'moveShips', moves: [] })
+      if (hasTech(state, seat, 'spatial_conduit_cylinder') && !state.players[seat].spatialConduitExhausted) {
+        out.push({ type: 'exhaustSpatialConduit' })
+      }
       out.push({ type: 'endMovement' })
       return out
     }

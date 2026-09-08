@@ -40,6 +40,8 @@ export const TECHS: TechDef[] = [
   { id: 'hybrid_crystal_fighter_ii', name: 'Hybrid Crystal Fighter II', colour: null, prereq: { green: 1, blue: 1 }, kind: 'upgrade', faction: 'naalu', unit: 'fighter' },
   { id: 'production_biomes', name: 'Production Biomes', colour: 'green', prereq: { green: 2 }, kind: 'faction', faction: 'hacan' },
   { id: 'bioplasmosis', name: 'Bioplasmosis', colour: 'green', prereq: { green: 2 }, kind: 'faction', faction: 'arborec' },
+  { id: 'e_res_siphons', name: 'E-Res Siphons', colour: 'yellow', prereq: { yellow: 2 }, kind: 'faction', faction: 'jolnar' },
+  { id: 'spatial_conduit_cylinder', name: 'Spatial Conduit Cylinder', colour: 'blue', prereq: { blue: 2 }, kind: 'faction', faction: 'jolnar' },
 ]
 
 const BY_ID = new Map(TECHS.map(t => [t.id, t]))

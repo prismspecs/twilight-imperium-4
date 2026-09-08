@@ -21,6 +21,17 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('movement-panel')).toBeTruthy()
   })
 
+  it('R5 Jol-Nar faction tech Spatial Conduit Cylinder: exhausting it from the movement panel opens up reach', () => {
+    const s = withTechs(withPlayer(toActionPhase(), 0, { faction: 'jolnar' }), 0, ['spatial_conduit_cylinder'])
+    renderWithSession(s, <BoardScreen />)
+    activate('starpoint')   // two hops from home-n: out of reach for a move-1 ship until the tech extends it
+    expect(screen.queryByTestId('ship-home-n-carrier-plus')).toBeNull()
+    expect(screen.getByTestId('btn-exhaust-spatial-conduit')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-exhaust-spatial-conduit'))
+    expect(screen.queryByTestId('btn-exhaust-spatial-conduit')).toBeNull()   // exhausted: not offered again
+    expect(screen.getByTestId('ship-home-n-carrier-plus')).toBeTruthy()
+  })
+
   it('R3.2 step 2: moves a carrier with fighters and infantry into the active system', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     activate('bereg')
