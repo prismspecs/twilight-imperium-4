@@ -1,4 +1,4 @@
-# Mecatol Duel (project name; the game is the FULL TI4 base game + Codices, NOT a two-player duel)
+# Mecatol Online
 
 Full Twilight Imperium 4 (base game plus Codices), for 2-6 players (primarily 6). This is the complete base game of TI4 (all 17 factions, 8 strategy cards, 101 action cards, 50 agendas, 20 public objectives + secrets, 6 promissory notes, 51-tile galaxy, anomalies, wormholes) with Codices I–IV updates. It is not a 2-player duel variant; any remaining duel-only mechanics in the code (e.g. trade posts) are legacy and should be removed. Pure TypeScript rules engine in `src/engine/` and `src/data/`, React UI on top, Vitest tests next to the modules. The complete rules text is `docs/spec/lrr.md` (LRR v2.0 incl. Codices) and `docs/spec/lrr-components.md`.
 

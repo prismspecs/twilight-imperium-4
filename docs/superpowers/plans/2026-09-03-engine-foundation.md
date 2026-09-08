@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the pure TypeScript foundation of the Mecatol Duel rules engine: typed data tables (units, technologies, factions, map, objectives), deterministic RNG, adjacency with wormholes and anomalies, technology prerequisites, game setup with the guardian fleet, the strategy-phase draft, economy helpers, and the `applyMove` dispatcher with `legalMoves` for the strategy phase.
+**Goal:** Build the pure TypeScript foundation of the Mecatol Online rules engine: typed data tables (units, technologies, factions, map, objectives), deterministic RNG, adjacency with wormholes and anomalies, technology prerequisites, game setup with the guardian fleet, the strategy-phase draft, economy helpers, and the `applyMove` dispatcher with `legalMoves` for the strategy phase.
 
 **Architecture:** Everything under `src/engine/` and `src/data/` is pure: functions from state to state, no I/O, no React. Data modules export typed constants derived from the verified reference JSON in `data/reference/`. The engine is driven by `applyMove(state, move, seed)` which dispatches on `move.type`; this plan implements the dispatcher and the strategy-phase moves, later plans add tactical, strategic and status moves to the same dispatcher.
 

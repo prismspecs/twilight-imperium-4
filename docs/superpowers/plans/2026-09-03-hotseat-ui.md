@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Put a playable hot-seat client on top of the finished rules engine. Two people share one browser: they name themselves on a setup screen, then play a whole game of Mecatol Duel on a board that reproduces the approved mockups, with every control derived from `legalMoves`, a chess clock, undo inside your own turn, a pass-the-device interstitial, a readable game log and a game that survives a page reload. Prove it with component tests and one scripted end-to-end game driven entirely through the rendered UI.
+**Goal:** Put a playable hot-seat client on top of the finished rules engine. Two people share one browser: they name themselves on a setup screen, then play a whole game of Mecatol Online on a board that reproduces the approved mockups, with every control derived from `legalMoves`, a chess clock, undo inside your own turn, a pass-the-device interstitial, a readable game log and a game that survives a page reload. Prove it with component tests and one scripted end-to-end game driven entirely through the rendered UI.
 
 **Architecture:** Everything new lives under `src/ui/`. The engine stays exactly as it is: the UI imports `applyMove`, `createGame`, `legalMoves` and a set of read-only query helpers, and it never decides legality itself. One store (`src/ui/store.tsx`, a React context plus the `useGame` hook) owns the whole client state: the `GameState`, the game seed, an undo stack of previous states, the two clocks and the handoff flag. Every move goes through `apply(move)`, which calls `applyMove(state, move, deriveSeed(gameSeed, moveIndex))`, so a game is fully replayable from `(seed, move list)` and every test is deterministic. Screens are chosen by a twelve-line hash router (`#/` setup, `#/play` board, plus the game-over screen which is picked from `state.winner`). Presentational components (`src/ui/board/*`, `src/ui/hud/*`) take a `GameState` and props and render; interactive components (`src/ui/flows/*`) read the store, offer parameters for one move kind and submit it. A single stylesheet `src/ui/theme.css` carries the mockups' tokens (gold, navy, cut corners, Cinzel / Barlow Condensed / Barlow); there are no CSS-in-JS and no UI libraries.
 
@@ -667,7 +667,7 @@ export function SetupScreen() {
     <div className="setup" data-testid="setup-screen">
       <div className="space"><div className="stars" /><div className="neb" /><div className="limb" /><div className="dust" /></div>
       <header className="hero">
-        <h1 className="title goldtext">Mecatol Duel</h1>
+        <h1 className="title goldtext">Mecatol Online</h1>
         <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
       </header>
       <div className="seats">

@@ -17,7 +17,7 @@ export function UnknownGameScreen({ code }: { code: string }) {
       </div>
 
       <header className="hero">
-        <h1 className="title goldtext">Mecatol Duel</h1>
+        <h1 className="title goldtext">Mecatol Online</h1>
         <div className="rule"><span /><i className="dia" /><span /></div>
       </header>
 

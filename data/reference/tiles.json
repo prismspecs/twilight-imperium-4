@@ -2,7 +2,7 @@
   "meta": {
     "game": "Twilight Imperium Fourth Edition, base game only (no Prophecy of Kings)",
     "compiled": "2026-09-03",
-    "purpose": "Mecatol Duel data: base-game system tile catalogue",
+    "purpose": "Mecatol Online data: base-game system tile catalogue",
     "tile_ranges": {
       "home": "1-16 (green back; 17 = Creuss Gate, also green back)",
       "mecatol_rex": "18",

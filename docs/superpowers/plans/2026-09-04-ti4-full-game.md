@@ -1,4 +1,4 @@
-# Expand Mecatol Duel into the Full Twilight Imperium 4 Base Game (with Codices), 6 players
+# Expand Mecatol Online into the Full Twilight Imperium 4 Base Game (with Codices), 6 players
 
 **Goal:** Take the current 2-player TI4 distillation and expand it into the entire TI4 4th edition base game (with Codices I–IV errata/updates layered on base content), playable by up to 6 players (e.g. 1 human + 5 bots).
 

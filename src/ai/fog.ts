@@ -17,7 +17,7 @@ import type {
  * The information one seat is allowed to see about a player. This is the fog-of-war contract for the AI.
  *
  * With action cards in the game, an opponent's hand is concealed: trade goods, commodities, technology
- * and strategy cards are face-down. Mecatol Duel v1 plays no action cards, so every field is currently
+ * and strategy cards are face-down. Mecatol Online v1 plays no action cards, so every field is currently
  * public and the AI sees the whole board; the abstraction exists so that when cards arrive, only
  * `maskPlayer` needs to change and the scoring code stays untouched.
  */

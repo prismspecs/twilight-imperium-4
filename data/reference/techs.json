@@ -2,7 +2,7 @@
   "meta": {
     "game": "Twilight Imperium Fourth Edition, base game only (no Prophecy of Kings, no Codex errata)",
     "compiled": "2026-09-03",
-    "purpose": "Mecatol Duel data: base-game technology tree and unit stat lines",
+    "purpose": "Mecatol Online data: base-game technology tree and unit stat lines",
     "counts": {
       "general_technologies": 16,
       "unit_upgrades": 9,
@@ -135,7 +135,7 @@
     {"id": "flagship_generic", "name": "Flagship (faction specific)", "type": "ship", "cost": 8, "note": "Each faction has a unique flagship; see faction_extras for the two duel factions."}
   ],
   "faction_extras": {
-    "note": "Bonus data for the two factions of the first Mecatol Duel version (not general technologies).",
+    "note": "Bonus data for the two factions of the first Mecatol Online version (not general technologies).",
     "l1z1x": {
       "faction_name": "L1Z1X Mindnet",
       "home_tile": 6,

@@ -1,4 +1,4 @@
-# Mecatol Duel, Lobby and Online Architecture
+# Mecatol Online, Lobby and Online Architecture
 
 Status: design proposal, 2026-09-03. Scope: two-player, turn-based, deterministic game (TI4 base-game distillation, L1Z1X Mindnet vs Barony of Letnev, 7 hexes). Rules engine is pure TypeScript. Frontend Vite + React + TS on Vercel. Backend Supabase (Postgres, Realtime, Edge Functions, RLS). No user accounts. Same engine for hot-seat and online.
 
@@ -56,7 +56,7 @@ Status: design proposal, 2026-09-03. Scope: two-player, turn-based, deterministi
 
 ### 1.2 Patterns that recur
 
-| Concern | What the field does | Take for Mecatol Duel |
+| Concern | What the field does | Take for Mecatol Online |
 | --- | --- | --- |
 | Room creation | One click, server assigns a short id (BGA numeric, skribbl 8 chars, Colonist 4, Jackbox 4 letters, Colyseus 9) | 6-char code, no ambiguous glyphs |
 | Join code in URL | skribbl `?id`, Colonist `#id`, Codenames `/room/id`, BGA `?table=` | `/g/K7X2QP`, plus `/g/K7X2QP?watch` semantics for spectators (same code) |
@@ -71,7 +71,7 @@ Status: design proposal, 2026-09-03. Scope: two-player, turn-based, deterministi
 
 ---
 
-## Part 2. Architecture for Mecatol Duel
+## Part 2. Architecture for Mecatol Online
 
 ### 2.1 One-paragraph summary
 

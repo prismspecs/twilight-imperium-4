@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Mecatol Duel base data: L1Z1X Mindnet vs Barony of Letnev",
-    "scope": "Twilight Imperium 4th edition BASE GAME only (no Prophecy of Kings). PoK-only content (mechs, leaders, breakthroughs, PoK Construction card) deliberately omitted. Codex I (Ordinian) omega versions of the two promissory notes and the Diplomacy card are recorded separately because they are official FFG errata/replacements for base-game components; the duel can pick either, the printed base text is always given first.",
+    "title": "Mecatol Online base data: full TI4 base game + Codices",
+    "scope": "Twilight Imperium 4th edition BASE GAME + Codices I-IV, all 17 factions, 2-6 players. Content per content_sets.json (base first, Codex errata noted).",
     "compiled": "2026-09-03",
     "text_convention": "Fields named text / primary / secondary are verbatim card or faction-sheet text (capitalised keywords as printed). Stat lines follow the printed order Cost, Combat, Move, Capacity.",
     "tech_colour_key": {
