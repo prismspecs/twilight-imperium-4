@@ -54,7 +54,7 @@ export interface Player {
   actionCards: string[]            // R9: the hand, card ids from data/actionCards.ts; hidden from other seats
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
-  scoredObjectives: string[]; scoredMandates: string[]
+  scoredObjectives: string[]
   secretObjectives: string[]
   resourcesSpentThisRound: number        // R7: the "spend 6 resources" objective counts a whole round
   influenceSpentThisRound: number
@@ -107,7 +107,6 @@ export interface GameState {
   actionCardDeck: string[]                               // R9: face-down draw pile, top card first
   actionCardDiscard: string[]                            // R9: played and discarded cards, reshuffled when the deck runs out
   agendaDeck: string[]                                   // R10: the agenda deck, top card first; Politics looks at its top two
-  mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: Player[]
   systems: Record<string, System>
   tactical: TacticalContext | null

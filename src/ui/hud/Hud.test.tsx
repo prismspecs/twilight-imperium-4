@@ -51,14 +51,12 @@ describe('the HUD', () => {
     expect(screen.getByTestId('strategy-card-technology').className).toContain('own-0')
   })
 
-  it('R7: the objectives strip lists the revealed objectives and both mandates', () => {
+  it('R7: the objectives strip lists the revealed objectives', () => {
     const state = toActionPhase()
     renderWithSession(state, <BoardScreen />)
     expect(screen.getByTestId(`objective-${state.publicObjectives[0]}`)).toBeTruthy()
     expect(state.publicObjectives).toHaveLength(1)                       // one revealed in round 1
     expect(screen.queryByTestId(`objective-${state.objectiveOrder[1]}`)).toBeNull()
-    expect(screen.getByTestId('mandate-first_strike').textContent).toContain('First Strike')
-    expect(screen.getByTestId('mandate-foothold').textContent).toContain('Foothold')
   })
 
   it('shows victory points, command tokens, planets, economy, technologies and forces', () => {

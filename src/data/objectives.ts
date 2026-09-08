@@ -360,31 +360,9 @@ export function isSecretObjective(id: string): boolean {
 }
 
 export function objectiveDef(id: string): ObjectiveDef | undefined {
-  return BY_ID.get(id) ?? MANDATES.find(m => m.id === id)
+  return BY_ID.get(id)
 }
 
 export function findObjective(id: string): ObjectiveDef | undefined {
   return BY_ID.get(id)
 }
-
-/** Legacy duel mandates kept for transitional compatibility until test suites are updated. */
-export const FIRST_STRIKE: ObjectiveDef = {
-  id: 'first_strike',
-  name: 'First Strike',
-  stage: 'stage1',
-  points: 1,
-  short: 'First Strike',
-  text: 'First Strike: be the first to win a space combat in the Mecatol Rex system',
-}
-
-export const FOOTHOLD: ObjectiveDef = {
-  id: 'foothold',
-  name: 'Foothold',
-  stage: 'stage1',
-  points: 1,
-  short: 'Foothold',
-  text: 'Foothold: take a planet in your opponent’s home system',
-}
-
-export const MANDATES: ObjectiveDef[] = [FIRST_STRIKE, FOOTHOLD]
-export const MANDATE_IDS: readonly string[] = MANDATES.map(m => m.id)

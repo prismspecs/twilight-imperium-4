@@ -35,21 +35,20 @@ describe('R3.3 status phase', () => {
     expect(submit(hyper, plain(6)).ok).toBe(true)                    // 11, three tokens
     expect(submit(hyper, plain(5)).ok).toBe(false)
   })
-  it('R3.3 step 1: fulfilled objectives, the mandates and Mecatol Rex score, each only once', () => {
+  it('R3.3 step 1: fulfilled objectives score, each only once', () => {
     // a pool of one keeps the second status phase from revealing something that is already fulfilled
     let s: GameState = {
       ...toActionPhase(), publicObjectives: ['win_space_combat'],
-      objectiveOrder: ['win_space_combat'], mecatolCombatWinner: 0,
+      objectiveOrder: ['win_space_combat'],
     }
     s = withPlayer(s, 0, { spaceCombatWins: 1 })
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].vp).toBe(2)                               // the objective, First Strike (no passive Mecatol VP in base game)
+    expect(done.players[0].vp).toBe(1)                               // the objective (no passive Mecatol VP in base game)
     expect(done.players[0].scoredObjectives).toEqual(['win_space_combat'])
-    expect(done.players[0].scoredMandates).toEqual(['first_strike'])
     expect(done.players[1].vp).toBe(0)
     const second = bothSubmit(toStatusPhase({ ...done, phase: 'action' }))
-    expect(second.players[0].vp).toBe(2)                             // neither scores again
+    expect(second.players[0].vp).toBe(1)                             // does not score again
   })
   it('R3.3 step 2: the next objective off the shuffled pool is revealed, none once it runs out', () => {
     const start = toActionPhase()
@@ -67,7 +66,7 @@ describe('R3.3 status phase', () => {
       players: [
         {
           ...base.players[0], inheritanceExhausted: true, resourcesSpentThisRound: 8, tradedThisRound: { west: true, east: true },
-          passed: true, scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'],
+          passed: true, scoredObjectives: ['win_space_combat'],
         },
         { ...base.players[1], passed: true },
       ] as GameState['players'],
@@ -78,7 +77,7 @@ describe('R3.3 status phase', () => {
     expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
     expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, resourcesSpentThisRound: 0, passed: false, tradedThisRound: { west: false, east: false } })
     // these are once-per-game (or once-ever) flags, not per-round state: the reset must leave them untouched
-    expect(done.players[0]).toMatchObject({ scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'] })
+    expect(done.players[0]).toMatchObject({ scoredObjectives: ['win_space_combat'] })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft
@@ -120,12 +119,12 @@ describe('R3.3 status phase', () => {
   })
   it('R7: both players reach 10 VP in the same status phase through real submissions, tie-break decides', () => {
     let s = withPlayer(toActionPhase(), 0, { vp: 9, spaceCombatWins: 1 })
-    s = { ...withPlayer(s, 1, { vp: 9 }), mecatolCombatWinner: 1 }
+    s = withPlayer(s, 1, { vp: 9, spaceCombatWins: 1 })
     s = { ...s, publicObjectives: ['win_space_combat'], objectiveOrder: ['win_space_combat'] }
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // tie-break will favor Mecatol Rex controller
     const done = bothSubmit(toStatusPhase(s))
     expect(done.players[0].vp).toBe(10)                               // 9 + 1 for win_space_combat
-    expect(done.players[1].vp).toBe(10)                               // 9 + 1 for First Strike
+    expect(done.players[1].vp).toBe(10)                               // 9 + 1 for win_space_combat
     expect(done.phase).toBe('ended')
     expect(done.winner).toBe(0)                                       // tied at 10, decided by the Mecatol Rex controller
   })

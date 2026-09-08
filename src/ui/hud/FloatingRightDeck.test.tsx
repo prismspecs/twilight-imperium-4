@@ -22,10 +22,6 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     expect(objEl).toBeTruthy()
     expect(objEl.textContent).toContain('STAGE I')
     expect(objEl.textContent).toContain('VP')
-
-    // Mandates are displayed with description and titles
-    expect(screen.getByTestId('mandate-first_strike').textContent).toContain('First Strike')
-    expect(screen.getByTestId('mandate-foothold').textContent).toContain('Foothold')
   })
 
   it('switches between Objectives and Strategy tabs using TopBar buttons and deck tabs', () => {

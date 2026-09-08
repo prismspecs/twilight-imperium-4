@@ -34,7 +34,6 @@ export function GameOverScreen() {
               <div data-testid={`scored-list-${seat}`}>
                 {state.players[seat].scoredObjectives.map(id => objectiveDef(id)?.text ?? id).join(', ') || 'No public objective scored'}
               </div>
-              {state.players[seat].scoredMandates.map(id => <div key={id}>{objectiveDef(id)?.short ?? id}</div>)}
             </div>
           </div>
         ))}

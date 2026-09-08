@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { MANDATES } from '../../data/objectives'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { COLOUR_INK, MISC, SIGIL, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
@@ -186,7 +185,7 @@ export function TopBar({
             title="Toggle Objectives Deck"
           >
             <span className="deck-label">Objectives</span>
-            <span className="deck-count">{state.publicObjectives.length + MANDATES.length}</span>
+            <span className="deck-count">{state.publicObjectives.length}</span>
           </button>
           <button
             type="button"

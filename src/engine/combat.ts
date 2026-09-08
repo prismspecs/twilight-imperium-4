@@ -1,4 +1,3 @@
-import { MECATOL_ID } from '../data/map'
 import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo, combatBonus } from './board'
@@ -607,27 +606,17 @@ function antiFighterBarrage(state: GameState, ctx: Ctx, seed: number): GameState
 }
 
 /**
- * R7: a space combat win feeds two cards. First Strike is a race for one point, so only the first win in
- * Mecatol Rex counts and beating the guardian fleet counts too. The "win a space combat against your
- * opponent" objective counts wins over the other seat only, guardians excluded.
+ * R7: feeds the "win a space combat against your opponent" secret objective — wins over the other seat
+ * only, guardians excluded.
  */
 function markCombatWin(state: GameState, ctx: Ctx, winner: Seat): GameState {
-  let next = state
-  if (ctx.systemId === MECATOL_ID && next.mecatolCombatWinner === null) {
-    next = {
-      ...next, mecatolCombatWinner: winner,
-      log: [...next.log, { t: 'info', text: `Mandate First Strike claimed by seat ${winner}` }],
-    }
-  }
-  if (ctx.defender !== 'guardian') {   // seat against seat, so the winner beat the opponent
-    const players = [...next.players] as GameState['players']
-    players[winner] = { ...players[winner], spaceCombatWins: players[winner].spaceCombatWins + 1 }
-    next = { ...next, players }
-  }
-  return next
+  if (ctx.defender === 'guardian') return state   // seat against seat, so the winner beat the opponent
+  const players = [...state.players] as GameState['players']
+  players[winner] = { ...players[winner], spaceCombatWins: players[winner].spaceCombatWins + 1 }
+  return { ...state, players }
 }
 
-/** The winner's log line plus the mandate; a guardian victory earns and logs neither. */
+/** The winner's log line; a guardian victory earns and logs neither. */
 function wonBy(state: GameState, ctx: Ctx, winner: Owner): GameState {
   if (winner === 'guardian') return state
   const marked = markCombatWin(state, ctx, winner)

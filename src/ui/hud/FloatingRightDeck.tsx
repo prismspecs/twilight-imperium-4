@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { factionAbility } from '../../data/factionAbilities'
-import { MANDATES, objectiveDef } from '../../data/objectives'
+import { objectiveDef } from '../../data/objectives'
 import { HAND_LIMIT, cardOwner, fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { INITIATIVE } from '../../engine/strategyPhase'
 import { techDef } from '../../data/techs'
@@ -89,7 +89,7 @@ export function FloatingRightDeck({
             onClick={() => onTabChange('objectives')}
           >
             <span className="frd-tab-title">Objectives</span>
-            <span className="frd-tab-count">{state.publicObjectives.length + MANDATES.length}</span>
+            <span className="frd-tab-count">{state.publicObjectives.length}</span>
           </button>
           <button
             id="tab-strategy"
@@ -349,49 +349,6 @@ export function FloatingRightDeck({
                             src={tokenUrl(state.players[seat].faction, 'control')}
                             alt={state.players[seat].name}
                             data-testid={`scored-${id}-${seat}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="frd-obj-unclaimed">Unclaimed</div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="frd-section-title" style={{ marginTop: '16px' }}>Mandates & Race Objectives</div>
-          <div className="frd-objs-list">
-            {MANDATES.map(def => {
-              const scorers = scoredBy(seat => state.players[seat].scoredMandates.includes(def.id))
-              return (
-                <div
-                  key={def.id}
-                  className="frd-obj-card mandate"
-                  data-testid={`mandate-${def.id}`}
-                >
-                  <div className="frd-obj-top">
-                    <span className="frd-tier-badge">
-                      {def.id === 'first_strike' ? 'RACE' : 'MANDATE'}
-                    </span>
-                    <span className="frd-vp-badge">1 VP</span>
-                  </div>
-                  <div className="frd-obj-name">{def.short}</div>
-                  <div className="frd-obj-desc">{def.text}</div>
-                  {scorers.length > 0 ? (
-                    <div className="frd-obj-scorers">
-                      <span className="frd-scorers-label">Claimed by:</span>
-                      {scorers.map(seat => (
-                        <div
-                          key={seat}
-                          className="frd-scorer-token"
-                          title={`${state.players[seat].name} (${FACTIONS[state.players[seat].faction].name})`}
-                        >
-                          <img
-                            src={tokenUrl(state.players[seat].faction, 'control')}
-                            alt={state.players[seat].name}
-                            data-testid={`scored-${def.id}-${seat}`}
                           />
                         </div>
                       ))}

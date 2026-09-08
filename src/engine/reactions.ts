@@ -265,8 +265,8 @@ function emergencyRepairs(state: GameState, seat: Seat, systemId: string): Resul
  * reinforcements in that system."
  *
  * Every unit of the seat leaves, cargo included, so nothing of theirs is left behind to trim in the system
- * they came from. The combat ends without a winner: nobody earns the space-combat mandate or the objective
- * counter, which is what "in a draw" means. The active player's tactical action then continues exactly as it
+ * they came from. The combat ends without a winner: nobody earns the space-combat-win counter, which is what
+ * "in a draw" means. The active player's tactical action then continues exactly as it
  * would after any other end of a space combat — into the invasion when they hold the field, and to `done`
  * when it was their own ships that left.
  */

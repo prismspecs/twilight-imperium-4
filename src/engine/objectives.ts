@@ -1,5 +1,5 @@
 import { MECATOL_ID } from '../data/map'
-import { MANDATE_IDS, objectiveDef } from '../data/objectives'
+import { objectiveDef } from '../data/objectives'
 import { findTech } from '../data/techs'
 import { isShip } from '../data/units'
 import { neighbours } from './adjacency'
@@ -84,7 +84,7 @@ function techColorsWithAtLeast(state: GameState, seat: Seat, minCount: number): 
   return Object.values(counts).filter(c => c >= minCount).length
 }
 
-/** R7: evaluates fulfilment of public objectives and mandates. An unknown id is false, never a throw. */
+/** R7: evaluates fulfilment of public and secret objectives. An unknown id is false, never a throw. */
 export function fulfils(state: GameState, seat: Seat, objectiveId: string): boolean {
   const player = state.players[seat]
   if (!player) return false
@@ -138,14 +138,6 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       const myShips = shipCount(state, seat)
       const allOtherSeats = state.players.map((_, i) => i).filter(i => i !== seat)
       return allOtherSeats.some(other => myShips > shipCount(state, other))
-    }
-    case 'first_strike':
-      return state.mecatolCombatWinner === seat
-    case 'foothold': {
-      const allOtherSeats = state.players.map((_, i) => i).filter(i => i !== seat)
-      return allOtherSeats.some(other =>
-        controlledPlanets(state, seat).some(p => p.systemId === homeSystemOf(state, other))
-      )
     }
 
     // Secret objectives (1 VP)
@@ -208,14 +200,11 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
   }
 }
 
-/** R3.3 step 1: what the seat may score right now, each objective and each mandate once per game. */
+/** R3.3 step 1: what the seat may score right now, each objective once per game. */
 export function scoreable(state: GameState, seat: Seat): string[] {
   const player = state.players[seat]
   if (!player) return []
   const out = state.publicObjectives.filter(id => !player.scoredObjectives.includes(id) && fulfils(state, seat, id))
-  for (const id of MANDATE_IDS) {
-    if (!player.scoredMandates.includes(id) && fulfils(state, seat, id)) out.push(id)
-  }
   for (const id of player.secretObjectives ?? []) {
     if (!player.scoredObjectives.includes(id) && fulfils(state, seat, id)) out.push(id)
   }
@@ -232,13 +221,11 @@ export function addVp(state: GameState, seat: Seat, points: number, reason: stri
   return next
 }
 
-/** R7: records the objective (or the mandate) and adds its victory points. Fulfilment is checked by the caller. */
+/** R7: records the objective and adds its victory points. Fulfilment is checked by the caller. */
 export function scoreObjective(state: GameState, seat: Seat, objectiveId: string): GameState {
   const players = [...state.players] as GameState['players']
   const player = players[seat]
-  players[seat] = MANDATE_IDS.includes(objectiveId)
-    ? { ...player, scoredMandates: [...player.scoredMandates, objectiveId] }
-    : { ...player, scoredObjectives: [...player.scoredObjectives, objectiveId] }
+  players[seat] = { ...player, scoredObjectives: [...player.scoredObjectives, objectiveId] }
   const def = objectiveDef(objectiveId)
   const points = def?.points ?? 1
   return addVp({ ...state, players }, seat, points, def?.text ?? objectiveId)

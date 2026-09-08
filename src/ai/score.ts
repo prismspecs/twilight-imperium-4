@@ -7,7 +7,7 @@ import type { GameStateView } from './fog'
 
 /** Tuneable weights per concern; a difficulty dial can scale these later. */
 export interface ScoreWeights {
-  objective: number     // pushing towards revealed objectives and mandates
+  objective: number     // pushing towards revealed objectives
   military: number      // fleet strength and system control
   economy: number       // resources, trade goods, production
   tempo: number         // initiative and turn efficiency
