@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { agendaDef } from '../../data/agendas'
 import { objectiveDef } from '../../data/objectives'
-import { cheapestPayment, controlsMecatol, isAi, readyResources, researchable } from '../../engine'
+import { cheapestPayment, constructionPlanets, controlsMecatol, isAi, readyResources, researchable } from '../../engine'
 import { BADGE, MISC, spriteUrl, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
@@ -61,9 +61,13 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   // R6 Politics: the two cards you look at go back on top or on the bottom, in the order shown
   const peek = state.agendaDeck.slice(0, 2)
   const peekOrder = agendaOrder ?? peek
-  // R6 Construction: a space dock (at most one per planet) and a PDS (at most two per planet)
+  // R6 Construction: a space dock (at most one per planet, or for Saar's Floating Factory, at most one per
+  // system) and a PDS (at most two per planet)
   const controlled = ownedPlanets(state, seat)
-  const dockable = controlled.filter(p => !p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  const isSaar = player.faction === 'saar'
+  const dockablePlanetIds = new Set(constructionPlanets(state, seat, 'spacedock'))
+  const dockable = controlled.filter(p => dockablePlanetIds.has(p.id))
+  const systemOf = (planetId: string): string => Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId)) ?? ''
   const pdsable = controlled.filter(p => p.structures.filter(u => u.type === 'pds' && u.owner === seat).length < 2)
   const structures: { planetId: string; type: 'pds' | 'spacedock' }[] = [
     ...(dock ? [{ planetId: dock, type: 'spacedock' as const }] : []),
@@ -297,22 +301,26 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
 
         {card === 'construction' ? (
           <>
-            <div className="sub">Place 1 PDS or 1 space dock on a planet you control, then 1 PDS on a planet you control.</div>
+            <div className="sub">
+              Place 1 PDS or 1 {isSaar ? 'Floating Factory' : 'space dock'} on a planet you control, then 1 PDS on a planet you control.
+            </div>
             <Rewards items={[
-              { icon: spriteUrl(player.color, 'spacedock'), alt: 'Space dock', count: dock ? 1 : 0, label: 'Space dock' },
+              { icon: spriteUrl(player.color, isSaar ? 'floating_factory' : 'spacedock'), alt: isSaar ? 'Floating Factory' : 'Space dock', count: dock ? 1 : 0, label: isSaar ? 'Floating Factory' : 'Space dock' },
               { icon: spriteUrl(player.color, 'pds'), alt: 'PDS', count: firstPds ? 1 : 0, label: 'PDS' },
             ]} />
-            <div className="tab" style={{ margin: '12px 0 6px' }}>Space dock</div>
+            <div className="tab" style={{ margin: '12px 0 6px' }}>{isSaar ? 'Floating Factory' : 'Space dock'}</div>
             <div className="rowline">
               {dockable.map(planet => (
                 <button key={planet.id} type="button" className={`pay${dock === planet.id ? ' on' : ''}`}
                   data-testid={`dock-${planet.id}`}
-                  disabled={player.reinforcements.spacedock < 1 && dock !== planet.id}
+                  disabled={player.reinforcements[isSaar ? 'floating_factory' : 'spacedock'] < 1 && dock !== planet.id}
                   onClick={() => setDock(dock === planet.id ? null : planet.id)}>
-                  Dock on {planet.name}
+                  {isSaar ? `Floating Factory in ${systemLabel(systemOf(planet.id), state)}` : `Dock on ${planet.name}`}
                 </button>
               ))}
-              {dockable.length === 0 ? <span className="sub">Every planet you control already has a space dock.</span> : null}
+              {dockable.length === 0
+                ? <span className="sub">{isSaar ? 'Every system you have a planet in already has your Floating Factory.' : 'Every planet you control already has a space dock.'}</span>
+                : null}
             </div>
             <div className="tab" style={{ margin: '12px 0 6px' }}>PDS</div>
             <div className="rowline">

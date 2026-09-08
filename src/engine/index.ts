@@ -47,7 +47,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'land': result = land(logged, move.planetId, move.infantryIds, seed); break
       case 'groundCombatRound': result = groundCombatRound(logged, seed); break
       case 'endInvasion': result = endInvasion(logged); break
-      case 'produce': result = produce(logged, move.units, move.planets, move.tradeGoods); break
+      case 'produce': result = produce(logged, move.units, move.planets, move.tradeGoods, move.groundTo); break
       case 'strategic': result = strategic(logged, move.card, move.params, seed); break
       case 'secondary': result = secondary(logged, move.card, move.accept, move.params, seed); break
       // R9: a reaction window open means this card answers it, never a fresh whole action
@@ -105,7 +105,7 @@ export { deriveSeed } from './rng'
 export { unitsOf } from './setup'
 export { tokensGained } from './statusPhase'
 export { agendaMoves, legalOutcomes, readyInfluencePlanets } from './agendas'
-export { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
+export { cardOwner, constructionPlanets, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 export { INITIATIVE } from './strategyPhase'
 export { PLAYABLE_REACTION_CARDS, pendingReaction, reactingSeat, reactionMoves, skilledRetreatTargets } from './reactions'
 export { neighbours } from './adjacency'

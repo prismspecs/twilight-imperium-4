@@ -198,7 +198,9 @@ export function SecondaryPanel() {
                   <button key={`${offer.systemId}-${offer.planetId}-${offer.type}`} type="button" className={`pay${chosen ? ' on' : ''}`}
                     data-testid={`build-${offer.planetId}-${offer.type}`}
                     onClick={() => { setBuildSystem(offer.systemId); setBuild({ planetId: offer.planetId, type: offer.type }) }}>
-                    {offer.type === 'spacedock' ? 'Space dock' : 'PDS'} on {offer.planetName} ({systemLabel(offer.systemId, state)})
+                    {offer.type === 'pds'
+                      ? `PDS on ${offer.planetName} (${systemLabel(offer.systemId, state)})`
+                      : player.faction === 'saar' ? `Floating Factory in ${systemLabel(offer.systemId, state)}` : `Space dock on ${offer.planetName} (${systemLabel(offer.systemId, state)})`}
                   </button>
                 )
               })}

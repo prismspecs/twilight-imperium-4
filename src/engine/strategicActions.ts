@@ -231,21 +231,65 @@ function structureRoom(planet: { structures: { type: string }[] }, type: 'pds' |
   return limit - planet.structures.filter(u => u.type === type).length
 }
 
-/** R6 Construction: the planets a seat may still put that structure on. */
+/** Saar's space dock is a Floating Factory: never on a planet, so Construction can offer/place it as soon as
+ * the seat controls any planet in the system and doesn't already have one there (lrr-facions.md 2124). */
+function isSaarFloatingFactory(state: GameState, seat: Seat, type: 'pds' | 'spacedock'): boolean {
+  return type === 'spacedock' && state.players[seat].faction === 'saar'
+}
+
+/** R6 Construction: the planets a seat may still put that structure on. For Saar's Floating Factory this
+ * names a controlled planet only to identify the system — the dock itself lands in the space area. */
 export function constructionPlanets(state: GameState, seat: Seat, type: 'pds' | 'spacedock', systemId?: string): string[] {
-  if (state.players[seat].reinforcements[type] < 1) return []
+  const reinforcementType = isSaarFloatingFactory(state, seat, type) ? 'floating_factory' : type
+  if (state.players[seat].reinforcements[reinforcementType] < 1) return []
   const out: string[] = []
   for (const id of Object.keys(state.systems)) {
     if (systemId !== undefined && id !== systemId) continue
-    for (const planet of state.systems[id].planets) {
+    const sys = state.systems[id]
+    if (isSaarFloatingFactory(state, seat, type)) {
+      if (sys.space.some(u => u.type === 'floating_factory' && u.owner === seat)) continue
+      const controlled = sys.planets.find(p => p.owner === seat)
+      if (controlled) out.push(controlled.id)
+      continue
+    }
+    for (const planet of sys.planets) {
       if (planet.owner === seat && structureRoom(planet, type) > 0) out.push(planet.id)
     }
   }
   return out
 }
 
+/** Places a Floating Factory in the space area of the system containing `planetId`, which only names the
+ * seat's proof of control there (lrr-components.md 1810: it is never on a planet). */
+function placeFloatingFactory(state: GameState, seat: Seat, planetId: string): Result<GameState> {
+  const systemId = Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId))
+  if (systemId === undefined) return { ok: false, error: `unknown planet ${planetId}` }
+  const sys = state.systems[systemId]
+  const planet = sys.planets.find(p => p.id === planetId)
+  if (!planet || planet.owner !== seat) return { ok: false, error: `R6: you do not control ${planetId}` }
+  if (sys.space.some(u => u.type === 'floating_factory' && u.owner === seat)) {
+    return { ok: false, error: `R6: ${systemId} already has your Floating Factory` }
+  }
+  const player = state.players[seat]
+  if (player.reinforcements.floating_factory < 1) return { ok: false, error: 'R6: no Floating Factory left in your reinforcements' }
+  const unit = { id: state.nextUnitId, type: 'floating_factory' as const, owner: seat, damaged: false }
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...player, reinforcements: { ...player.reinforcements, floating_factory: player.reinforcements.floating_factory - 1 } }
+  return {
+    ok: true,
+    value: {
+      ...state,
+      players,
+      nextUnitId: state.nextUnitId + 1,
+      systems: { ...state.systems, [systemId]: { ...sys, space: [...sys.space, unit] } },
+      log: [...state.log, { t: 'info', text: `seat ${seat} places a Floating Factory in ${systemId}` }],
+    },
+  }
+}
+
 /** Places one structure on a planet the seat controls, checking the reinforcements and the per-planet limit. */
 function placeStructure(state: GameState, seat: Seat, planetId: string, type: 'pds' | 'spacedock'): Result<GameState> {
+  if (isSaarFloatingFactory(state, seat, type)) return placeFloatingFactory(state, seat, planetId)
   const systemId = Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId))
   if (systemId === undefined) return { ok: false, error: `unknown planet ${planetId}` }
   const sys = state.systems[systemId]
