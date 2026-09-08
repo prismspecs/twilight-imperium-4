@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { findTech } from '../data/techs'
+import { isShip } from '../data/units'
 import type { Move, PlanetTrait, Seat, StrategyCardId, TechColor } from '../engine/types'
 import { getCalibratedStrategyCardAffinity, getCalibratedTechBonus } from './calibrationData'
 import type { GameStateView } from './fog'
@@ -284,8 +285,11 @@ function dockValue(view: GameStateView, systemId: string, seat: Seat): number {
   const dockHere = sys.planets.some(p => p.owner === seat && p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
   if (!dockHere) return 0
   const me = view.players[seat]
+  // R14.1: a dock with another player's ships in the system and none of the seat's own can still produce
+  // ground forces, just not ships - so a blockaded dock is only worth a token for its infantry.
+  const blockaded = sys.space.some(u => u.owner !== seat && isShip(u.type)) && !sys.space.some(u => u.owner === seat && isShip(u.type))
   // without a destroyer to field into fleet room or two infantry to hold a line, there is nothing to build
-  const canField = me.reinforcements.destroyer > 0 || me.reinforcements.infantry >= 2
+  const canField = (!blockaded && me.reinforcements.destroyer > 0) || me.reinforcements.infantry >= 2
   if (!canField) return 0
   // the cheapest build costs 2 (a destroyer or two infantry); with no ready resources or trade goods to pay,
   // the dock cannot field anything this action

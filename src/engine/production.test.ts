@@ -143,4 +143,21 @@ describe('R4.4 production', () => {
     expect(produce(withTactical(s, { systemId: 'bereg', step: 'production' }), { infantry: 2 }, ['000']).ok).toBe(false)
     expect(produce(withTactical(s, { systemId: 'home-n', step: 'movement' }), { infantry: 2 }, ['000']).ok).toBe(false)
   })
+  describe('R14.1 blockade', () => {
+    it('a dock with an enemy fleet and none of the seat\'s own ships cannot produce ships, but can still produce ground forces', () => {
+      const base = producing()
+      const emptied = deepFreeze({ ...base, systems: { ...base.systems, 'home-n': { ...base.systems['home-n'], space: [] } } })
+      const s = withUnits(emptied, 'home-n', 1, ['destroyer'])
+      expect(produce(s, { cruiser: 1 }, ['000']).ok).toBe(false)
+      expect(produce(s, { infantry: 2 }, ['000']).ok).toBe(true)
+    })
+    it('is not blockaded when the seat also has a ship of their own in the system', () => {
+      const s = withUnits(producing(), 'home-n', 1, ['destroyer'])   // seat 0's starting fleet is already there
+      expect(produce(s, { cruiser: 1 }, ['000']).ok).toBe(true)
+    })
+    it('is not blockaded when no other player\'s ships are present at all', () => {
+      const s = producing()
+      expect(produce(s, { cruiser: 1 }, ['000']).ok).toBe(true)
+    })
+  })
 })

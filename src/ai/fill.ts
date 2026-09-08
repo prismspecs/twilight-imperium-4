@@ -1,7 +1,8 @@
-import { NON_FIGHTER_SHIPS, unitStats, type StatsOwner } from '../data/units'
+import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
 import { readyInfluencePlanets } from '../engine/agendas'
 import { checkFleet, maxFightersAllowed } from '../engine/board'
 import { cheapestInfluencePlanets, fleetPoolLimit, productionCost, productionLimit, readyResources } from '../engine/economy'
+import { isBlockaded } from '../engine/production'
 import { movableShips, pathLength } from '../engine/movement'
 import { tokensGained } from '../engine/statusPhase'
 import type { GameState, Player, Seat, Unit, UnitType } from '../engine/types'
@@ -203,7 +204,10 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     return true
   }
 
+  const blockaded = isBlockaded(state, seat, systemId)
+
   const tryAdd = (type: UnitType, count: number): boolean => {
+    if (blockaded && isShip(type)) return false
     if ((remainingPlastic[type] ?? 0) < count) return false
     if (remainingUnitsCount < count) return false
     const isNonFighter = NON_FIGHTER_SHIPS.includes(type)

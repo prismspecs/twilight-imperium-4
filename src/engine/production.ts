@@ -1,10 +1,17 @@
-import type { StatsOwner } from '../data/units'
+import { isShip, type StatsOwner } from '../data/units'
 import { checkFleet, maxFightersAllowed } from './board'
 import { payCost, productionCost, productionLimit } from './economy'
 import { unitsOf } from './setup'
-import type { GameState, Result, Unit, UnitType } from './types'
+import type { GameState, Result, Seat, Unit, UnitType } from './types'
 
 export const PRODUCIBLE: readonly UnitType[] = ['infantry', 'fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
+
+/** R14.1: a dock (or any unit with PRODUCTION) is blockaded when the system holds another player's ships
+ * and none of the seat's own - a blockaded unit may still produce ground forces, just not ships. */
+export function isBlockaded(state: GameState, seat: Seat, systemId: string): boolean {
+  const space = state.systems[systemId].space
+  return space.some(u => u.owner !== seat && isShip(u.type)) && !space.some(u => u.owner === seat && isShip(u.type))
+}
 
 export function produce(state: GameState, units: Partial<Record<UnitType, number>>, planets: string[], tradeGoods: number): Result<GameState> {
   const tac = state.tactical
@@ -13,10 +20,12 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
   const player = state.players[seat]
   const dockPlanet = state.systems[tac.systemId].planets.find(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
   if (!dockPlanet) return { ok: false, error: 'R4.4: no space dock of your own in the active system' }
+  const blockaded = isBlockaded(state, seat, tac.systemId)
   for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
     if (n === 0) continue
     if (n < 0 || !Number.isInteger(n)) return { ok: false, error: `invalid count for ${type}` }
     if (!PRODUCIBLE.includes(type)) return { ok: false, error: `R4.4: ${type} cannot be produced` }
+    if (blockaded && isShip(type)) return { ok: false, error: 'R14.1: this dock is blockaded by another player\'s ships — it can still produce ground forces' }
   }
   // R4.4: fighters above the capacity plus the dock's (I or II) free slots are simply not produced. The new
   // non-fighter ships in this same order pool their capacity too, so they count toward the room before trimming.
