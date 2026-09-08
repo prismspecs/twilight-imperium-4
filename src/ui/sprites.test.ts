@@ -41,15 +41,19 @@ describe('unit sprites', () => {
       expect(max - min, type).toBeLessThanOrEqual(Math.round(max * 0.55))
     }
   })
-  it('the world scale reproduces the mockup sizes', () => {
-    expect(spriteSize('dreadnought')).toEqual({ width: 44, height: 40 })
-    expect(spriteSize('carrier')).toEqual({ width: 36, height: 36 })
-    expect(spriteSize('cruiser')).toEqual({ width: 33, height: 33 })
-    expect(spriteSize('destroyer')).toEqual({ width: 29, height: 23 })
+  it('the world scale reproduces the mockup sizes, doubled for every non-fighter ship', () => {
+    expect(spriteSize('dreadnought')).toEqual({ width: 88, height: 81 })
+    expect(spriteSize('carrier')).toEqual({ width: 73, height: 72 })
+    expect(spriteSize('cruiser')).toEqual({ width: 66, height: 66 })
+    expect(spriteSize('destroyer')).toEqual({ width: 58, height: 47 })
     expect(spriteSize('fighter')).toEqual({ width: 27, height: 17 })
     expect(spriteSize('infantry')).toEqual({ width: 25, height: 30 })
     expect(spriteSize('pds')).toEqual({ width: 22, height: 18 })
     expect(spriteSize('spacedock')).toEqual({ width: 26, height: 32 })
+  })
+  it('the ship-size boost does not distort iconFitSize, which needs one uniform box for a tech list', () => {
+    const dreadnoughtIcon = iconFitSize('dreadnought', 18)
+    expect(Math.max(dreadnoughtIcon.width, dreadnoughtIcon.height)).toBe(18)
   })
   it('a smaller scale keeps the proportions', () => {
     const big = spriteSize('dreadnought')

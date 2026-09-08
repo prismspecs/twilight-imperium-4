@@ -1,3 +1,4 @@
+import { NON_FIGHTER_SHIPS } from '../data/units'
 import type { UnitType } from '../engine/types'
 import type { ModelStyle } from './modelStyle'
 
@@ -60,12 +61,24 @@ export const BOARD_SCALE = 11.6
 /** The side panels and the production drawer show the same models smaller. */
 export const PANEL_SCALE = 10.4
 
-export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: ModelStyle = 'models'): { width: number; height: number } {
+function rawSize(type: UnitType, scale: number, style: ModelStyle): { width: number; height: number } {
   const def = SPRITE_SETS[style][type]
   return {
     width: Math.round(def.spriteW / def.pxPerModelUnit * scale),
     height: Math.round(def.spriteH / def.pxPerModelUnit * scale),
   }
+}
+
+/** A fighter's tiny hull next to a capital ship's made every non-fighter ship look under-sized on the board
+ * at the manifest's real-world proportions, so every hull but the fighter renders twice as large. Icon boxes
+ * (`iconFitSize`) are unaffected: a tech list needs every unit the same size, not board-accurate ones. */
+const SHIP_SIZE_BOOST = 2
+function boostFor(type: UnitType): number {
+  return NON_FIGHTER_SHIPS.includes(type) ? SHIP_SIZE_BOOST : 1
+}
+
+export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: ModelStyle = 'models'): { width: number; height: number } {
+  return rawSize(type, scale * boostFor(type), style)
 }
 
 /**
@@ -77,5 +90,5 @@ export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: M
 export function iconFitSize(type: UnitType, box: number, style: ModelStyle = 'models'): { width: number; height: number } {
   const def = SPRITE_SETS[style][type]
   const scale = box / Math.max(def.spriteW, def.spriteH) * def.pxPerModelUnit
-  return spriteSize(type, scale, style)
+  return rawSize(type, scale, style)
 }

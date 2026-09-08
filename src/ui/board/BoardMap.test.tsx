@@ -36,7 +36,7 @@ describe('the board', () => {
     expect(screen.getByTestId('stack-home-n-0-fighter').textContent).toBe('3')
     expect(screen.getByTestId('stack-home-n-0-carrier').textContent).toBe('')
     expect(screen.getByTestId('sprite-home-n-0-dreadnought').getAttribute('src')).toContain('blue_dreadnought.png')
-    expect(screen.getByTestId('sprite-home-n-0-dreadnought').getAttribute('width')).toBe('31')
+    expect(screen.getByTestId('sprite-home-n-0-dreadnought').getAttribute('width')).toBe('63')
     expect(screen.getByTestId('stack-home-s-1-destroyer')).toBeTruthy()
   })
 
