@@ -71,8 +71,6 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'secondary': return scoreSecondary(view, move, seat, w)
     case 'research': return scoreResearch(view, move, seat, w)
     case 'shipyard': return scoreShipyard(view, seat, w)
-    case 'tradePost': return scoreTradePost(view, seat, w)
-    case 'postAbility': return w.economy
     // R9: an action card played as an action is a free effect; the enumerator only offers plays that do
     // something, so taking one is generally worth a turn, but never more than a real tactical action
     case 'playActionCard': return w.economy
@@ -403,11 +401,6 @@ function objectiveFulfilled(view: GameStateView, seat: Seat, id: string): boolea
     case 'revolutionize_warfare': return unitUpgradeTechs(view, seat) >= 3
     case 'subdue_the_galaxy': return controlledOutsideHome(view, seat) >= 11
     case 'unify_the_colonies': return maxTraitPlanets(view, seat) >= 6
-
-    case 'win_space_combat': return me.spaceCombatWins >= 1
-    case 'control_4_outside_home': return controlledOutsideHome(view, seat) >= 4
-    case 'spend_6_resources': return me.resourcesSpentThisRound >= 6
-    case 'trade_three_times': return me.trades >= 3
     case 'more_ships': {
       const myShips = shipCount(view, seat)
       const allOtherSeats = view.players.map(p => p.seat).filter(s => s !== seat)
@@ -585,9 +578,3 @@ function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: ScoreWeig
 function scoreShipyard(_view: GameStateView, _seat: Seat, w: ScoreWeights): number {
   return w.economy
 }
-
-function scoreTradePost(view: GameStateView, seat: Seat, w: ScoreWeights): number {
-  // Selling commodities converts idle commodity value into usable trade goods; always a small plus.
-  return view.players[seat].commodities > 0 ? w.economy : -w.economy
-}
-

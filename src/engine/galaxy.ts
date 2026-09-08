@@ -31,9 +31,11 @@ const CORNERS: readonly (readonly [number, number])[] = [
 /**
  * Ruling (map layout): the official per-player-count diagrams are not machine-readable, so homes sit on
  * evenly spaced corners of the radius-3 hex. 6p uses all six; 5p leaves one corner to the deck; 4p uses two
- * adjacent pairs facing off (corners E/NE and W/SW); 3p uses the three alternating corners.
+ * adjacent pairs facing off (corners E/NE and W/SW); 3p uses the three alternating corners; 2p uses opposite
+ * corners (E and W).
  */
 const HOME_CORNERS: Record<number, readonly number[]> = {
+  2: [0, 3],
   3: [0, 2, 4],
   4: [0, 1, 3, 4],
   5: [0, 1, 2, 3, 4],
@@ -43,8 +45,12 @@ const HOME_CORNERS: Record<number, readonly number[]> = {
 /**
  * Ruling (map layout): a full radius-3 ring with 3 homes needs 33 galaxy tiles but the box holds 32, so the
  * three non-home corners are left off-board, which keeps the 3-player galaxy 120°-symmetric and uses 30 tiles.
+ * For 2 players, five corners are removed to fit the 32-tile deck.
  */
-const REMOVED_CORNERS: Record<number, readonly number[]> = { 3: [1, 3, 5] }
+const REMOVED_CORNERS: Record<number, readonly number[]> = {
+  2: [1, 2, 4, 5],
+  3: [1, 3, 5],
+}
 
 function hexKey(q: number, r: number): string { return `${q},${r}` }
 
@@ -82,7 +88,7 @@ export function generatedHomeId(seat: Seat): string { return `home-${seat}` }
 export function generateGalaxy(homes: readonly GalaxyHome[], seed: number): GeneratedSystem[] {
   const n = homes.length
   const cornerIdx = HOME_CORNERS[n]
-  if (n < 3 || n > 6 || !cornerIdx) throw new Error(`galaxy supports 3-6 players, got ${String(n)}`)
+  if (n < 2 || n > 6 || !cornerIdx) throw new Error(`galaxy supports 2-6 players, got ${String(n)}`)
   const removedIdx = REMOVED_CORNERS[n] ?? []
 
   const homeAtCell = new Map<string, GalaxyHome>()

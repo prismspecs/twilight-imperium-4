@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { Tile } from './Tile'
-import { TradePosts } from './TradePosts'
-import { TRADE_POSTS } from '../../data/map'
-import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
+import { GALAXY_MAP_SIZE } from '../layout'
 import { useMapPanZoom } from './useMapPanZoom'
 import type { GameState, Seat } from '../../engine/types'
 
@@ -25,8 +23,6 @@ export interface BoardMapProps {
 export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], humanSeat, highlightedSystemId = null, onSelect, onInspect, onHover }: BoardMapProps) {
   const panZoom = useMapPanZoom()
   const [hoveredWormhole, setHoveredWormhole] = useState<'alpha' | 'beta' | 'delta' | null>(null)
-  const isDuel = state.players.length <= 2 && TRADE_POSTS.west.every(id => Boolean(state.systems[id]))
-  const mapSize = isDuel ? FLOWER_MAP_SIZE : GALAXY_MAP_SIZE
 
   return (
     <>
@@ -51,10 +47,8 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
           className="map"
           data-testid="board-map"
           style={{
-            width: `${mapSize.width}px`,
-            height: `${mapSize.height}px`,
-            ['--map-w' as string]: `${mapSize.width}px`,
-            ['--map-h' as string]: `${mapSize.height}px`,
+            width: `${GALAXY_MAP_SIZE.width}px`,
+            height: `${GALAXY_MAP_SIZE.height}px`,
             transform: `translate(${panZoom.pan.x}px, ${panZoom.pan.y}px) scale(${panZoom.zoom})`,
             transformOrigin: 'center center',
             transition: (panZoom.isDragging || panZoom.isWheeling) ? 'none' : 'transform 0.12s ease-out',
@@ -69,7 +63,7 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               highlighted={highlightedSystemId === system.id}
               selectable={selectable.includes(system.id)}
               outOfReach={outOfReach.includes(system.id)}
-              isGalaxy={!isDuel}
+              isGalaxy={true}
               isPlayerHome={system.home !== null && (humanSeat !== undefined ? system.home === humanSeat : system.home === 0)}
               onSelect={onSelect}
               onInspect={onInspect}
@@ -78,7 +72,6 @@ export function BoardMap({ state, activeSystemId = null, selectable = [], outOfR
               onHoverWormhole={setHoveredWormhole}
             />
           ))}
-          {isDuel && <TradePosts state={state} seat={state.active} />}
         </div>
       </div>
       <div className="map-controls" data-testid="map-controls">

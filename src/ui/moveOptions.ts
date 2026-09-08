@@ -60,10 +60,6 @@ export function shipyardOffers(legal: Move[]): { planetId: string; planets: stri
   return legal.flatMap(m => m.type === 'shipyard' ? [{ planetId: m.planetId, planets: m.planets, tradeGoods: m.tradeGoods }] : [])
 }
 
-export function tradePostOffers(legal: Move[]): { post: 'west' | 'east'; commodities: number }[] {
-  return legal.flatMap(m => m.type === 'tradePost' ? [{ post: m.post, commodities: m.commodities }] : [])
-}
-
 export function productionBiomesTargets(legal: Move[]): Seat[] {
   return legal.flatMap(m => m.type === 'productionBiomes' ? [m.target] : [])
 }

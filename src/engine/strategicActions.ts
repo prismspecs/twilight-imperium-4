@@ -379,9 +379,6 @@ function primary(state: GameState, seat: Seat, card: StrategyCardId, params: Str
       for (const s2 of params.shareWith ?? []) {
         if (s2 === seat || s2 < 0 || s2 >= state.players.length) continue
         next = replenish(next, s2)
-        const players = [...next.players] as GameState['players']
-        for (const t of [seat, s2]) players[t] = { ...players[t], trades: players[t].trades + 1 }
-        next = { ...next, players }
       }
       return { ok: true, value: next }
     }

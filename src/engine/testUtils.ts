@@ -1,4 +1,3 @@
-import type { PostId } from '../data/posts'
 import { unitStats } from '../data/units'
 import { assignmentComplete, assignmentTargets } from './combat'
 import { capacity, cheapestPlanets, fleetPoolLimit, nonFighterShips, productionCost } from './economy'
@@ -55,11 +54,6 @@ export function withUnits(state: GameState, systemId: string, owner: Owner, type
   })
 }
 
-/** R8: forces the pair of trade posts in play, so a test does not depend on what the seed happened to roll. */
-export function withPosts(state: GameState, west: PostId, east: PostId): GameState {
-  return deepFreeze({ ...state, posts: { west, east }, postAbilityUsed: { west: false, east: false } })
-}
-
 export function withTechs(state: GameState, seat: Seat, techs: string[]): GameState {
   const players = [...state.players] as GameState['players']
   players[seat] = { ...players[seat], techs: [...players[seat].techs, ...techs] }
@@ -79,7 +73,7 @@ export function thirdSeat(): Player {
     tokens: { tactic: 3, fleet: 3, strategy: 2 }, tradeGoods: 0, commodities: 2, techs: [],
     actionCards: [], strategyCards: [], passed: false, scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
-    spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
+    spaceCombatWins: 0,
     inheritanceExhausted: false, shipyardUsed: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0,
     reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 },
   }

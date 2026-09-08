@@ -1,4 +1,3 @@
-import { systemDef } from '../data/map'
 import { techDef } from '../data/techs'
 import { TILES } from '../data/tiles'
 import { UPGRADE_TECH } from '../data/units'
@@ -92,24 +91,12 @@ export function systemLabel(systemId: string, state?: GameState): string {
     }
     return sys.name || systemId
   }
-  try {
-    const def = systemDef(systemId)
-    const num = tileNumberLabel(def.q, def.r)
-    if (num) {
-      if (def.name && def.name !== num && def.name !== `[${num}]`) {
-        return `[${num}] ${def.name}`
-      }
-      return `[${num}]`
-    }
-    return def.name
-  } catch {
-    if (systemId.startsWith('tile-')) {
-      const tileNum = parseInt(systemId.replace('tile-', ''), 10)
-      const t = TILES.find(tile => tile.tile === tileNum)
-      if (t) return t.name
-    }
-    return systemId
+  if (systemId.startsWith('tile-')) {
+    const tileNum = parseInt(systemId.replace('tile-', ''), 10)
+    const t = TILES.find(tile => tile.tile === tileNum)
+    if (t) return t.name
   }
+  return systemId
 }
 
 export function ownedPlanets(state: GameState, seat: Seat): Planet[] {

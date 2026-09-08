@@ -3,12 +3,11 @@ import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { agendaMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
-import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, postDef, productionBiomesTargets, shipyardPlanets, tradePostOptions } from './componentActions'
+import { SHIPYARD_COST, canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, productionBiomesTargets, shipyardPlanets } from './componentActions'
 import { cheapestPayment, cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
-import { postAbilityOptions } from './postAbilities'
 import { fulfils } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
@@ -219,23 +218,6 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
   }
 }
 
-/**
- * R8: the free moves at the two posts, offered before and after the action alike. The sale takes as many
- * commodities as the post in play allows; the special ability is offered with the first of the ready-made
- * picks `postAbilityOptions` enumerates, every one of which the handler accepts as it is.
- */
-function postMoves(state: GameState, seat: Seat): Move[] {
-  const out: Move[] = []
-  for (const post of tradePostOptions(state, seat)) {
-    out.push({ type: 'tradePost', post, commodities: Math.min(postDef(state, post).commodityLimit, state.players[seat].commodities) })
-  }
-  for (const post of ['west', 'east'] as const) {
-    const options = postAbilityOptions(state, seat, post)
-    if (options.length) out.push({ type: 'postAbility', post, params: options[0] })
-  }
-  return out
-}
-
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
@@ -275,7 +257,7 @@ export function legalMoves(state: GameState): Move[] {
   // R3.2/R8: the action is spent but the turn is not over. Only the free moves and the handover are left:
   // no second action, and no `pass` either, because you pass instead of taking an action, never after one.
   if (state.turnDone) {
-    const spent: Move[] = [{ type: 'endTurn' }, ...postMoves(state, seat)]
+    const spent: Move[] = [{ type: 'endTurn' }]
     return spent
   }
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
@@ -292,7 +274,6 @@ export function legalMoves(state: GameState): Move[] {
   if (canProductionBiomes(state, seat)) {
     for (const target of productionBiomesTargets(state, seat)) out.push({ type: 'productionBiomes', target })
   }
-  out.push(...postMoves(state, seat))
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
 }
@@ -333,12 +314,6 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'shipyard' && candidate.planetId === move.planetId
     case 'productionBiomes':
       return candidate.type === 'productionBiomes' && candidate.target === move.target
-    case 'tradePost':
-      return candidate.type === 'tradePost' && candidate.post === move.post
-    // R8: which ability it is follows from the post, so the side identifies the move; the parameters the
-    // interface fills in are checked by `postAbility`, the only place that knows what the ability needs
-    case 'postAbility':
-      return candidate.type === 'postAbility' && candidate.post === move.post
     // R10: which planets pay for the vote is the voter's own choice, checked by castVote itself, the only
     // place that knows what is legal — same idiom as research/shipyard/productionBiomes above
     case 'castVote':

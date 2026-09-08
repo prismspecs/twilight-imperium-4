@@ -18,3 +18,82 @@
 - Before each commit touching `src/`: `npm test`, `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` must be green.
 - Never delete working base-game engine modules (combat, movement, etc.). Only delete duel-only modules.
 - If removal breaks tests, fix the tests too (they become red when duel content is removed — that's expected; fix them to match the new state).
+## Reflection Checkpoint (Iteration 1)
+
+1. **Accomplished so far:**
+   - Renamed project from "Mecatol Duel" to "Mecatol Online" across package.json, index.html, CLAUDE.md, data references, plans, theme.css, ai/fog.ts, UnknownGameScreen.tsx, and the .ralph task file
+   - Deleted the core duel-only modules: src/data/posts.ts, src/engine/postAbilities.ts, src/engine/postAbilities.test.ts, src/ui/board/TradePosts.tsx
+   - Updated docs/spec/engine-design.md to flag remaining legacy code
+   - Updated .ralph/full-game-rules.md to document cleanup progress
+
+2. **What's working well:**
+   - The core file renaming is complete across most major metadata
+   - The core combat/movement logic appears intact
+   - Tests are already failing as expected due to removed content
+
+3. **What's not working/blocking progress:**
+   - TypeScript compilation errors from remaining imports in many files (fog.ts, componentActions.ts, etc.)
+   - Tests still reference deleted code (adjacency.test.ts, fullGame.test.ts, setup.test.ts, etc.)
+   - Several UI files (BoardMap.tsx, ActionBar.tsx, ComponentPanel.tsx, etc.) still import TradePosts and TRADE_POSTS
+   - The emergency shipyard logic in componentActions.ts and setup.ts still references posts
+   - The statusPhase.ts still imports from setup.ts (rollPosts, postRollEntry)
+
+4. **Should the approach be adjusted?**
+   Yes. We need a systematic cleanup:
+   - Remove all remaining TRADE_POSTS imports and usage
+   - Remove all post-related imports and code
+   - Update all tests to work with base-game only
+   - Remove emergency shipyard references
+   - Clean up all related battle-testing items
+
+5. **Next priorities:**
+   1. Fix src/engine/componentActions.ts - remove all post-related code
+   2. Fix src/engine/setup.ts - remove rollPosts, POSTS, POST_IDS, POSTS_SALT
+   3. Fix src/engine/statusPhase.ts - remove rollPosts, postRollEntry references
+   4. Fix src/engine/legalMoves.ts - remove tradePostOptions
+   5. Fix src/engine/index.ts - remove post-related exports
+   6. Fix UI components (BoardMap.tsx, ActionBar.tsx, ComponentPanel.tsx) to remove TradePosts
+   7. Fix all remaining test files to remove duel-specific code
+   8. Remove any remaining duel-only assets
+
+## Reflection Checkpoint (Iteration 2)
+
+1. **Accomplished so far:**
+   - Renamed project to "Mecatol Online" across most metadata files
+   - Deleted `src/data/posts.ts`, `src/engine/postAbilities.ts`, `src/engine/postAbilities.test.ts`, `src/ui/board/TradePosts.tsx`
+   - Updated `src/data/map.ts` to remove duel-only exports
+   - Edited `src/engine/componentActions.ts` to remove all post-related functions
+   - Edited `src/engine/setup.ts` to remove post-rolling logic
+   - Edited `src/engine/galaxy.ts` to support 2 players
+   - Edited `src/engine/types.ts` to remove post-related fields and moves
+
+2. **What's working well:**
+   - Core game logic (combat, movement, objectives) is intact
+   - TypeScript compilation is mostly clean (still some errors to fix)
+   - Basic game structure remains intact
+
+3. **What's not working/blocking progress:**
+   - `src/ai/score.ts` still has post-related move type checking (lines 74-75)
+   - `src/engine/legalMoves.ts` still has post-related logic (lines 230, 234, 336-340)
+   - `src/engine/index.ts` still exports post-related functions (lines 99, 103)
+   - `src/ui/board/BoardMap.tsx` still imports TradePosts and TRADE_POSTS
+   - Many test files still reference deleted code
+   - `src/engine/draft/assembleMap.ts` has type mismatch errors
+   - `src/ui/format.ts` still imports systemDef from map
+
+4. **Should the approach be adjusted?**
+   Yes. We need to:
+   - Fix all remaining post-related code in legalMoves.ts, index.ts, etc.
+   - Fix UI components to remove TradePosts references
+   - Fix test files to remove post-related code
+   - Fix type mismatch errors in draft/assembleMap.ts and format.ts
+   - Clean up any remaining duel-only references
+
+5. **Next priorities:**
+   1. Fix `src/ai/score.ts` - remove postAbility and tradePost type checks
+   2. Fix `src/engine/legalMoves.ts` - remove post-related move checking
+   3. Fix `src/engine/index.ts` - remove post-related exports
+   4. Fix `src/ui/board/BoardMap.tsx` - remove TradePosts imports
+   5. Fix `src/engine/draft/assembleMap.ts` - fix Anomaly type mismatch
+   6. Fix `src/ui/format.ts` - remove systemDef import
+   7. Fix all test files referencing removed code

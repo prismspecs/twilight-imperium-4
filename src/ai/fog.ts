@@ -1,4 +1,3 @@
-import type { PostId } from '../data/posts'
 import { shipsThatCanReach } from '../engine/movement'
 import type {
   FactionId,
@@ -44,8 +43,6 @@ export interface PublicPlayer {
   tradeGoodsSpentThisRound: number
   tokensSpentThisRound: number
   spaceCombatWins: number
-  trades: number
-  tradedThisRound: { west: boolean; east: boolean }
   inheritanceExhausted: boolean
   shipyardUsed: boolean
   pendingInfantry: number
@@ -75,8 +72,6 @@ export interface GameStateView {
   turnDone: boolean
   pendingSecondary: SecondaryWindow | null
   statusSubmitted: Seat[]
-  posts: { west: PostId; east: PostId }
-  postAbilityUsed: { west: boolean; east: boolean }
   winner: Seat | null
 }
 
@@ -116,8 +111,6 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     turnDone: state.turnDone,
     pendingSecondary: state.pendingSecondary,
     statusSubmitted: state.statusSubmitted,
-    posts: state.posts,
-    postAbilityUsed: state.postAbilityUsed,
     winner: state.winner,
   }
 }

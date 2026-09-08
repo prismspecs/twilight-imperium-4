@@ -5,15 +5,9 @@ import { enterAgendaOrNextRound } from './agendas'
 import { distributeTokens } from './economy'
 import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
-import { ALL_STRATEGY_CARDS, postRollEntry, rollPosts } from './setup'
+import { ALL_STRATEGY_CARDS } from './setup'
 import { snakeOrder } from './strategyPhase'
 import type { GameState, Result, Seat, StatusParams, System } from './types'
-/**
- * R8: the trade posts turn over every round, so the status phase rolls a new pair in the same step. The salt
- * carries the round that is starting (2 to 6, so the salts are 102 to 106) and is therefore disjoint both
- * from the guardian reroll's 91 on the same seed and from every other round's post roll.
- */
-const POSTS_ROUND_SALT_BASE = 100
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
@@ -84,7 +78,6 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
     players[seat] = {
       ...players[seat], strategyCards: [], passed: false, inheritanceExhausted: false, productionBiomesExhausted: false, spatialConduitExhausted: false,
       resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
-      tradedThisRound: { west: false, east: false },
     }
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
@@ -96,17 +89,12 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
  * or after the agenda phase resolves both its agendas. The speaker token does not rotate on its own: it
  * starts with the seat the setup names and only the Politics primary hands it on, which is exactly what
  * makes Politics worth picking. */
-export function startNextRound(state: GameState, seed: number): GameState {
+export function startNextRound(state: GameState): GameState {
   const speaker = state.speaker
-  // R8: the round starting here gets two new posts, drawn from the four that were not in play. They are new
-  // posts, so the ability nobody took is gone with them and the fresh pair starts unused.
   const round = state.round + 1
-  const posts = rollPosts(deriveSeed(seed, POSTS_ROUND_SALT_BASE + round), [state.posts.west, state.posts.east])
   const draft = snakeOrder({ ...state, speaker })
   return {
     ...state, round, phase: 'strategy', speaker, active: speaker, draft,
-    posts, postAbilityUsed: { west: false, east: false },
-    log: [...state.log, { t: 'info', text: postRollEntry(posts) }],
   }
 }
 

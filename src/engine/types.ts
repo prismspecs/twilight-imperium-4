@@ -1,5 +1,3 @@
-import type { PostId } from '../data/posts'
-
 // `internal` marks an error that came out of a thrown exception rather than a rules rejection: an engine bug,
 // never a legal-move question. Callers may treat it as fatal.
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
@@ -61,8 +59,6 @@ export interface Player {
   tradeGoodsSpentThisRound: number
   tokensSpentThisRound: number
   spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
-  trades: number                         // R7: trade post uses plus trades with the opponent, over the game
-  tradedThisRound: { west: boolean; east: boolean }
   inheritanceExhausted: boolean; shipyardUsed: boolean
   productionBiomesExhausted: boolean   // Hacan faction tech: readies with every other exhausted card
   spatialConduitExhausted: boolean     // Jol-Nar faction tech: readies with every other exhausted card
@@ -125,10 +121,6 @@ export interface GameState {
   // R9: the action card effects still running; see `ActiveEffect` for how each one expires
   effects: ActiveEffect[]
   statusSubmitted: Seat[]      // seats whose status move is in; the phase closes once all are in
-  // R8: the two posts in play this round, rolled at setup and again in every status phase from the four that
-  // were not in play, and whether their special ability is spent — once per round for the whole table
-  posts: { west: PostId; east: PostId }
-  postAbilityUsed: { west: boolean; east: boolean }
   nextUnitId: number
   guardianRolls: number
   custodiansToken?: boolean
@@ -170,8 +162,6 @@ export type Move =
   | { type: 'exhaustSpatialConduit' }
   // Hacan faction tech Production Biomes: exhaust + 1 strategy token for 4 trade goods, `target` gets 2
   | { type: 'productionBiomes'; target: Seat }
-  | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
-  | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }   // R8: the post's own ability, a free move like the sale
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
   // R10: one seat's vote on the revealed agenda. `outcome` is 'For'/'Against', or the elected target's id
@@ -204,7 +194,7 @@ export interface StatusParams {
 
 /**
  * R9: what an action card needs to name its target. Which of these fields matter is decided by the card
- * itself, never by which fields the caller filled in — the same contract as `PostAbilityParams`.
+ * itself, never by which fields the caller filled in.
  */
 export interface ActionCardParams {
   planetId?: string      // Frontline Deployment, Mining Initiative, Uprising, Unstable Planet, Cripple Defenses, Reactor Meltdown
@@ -273,19 +263,6 @@ export interface AgendaRound {
   order: Seat[]              // remaining voters, head first; the phase resolves once this empties
   // Public Execution: the elected player cannot vote on the second agenda this same phase
   barredFromVoting: Seat[]
-}
-
-/**
- * R8: the parameters of a `postAbility` move. Which of them matter is decided by the ability of the post
- * actually in play on that side, never by which fields the caller filled in.
- */
-export interface PostAbilityParams {
-  techId?: string; takeTechId?: string                 // techExchange: the one returned, the one taken
-  planet?: string; pays?: 'resources' | 'influence'    // clearingHouse: the one planet exhausted and which value it pays
-  pool?: 'tactic' | 'fleet' | 'strategy'               // charter, layover
-  give?: number[]                                      // refit: the unit ids returned
-  take?: Partial<Record<UnitType, number>>             // refit: the units taken, the shape `produce` uses
-  // timeTrade needs no parameters: the victory point is the engine's, the clock is the interface's
 }
 
 export interface UnitStats {

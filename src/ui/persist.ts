@@ -69,11 +69,10 @@ function isSummary(value: unknown): value is GameSummary {
  * A payload written by an older build lacks the fields that version's rules did not have yet. Reading it as
  * the current shape keeps a game in progress playable across a deploy, which is the whole point of saving it;
  * rejecting it would throw the game away. Each step states what the missing field must mean:
- * `turnDone` false (the action is still open), and for a game from before the trade posts had names, the
- * pair the status phase would have rolled anyway, unused.
+ * `turnDone` false (the action is still open).
  */
 function normalise(state: GameState, seed: number): GameState {
-  const raw = state as unknown as Partial<GameState> & { turnDone?: unknown; posts?: unknown }
+  const raw = state as unknown as Partial<GameState> & { turnDone?: unknown }
   let next = state
   // R9/R10: a game saved before the action card and agenda decks existed gets the decks its own seed would
   // have shuffled, with empty hands — the reading that leaves the game in progress playable.
@@ -84,9 +83,6 @@ function normalise(state: GameState, seed: number): GameState {
     next = { ...next, players: next.players.map(p => ({ ...p, actionCards: Array.isArray(p.actionCards) ? p.actionCards : [] })) }
   }
   if (typeof raw.turnDone !== 'boolean') next = { ...next, turnDone: false }
-  if (typeof raw.posts !== 'object' || raw.posts === null) {
-    next = { ...next, posts: { west: 'sarnex', east: 'kesh' }, postAbilityUsed: { west: false, east: false } }
-  }
   if (!Array.isArray(raw.secretObjectiveDeck)) {
     next = { ...next, secretObjectiveDeck: [] }
   }

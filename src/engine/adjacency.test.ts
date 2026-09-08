@@ -1,79 +1,57 @@
 import { describe, expect, it } from 'vitest'
-import { SYSTEMS, TRADE_POSTS, systemDef } from '../data/map'
 import { adjacent, distance, neighbours } from './adjacency'
 import type { System } from './types'
 
-/** A systems map built from the static duel map, matching what createGame now stores (with neighbours). */
-const systems: Record<string, System> = Object.fromEntries(
-  SYSTEMS.map(def => [def.id, { id: def.id, name: def.name, planets: [], wormhole: def.wormhole, neighbours: def.neighbours, home: def.home, space: [], activatedBy: [] }]),
-)
+/** A synthetic hex map (radius 2, Mecatol at the centre) exercising the same adjacency code the generated
+ * galaxy uses. No duel-only flower map here: the base game generates its own map from the tile catalogue. */
+const systems: Record<string, System> = {
+  mecatol: { id: 'mecatol', name: 'Mecatol Rex', planets: [], wormhole: null, neighbours: ['a', 'b', 'c', 'd', 'e', 'f'], home: null, space: [], activatedBy: [] },
+  a: { id: 'a', name: 'A', planets: [], wormhole: null, neighbours: ['mecatol', 'b', 'f'], home: null, space: [], activatedBy: [] },
+  b: { id: 'b', name: 'B', planets: [], wormhole: null, neighbours: ['mecatol', 'a', 'c'], home: null, space: [], activatedBy: [] },
+  c: { id: 'c', name: 'C', planets: [], wormhole: null, neighbours: ['mecatol', 'b', 'd'], home: null, space: [], activatedBy: [] },
+  d: { id: 'd', name: 'D', planets: [], wormhole: null, neighbours: ['mecatol', 'c', 'e'], home: null, space: [], activatedBy: [] },
+  e: { id: 'e', name: 'E', planets: [], wormhole: null, neighbours: ['mecatol', 'd', 'f'], home: null, space: [], activatedBy: [] },
+  f: { id: 'f', name: 'F', planets: [], wormhole: null, neighbours: ['mecatol', 'a', 'e'], home: null, space: [], activatedBy: [] },
+  alphaA: { id: 'alphaA', name: 'AlphaA', planets: [], wormhole: 'alpha', neighbours: ['alphaB'], home: null, space: [], activatedBy: [] },
+  alphaB: { id: 'alphaB', name: 'AlphaB', planets: [], wormhole: 'alpha', neighbours: ['alphaA'], home: null, space: [], activatedBy: [] },
+}
 
-describe('R1 map Bereg Standoff', () => {
-  it('has seven systems with the printed planet values', () => {
-    expect(SYSTEMS).toHaveLength(7)
-    expect(systemDef('home-n').planets).toEqual([{ id: '000', name: '[0.0.0]', resources: 5, influence: 0 }])
-    expect(systemDef('home-s').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Arc Prime', 4, 0], ['Wren Terra', 2, 1]])
-    expect(systemDef('bereg').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Bereg', 3, 1], ['Lirta IV', 2, 3]])
-    expect(systemDef('starpoint').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Starpoint', 3, 1], ['Centauri', 2, 3]])
-    expect(systemDef('sakulag').planets[0]).toMatchObject({ resources: 2, influence: 1 })
-    expect(systemDef('quann').planets[0]).toMatchObject({ resources: 2, influence: 1 })
-    expect(systemDef('mecatol').planets[0]).toMatchObject({ name: 'Mecatol Rex', resources: 1, influence: 6 })
+describe('R1 adjacency: the centre touches every ring system', () => {
+  it('is adjacent to all six ring systems', () => {
+    for (const id of ['a', 'b', 'c', 'd', 'e', 'f']) expect(adjacent(systems, 'mecatol', id)).toBe(true)
   })
-  it('marks wormholes and homes', () => {
-    expect(systemDef('bereg').wormhole).toBe('alpha')
-    expect(systemDef('starpoint').wormhole).toBe('alpha')
-    expect(systemDef('sakulag').wormhole).toBe('beta')
-    expect(systemDef('quann').wormhole).toBe('beta')
-    expect(systemDef('home-n').home).toBe(0)
-    expect(systemDef('home-s').home).toBe(1)
-  })
-  it('R1 adjacency: the centre touches all six ring systems', () => {
-    for (const id of ['home-n', 'bereg', 'sakulag', 'quann', 'starpoint', 'home-s']) expect(adjacent(systems, 'mecatol', id)).toBe(true)
-  })
-  it('R1 adjacency: ring neighbours and non-neighbours', () => {
-    expect(adjacent(systems, 'home-n', 'bereg')).toBe(true)
-    expect(adjacent(systems, 'home-n', 'sakulag')).toBe(true)
-    expect(adjacent(systems, 'home-n', 'home-s')).toBe(false)
-    expect(adjacent(systems, 'bereg', 'quann')).toBe(true)
-    expect(adjacent(systems, 'quann', 'home-s')).toBe(true)
-    expect(adjacent(systems, 'home-s', 'starpoint')).toBe(true)
-    expect(adjacent(systems, 'starpoint', 'sakulag')).toBe(true)
-    expect(adjacent(systems, 'bereg', 'sakulag')).toBe(false)
-  })
-  it('R1 adjacency: alpha wormhole links bereg and starpoint, beta links sakulag and quann', () => {
-    expect(adjacent(systems, 'bereg', 'starpoint')).toBe(true)
-    expect(adjacent(systems, 'sakulag', 'quann')).toBe(true)
-    expect(neighbours(systems, 'bereg').sort()).toEqual(['home-n', 'mecatol', 'quann', 'starpoint'])
+  it('ring neighbours are adjacent, non-neighbours are not', () => {
+    expect(adjacent(systems, 'a', 'b')).toBe(true)
+    expect(adjacent(systems, 'a', 'f')).toBe(true)
+    expect(adjacent(systems, 'a', 'c')).toBe(false)
+    expect(adjacent(systems, 'a', 'd')).toBe(false)
+    expect(adjacent(systems, 'a', 'e')).toBe(false)
   })
   it('distance uses wormholes', () => {
-    expect(distance(systems, 'home-n', 'home-s')).toBe(2)
-    expect(distance(systems, 'bereg', 'starpoint')).toBe(1)
-    expect(distance(systems, 'home-n', 'home-n')).toBe(0)
+    expect(distance(systems, 'a', 'd')).toBe(2)
+    expect(distance(systems, 'a', 'a')).toBe(0)
   })
-  it('R8 trade posts link the flank systems', () => {
-    expect(TRADE_POSTS).toEqual({ west: ['sakulag', 'starpoint'], east: ['bereg', 'quann'] })
+  it('alpha wormholes link the two alpha systems', () => {
+    expect(adjacent(systems, 'alphaA', 'alphaB')).toBe(true)
+    expect(neighbours(systems, 'alphaA').sort()).toEqual(['alphaB'])
   })
   it('Quantum Entanglement: Ghosts of Creuss connects delta wormholes to alpha and beta wormholes', () => {
     const creussSystems: Record<string, System> = {
       ...systems,
-      'creuss-gate': { id: 'creuss-gate', name: 'Creuss Gate', planets: [], wormhole: 'delta', neighbours: ['home-n'], home: null, space: [], activatedBy: [] },
+      'creuss-gate': { id: 'creuss-gate', name: 'Creuss Gate', planets: [], wormhole: 'delta', neighbours: ['alphaA'], home: null, space: [], activatedBy: [] },
       'creuss-home': { id: 'creuss-home', name: 'Creuss', planets: [], wormhole: 'delta', neighbours: [], home: 0, space: [], activatedBy: [] },
     }
     // For non-Creuss: delta only connects to delta
     expect(adjacent(creussSystems, 'creuss-gate', 'creuss-home')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-gate', 'bereg')).toBe(false)
-    expect(adjacent(creussSystems, 'creuss-gate', 'sakulag')).toBe(false)
-
-    // For Creuss: delta connects to alpha (bereg, starpoint) and beta (sakulag, quann)
-    expect(adjacent(creussSystems, 'creuss-gate', 'bereg', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-gate', 'starpoint', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-gate', 'sakulag', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-gate', 'quann', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-home', 'bereg', 'creuss')).toBe(true)
-
-    // And vice-versa: alpha/beta systems connect to delta systems for Creuss
-    expect(adjacent(creussSystems, 'bereg', 'creuss-home', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'sakulag', 'creuss-home', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'bereg', 'creuss-home', 'letnev')).toBe(false)
+    expect(adjacent(creussSystems, 'creuss-gate', 'alphaA')).toBe(false)
+    expect(adjacent(creussSystems, 'creuss-gate', 'alphaB')).toBe(false)
+    // For Creuss: delta connects to alpha
+    expect(adjacent(creussSystems, 'creuss-gate', 'alphaA', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'alphaB', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-home', 'alphaA', 'creuss')).toBe(true)
+    // And vice-versa: alpha systems connect to delta systems for Creuss
+    expect(adjacent(creussSystems, 'alphaA', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'alphaB', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'alphaA', 'creuss-home', 'letnev')).toBe(false)
   })
 })

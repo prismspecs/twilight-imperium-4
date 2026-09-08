@@ -134,15 +134,6 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
     case 'unify_the_colonies':
       return maxSameTraitPlanets(state, seat) >= 6
 
-    // Legacy duel objectives (for transitional compatibility)
-    case 'win_space_combat':
-      return player.spaceCombatWins >= 1
-    case 'control_4_outside_home':
-      return controlledPlanets(state, seat).filter(p => state.systems[p.systemId]?.home !== seat).length >= 4
-    case 'spend_6_resources':
-      return player.resourcesSpentThisRound >= 6
-    case 'trade_three_times':
-      return player.trades >= 3
     case 'more_ships': {
       const myShips = shipCount(state, seat)
       const allOtherSeats = state.players.map((_, i) => i).filter(i => i !== seat)

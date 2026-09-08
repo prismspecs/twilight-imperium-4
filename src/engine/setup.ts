@@ -1,13 +1,12 @@
 import { FACTIONS } from '../data/factions'
 import { AGENDAS } from '../data/agendas'
-import { MECATOL_ID, SYSTEMS, type SystemDef } from '../data/map'
+import { MECATOL_ID, type SystemDef } from '../data/map'
 import { SECRET_OBJECTIVES, STAGE_1_OBJECTIVES, STAGE_2_OBJECTIVES } from '../data/objectives'
-import { POSTS, POST_IDS, type PostId } from '../data/posts'
 import { PLAYABLE_ACTION_CARDS } from './actionCards'
 import { PLAYABLE_REACTION_CARDS } from './reactions'
 import { generateGalaxy } from './galaxy'
 import { deriveSeed, mulberry32, shuffleIds } from './rng'
-import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
+import type { GameConfig, GameState, Owner, Planet, PlanetTrait, Player, Seat, StrategyCardId, System, TechSkip, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
 export const ALL_STRATEGY_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'politics', 'construction', 'trade', 'warfare', 'technology', 'imperial']
@@ -38,36 +37,9 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     techs: [...f.startingTechs], actionCards: [], strategyCards: [], passed: false,
     scoredObjectives: [], scoredMandates: [], secretObjectives: [],
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
-    spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
+    spaceCombatWins: 0,
     inheritanceExhausted: false, shipyardUsed: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0, reinforcements,
   }
-}
-
-/**
- * R8: seed salt for the trade post pair rolled at setup. `deriveSeed` is injective in its salt (every step
- * of it is a bijection on uint32), so this stream can never coincide with the objective shuffle's 91 on the
- * same game seed. The rounds after the first roll in the status phase, on that move's seed, with their own
- * salt base (see `statusPhase.ts`).
- */
-const POSTS_SALT = 92
-
-/**
- * R8: draws the west post, then the east one from what is left, skipping `exclude` entirely — the two posts
- * of the round before, which may not come straight back. Takes an already derived seed, like
- * `rollGuardianFleet`, so every caller documents its own salt.
- */
-export function rollPosts(seed: number, exclude: readonly PostId[] = []): { west: PostId; east: PostId } {
-  const rng = mulberry32(seed)
-  const pool = POST_IDS.filter(id => !exclude.includes(id))
-  const west = pool[Math.floor(rng() * pool.length)]
-  const rest = pool.filter(id => id !== west)
-  const east = rest[Math.floor(rng() * rest.length)]
-  return { west, east }
-}
-
-/** R8: the log line both rolls share, so a replay reads the same whichever round the pair arrived in. */
-export function postRollEntry(posts: { west: PostId; east: PostId }): string {
-  return `Trade posts: ${POSTS[posts.west].name} to the west, ${POSTS[posts.east].name} to the east`
 }
 
 /**
@@ -117,12 +89,10 @@ export function createGame(config: GameConfig, seed: number): GameState {
   // Custom maps (e.g. drafted galaxy) supply config.systems directly.
   const defs: SystemDef[] = config.systems
     ? config.systems
-    : config.players.length <= 2
-      ? SYSTEMS
-      : generateGalaxy(config.players.map((p, seat) => ({ seat, faction: p.faction })), seed)
+    : generateGalaxy(config.players.map((p, seat) => ({ seat, faction: p.faction })), seed)
   const systems: Record<string, System> = {}
   for (const def of defs) {
-    const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, trait: p.trait ?? null, techSkip: p.techSkip ?? null, owner: def.home, exhausted: false, ground: [], structures: [] }))
+    const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, trait: (p.trait ?? null) as PlanetTrait | null, techSkip: (p.techSkip ?? null) as TechSkip | null, owner: def.home, exhausted: false, ground: [], structures: [] }))
     systems[def.id] = { id: def.id, name: def.name, tile: def.tile, q: def.q, r: def.r, planets, wormhole: def.wormhole, neighbours: [...def.neighbours], home: def.home, space: [], activatedBy: [], anomalies: def.anomalies ? [...def.anomalies] : [] }
   }
   const seats: Seat[] = config.players.map((_, i) => i)
@@ -144,7 +114,6 @@ export function createGame(config: GameConfig, seed: number): GameState {
   // 5 and 6 players draft 1 each. Kept in step with `snakeOrder`, which lays out every later round.
   const orderSeats = seats.map((_, i) => (config.speaker + i) % config.players.length)
   const draft = config.players.length <= 4 ? [...orderSeats, ...orderSeats.slice().reverse()] : orderSeats
-  const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
   const players = config.players.map((cfg, seat) => {
     const p = makePlayer(seat, cfg)
     const initialSecret = secretDeck[seat]
@@ -164,11 +133,9 @@ export function createGame(config: GameConfig, seed: number): GameState {
     players,
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     pendingReactions: [], effects: [],
-    posts, postAbilityUsed: { west: false, east: false },
     nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, agenda: null, winner: null,
     log: [
       { t: 'info', text: 'Game started with Custodians token on Mecatol Rex' },
-      { t: 'info', text: postRollEntry(posts) },
     ],
   }
   return state

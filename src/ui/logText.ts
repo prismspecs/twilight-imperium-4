@@ -44,8 +44,6 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'shipyard': return `${name} builds an emergency shipyard on ${planetLabel(state, move.planetId)}`
     case 'exhaustSpatialConduit': return `${name} exhausts Spatial Conduit Cylinder`
     case 'productionBiomes': return `${name} uses Production Biomes, gifting trade goods to ${who(state, move.target)}`
-    case 'tradePost': return `${name} sells ${move.commodities} commodities at the ${move.post} trade post`
-    case 'postAbility': return `${name} uses the ${move.post} trade post's ability`
     case 'removeCustodians': return `${name} spends 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)`
     case 'pass': return `${name} passes`
     case 'status': return `${name} distributes command tokens`

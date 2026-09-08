@@ -192,14 +192,14 @@ function revealAgenda(state: GameState, slot: 1 | 2, barredFromVoting: Seat[]): 
 
 /** R10: enters the agenda phase once the status phase's own cleanup is done, or goes straight to the next
  * round if the custodians token is still on Mecatol Rex. */
-export function enterAgendaOrNextRound(state: GameState, seed: number, startNextRound: (s: GameState, seed: number) => GameState): GameState {
-  if (state.custodiansToken !== false) return startNextRound(state, seed)
-  if (state.agendaDeck.length === 0) return startNextRound(state, seed)   // the deck ran dry: nothing to reveal
+export function enterAgendaOrNextRound(state: GameState, _seed: number, startNextRound: (s: GameState) => GameState): GameState {
+  if (state.custodiansToken !== false) return startNextRound(state)
+  if (state.agendaDeck.length === 0) return startNextRound(state)   // the deck ran dry: nothing to reveal
   return { ...revealAgenda(state, 1, []), phase: 'agenda' }
 }
 
 /** R10: tally the just-finished vote, apply the outcome, then move to the second agenda or the next round. */
-function resolveAgendaRound(state: GameState, seed: number, startNextRound: (s: GameState, seed: number) => GameState): GameState {
+function resolveAgendaRound(state: GameState, _seed: number, startNextRound: (s: GameState) => GameState): GameState {
   const agenda = state.agenda
   if (!agenda) return state
   const outcome = winningOutcome(state, agenda)
@@ -213,11 +213,11 @@ function resolveAgendaRound(state: GameState, seed: number, startNextRound: (s: 
   if (agenda.slot === 1 && next.agendaDeck.length > 0) {
     return { ...revealAgenda(next, 2, barred), phase: 'agenda' }
   }
-  return startNextRound(next, seed)
+  return startNextRound(next)
 }
 
 /** R10: one seat's vote on the revealed agenda. */
-export function castVote(state: GameState, outcome: string, planets: string[], seed: number, startNextRound: (s: GameState, seed: number) => GameState): Result<GameState> {
+export function castVote(state: GameState, outcome: string, planets: string[], seed: number, startNextRound: (s: GameState) => GameState): Result<GameState> {
   if (state.phase !== 'agenda' || !state.agenda) return { ok: false, error: 'not in the agenda phase' }
   const agenda = state.agenda
   const seat = agenda.order[0]

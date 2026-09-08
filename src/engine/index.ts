@@ -3,10 +3,9 @@ import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { castVote } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
-import { productionBiomes, research, shipyard, tradePost } from './componentActions'
+import { productionBiomes, research, shipyard } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
 import { endMovement, exhaustSpatialConduit, moveShips } from './movement'
-import { postAbility } from './postAbilities'
 import { produce } from './production'
 import { secondary, strategic } from './strategicActions'
 import { startNextRound, status } from './statusPhase'
@@ -58,8 +57,6 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'research': result = research(logged, move.techId); break
       case 'shipyard': result = shipyard(logged, move.planetId, move.planets, move.tradeGoods); break
       case 'productionBiomes': result = productionBiomes(logged, move.target); break
-      case 'tradePost': result = tradePost(logged, move.post, move.commodities); break
-      case 'postAbility': result = postAbility(logged, move.post, move.params); break
       case 'status': result = status(logged, move.params, seed); break
       case 'castVote': result = castVote(logged, move.outcome, move.planets, seed, startNextRound); break
       case 'declineReaction': result = declineReaction(logged); break
@@ -96,11 +93,10 @@ export { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, actionCardName } fr
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
 export { homeSystemOf } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
-export { canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, postDef, postLinked, productionBiomesTargets, shipyardPlanets, tradePostOptions } from './componentActions'
+export { canInheritance, canProductionBiomes, canShipyard, inheritanceTechs, productionBiomesTargets, shipyardPlanets } from './componentActions'
 export { capacity, cheapestPayment, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets, removeCustodians } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
-export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady } from './postAbilities'
 export type { MovementObstacle } from './movement'
 export { controlledPlanets, controlsMecatol, scoreable } from './objectives'
 export { PRODUCIBLE, isBlockaded } from './production'
