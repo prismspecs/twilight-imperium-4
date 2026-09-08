@@ -1,7 +1,7 @@
 // src/ui/hud/Hud.test.tsx
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createGame } from '../../engine'
 import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
@@ -195,6 +195,23 @@ describe('the HUD', () => {
     fireEvent.click(screen.getByTestId('tab-debug-log'))
     expect(screen.getByTestId('debug-log-list')).toBeTruthy()
     expect(screen.getByTestId('btn-clear-debug-log')).toBeTruthy()
+  })
+
+  it('copies the game log and the debug log to the clipboard so a player can hand them over without live access', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-log'))
+
+    fireEvent.click(screen.getByTestId('btn-copy-game-log'))
+    await act(async () => { await Promise.resolve() })
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(writeText.mock.calls[0][0]).toContain('Mecatol Online game log')
+
+    fireEvent.click(screen.getByTestId('tab-debug-log'))
+    fireEvent.click(screen.getByTestId('btn-copy-debug-log'))
+    await act(async () => { await Promise.resolve() })
+    expect(writeText).toHaveBeenCalledTimes(2)
   })
 
   it('shows personalized waiting state in bottom bar during opponent turn and keeps human action cards accessible', () => {

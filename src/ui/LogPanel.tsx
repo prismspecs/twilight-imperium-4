@@ -5,12 +5,39 @@ import { describeEntry } from './logText'
 import { useEscape } from './useEscape'
 import type { GameState } from '../engine/types'
 
+function copyToClipboard(text: string, onDone: (ok: boolean) => void) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => { onDone(true) }).catch(() => { onDone(false) })
+  } else {
+    onDone(false)
+  }
+}
+
 export function LogPanel({ state, onClose }: { state: GameState; onClose?: () => void }) {
   useEscape(onClose)
   const [tab, setTab] = useState<'game' | 'debug'>('game')
   const [filter, setFilter] = useState<'ALL' | 'WARN_ERROR' | 'ERROR'>('ALL')
   const [, setTick] = useState(0)
+  const [copied, setCopied] = useState<'game' | 'debug' | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+
+  function flashCopied(which: 'game' | 'debug') {
+    setCopied(which)
+    setTimeout(() => { setCopied(c => (c === which ? null : c)) }, 1500)
+  }
+
+  function copyGameLog() {
+    const header = `Round R${String(state.round)} phase ${state.phase}, active seat ${String(state.active)}, winner ${state.winner === null ? 'none' : String(state.winner)}`
+    const lines = state.log.map((entry, i) => `${String(i)}. ${describeEntry(state, entry).text}`)
+    const raw = JSON.stringify(state.log)
+    const text = `=== Mecatol Online game log ===\n${header}\n\n${lines.join('\n')}\n\n--- raw (for replay) ---\n${raw}`
+    copyToClipboard(text, ok => { if (ok) flashCopied('game') })
+  }
+
+  function copyDebugLog() {
+    const lines = getDebugLogEntries().map(e => `[${e.time}] [${e.level}] [${e.category}] ${e.message}${e.data !== undefined ? ' | ' + (typeof e.data === 'string' ? e.data : JSON.stringify(e.data)) : ''}`)
+    copyToClipboard(lines.join('\n'), ok => { if (ok) flashCopied('debug') })
+  }
 
   useEffect(() => {
     return subscribeDebugLog(() => {
@@ -55,6 +82,18 @@ export function LogPanel({ state, onClose }: { state: GameState; onClose?: () =>
             </button>
           </div>
           <div className="right" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {tab === 'game' && (
+              <button
+                type="button"
+                className="btn quiet"
+                data-testid="btn-copy-game-log"
+                onClick={copyGameLog}
+                style={{ fontSize: '11px', padding: '3px 8px' }}
+                title="Copy the full game log (moves, rolls) to paste elsewhere for debugging"
+              >
+                {copied === 'game' ? 'Copied!' : 'Copy'}
+              </button>
+            )}
             {tab === 'debug' && (
               <>
                 <select
@@ -67,6 +106,16 @@ export function LogPanel({ state, onClose }: { state: GameState; onClose?: () =>
                   <option value="WARN_ERROR">Warn & Error</option>
                   <option value="ERROR">Error Only</option>
                 </select>
+                <button
+                  type="button"
+                  className="btn quiet"
+                  data-testid="btn-copy-debug-log"
+                  onClick={copyDebugLog}
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  title="Copy the debug log to paste elsewhere for debugging"
+                >
+                  {copied === 'debug' ? 'Copied!' : 'Copy'}
+                </button>
                 <button
                   type="button"
                   className="btn quiet"
