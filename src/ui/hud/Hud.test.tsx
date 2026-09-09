@@ -2,12 +2,14 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createGame } from '../../engine'
+import { createGame, readyResources } from '../../engine'
+import { homeSystemOf } from '../../engine/board'
 import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
 import { renderWithSession } from '../test/harness'
 import { BoardScreen } from '../screens/BoardScreen'
 import { COLOUR_INK } from '../art'
+import { readyInfluence } from '../format'
 
 describe('the HUD', () => {
   it('shows both players with their faction, clock and turn state', () => {
@@ -60,14 +62,16 @@ describe('the HUD', () => {
   })
 
   it('shows victory points, command tokens, planets, economy, technologies and forces', () => {
-    renderWithSession(toActionPhase(), <BoardScreen />)
+    const state = toActionPhase()
+    renderWithSession(state, <BoardScreen />)
     expect(screen.getByTestId('vp-0').textContent).toBe('0 of 7')
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('3')
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('3')
     expect(screen.getByTestId('tokens-0-strategy').textContent).toBe('2')
-    expect(screen.getByTestId('planet-0-000').textContent).toContain('[0.0.0]')
-    expect(screen.getByTestId('economy-0-resources').textContent).toBe('5')
-    expect(screen.getByTestId('economy-0-influence').textContent).toBe('0')
+    const homePlanet = state.systems[homeSystemOf(state, 0)].planets[0]
+    expect(screen.getByTestId(`planet-0-${homePlanet.id}`).textContent).toContain(homePlanet.name)
+    expect(screen.getByTestId('economy-0-resources').textContent).toBe(String(readyResources(state, 0)))
+    expect(screen.getByTestId('economy-0-influence').textContent).toBe(String(readyInfluence(state, 0)))
     expect(screen.getByTestId('economy-0-commodities').textContent).toBe('2 of 2')
     expect(screen.getByTestId('tech-0-neural_motivator').textContent).toBe('Neural Motivator')
     expect(screen.getByTestId('forces-0-dreadnought').textContent).toBe('1 Super-Dreadnought I')
