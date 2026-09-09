@@ -1,16 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove, createGame, legalMoves } from '../engine'
-import { DUEL_CONFIG, toActionPhase } from '../engine/testUtils'
-import type { GameState, Seat } from '../engine/types'
-import { aiChoose, playMatch } from './index'
+import { BASE_CONFIG, toActionPhase, withPlayer } from '../engine/testUtils'
+import type { GameState, Move, Seat } from '../engine/types'
+import { aiChoose, aiStep, playMatch } from './index'
 import { PERSONALITIES, type ScoreWeights } from './score'
 
 const MAX_MOVES = 4000
 const SEEDS = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 59, 71, 89]
 
+describe('aiStep rejection recovery', () => {
+  it('a rejected candidate is excluded and the next-best move is tried instead of stopping (65TM45)', () => {
+    // An arborec seat at its home dock: a chooser that insists on an infantry order (which Mitosis
+    // forbids) must not freeze the game — the retry takes a move the engine accepts.
+    const state = withPlayer(toActionPhase(7, 0), 0, { faction: 'arborec' })
+    const moves = legalMoves(state)
+    let calls = 0
+    const stubborn = (s: GameState, pool: Move[], seat: Seat, weights: Parameters<typeof aiChoose>[3]): Move =>
+      calls++ === 0
+        ? { type: 'produce', units: { infantry: 2 }, planets: [], tradeGoods: 0 } as Move
+        : aiChoose(s, pool, seat, weights)
+    const step = aiStep(state, moves, 0, 7, undefined, stubborn)
+    expect(step).not.toBeNull()
+    expect(step!.rejected).toHaveLength(1)
+    expect(step!.chosen.type).not.toBe('produce')
+    // the rejected candidate really is rejected by the engine: produce without a tactical action running
+    expect(step!.state).not.toBe(state)
+  })
+
+  it('returns null when every candidate is rejected, so the caller can say so instead of hanging', () => {
+    const state = toActionPhase(7, 0)
+    const illegal = (_s: GameState, pool: Move[]): Move => pool[0] // legalMoves offered them, but…
+    // …a state where applyMove rejects everything: an unknown system id for every startTactical choice
+    const step = aiStep(state, [{ type: 'startTactical', systemId: 'nowhere' }], 0, 7, undefined, illegal)
+    expect(step).toBeNull()
+  })
+})
+
 /** The AI plays one full game as both seats; returns the final state and how many moves it took. */
 function playAiGame(seed: number): { state: GameState; moves: number } {
-  let state = createGame(DUEL_CONFIG, seed)
+  let state = createGame(BASE_CONFIG, seed)
   let moves = 0
   while (state.phase !== 'ended' && moves < MAX_MOVES) {
     const options = legalMoves(state)
@@ -49,7 +77,7 @@ describe('AI opponent', () => {
 
   it('aiChoose returns a move that the engine accepts, at every phase', () => {
     for (const seed of [1, 13, 89]) {
-      let state = createGame(DUEL_CONFIG, seed)
+      let state = createGame(BASE_CONFIG, seed)
       let guard = 0
       while (state.phase !== 'ended' && guard < 2000) {
         const options = legalMoves(state)
@@ -70,7 +98,7 @@ describe('AI opponent', () => {
   })
 
   it('aiChoose is deterministic: the same state, options and seat pick the same move', () => {
-    let state = createGame(DUEL_CONFIG, 89)
+    let state = createGame(BASE_CONFIG, 89)
     let guard = 0
     while (state.phase !== 'ended' && guard < 2000) {
       const options = legalMoves(state)
@@ -86,7 +114,7 @@ describe('AI opponent', () => {
   })
 
   it('aiChoose returns the only option directly when there is a single legal move', () => {
-    const state = createGame(DUEL_CONFIG, 5)
+    const state = createGame(BASE_CONFIG, 5)
     const options = legalMoves(state)
     expect(options.length).toBeGreaterThan(0)
     const single = aiChoose(state, [options[0]], state.active)
@@ -95,7 +123,7 @@ describe('AI opponent', () => {
 
   it('playMatch is the co-evolution harness: it terminates with a clean result for every seed', () => {
     for (const seed of [1, 7, 13, 55]) {
-      const r = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.balanced, PERSONALITIES.balanced])
+      const r = playMatch(BASE_CONFIG, seed, [PERSONALITIES.balanced, PERSONALITIES.balanced])
       expect(r.failed).toBeNull()
       expect(r.rounds).toBeGreaterThan(0)
       expect(r.rounds).toBeLessThanOrEqual(8)
@@ -107,8 +135,8 @@ describe('AI opponent', () => {
 
   it('personality weights actually change how a seat plays', () => {
     for (const seed of [7, 21]) {
-      const patient = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.economist, PERSONALITIES.economist])
-      const pushy = playMatch(DUEL_CONFIG, seed, [PERSONALITIES.aggressive, PERSONALITIES.aggressive])
+      const patient = playMatch(BASE_CONFIG, seed, [PERSONALITIES.economist, PERSONALITIES.economist])
+      const pushy = playMatch(BASE_CONFIG, seed, [PERSONALITIES.aggressive, PERSONALITIES.aggressive])
       // the same seed diverges into visibly different games, so weights are doing real work
       expect(`${patient.moves}${patient.rounds}${patient.vp}`).not.toEqual(`${pushy.moves}${pushy.rounds}${pushy.vp}`)
     }
@@ -116,7 +144,7 @@ describe('AI opponent', () => {
 
   it('a trainer can hand a seat a custom weight object (offspring)', () => {
     const offspring: ScoreWeights = { ...PERSONALITIES.balanced, military: 22, economy: 3 }
-    const r = playMatch(DUEL_CONFIG, 5, [offspring, PERSONALITIES.balanced])
+    const r = playMatch(BASE_CONFIG, 5, [offspring, PERSONALITIES.balanced])
     expect(r.failed).toBeNull()
   })
 

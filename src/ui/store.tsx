@@ -2,8 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor, pendingReaction } from '../engine'
 import type { GameConfig, GameState, LogEntry, Move, Seat } from '../engine/types'
-import { aiChoose } from '../ai'
-import { DEFAULT_WEIGHTS } from '../ai/score'
+import { aiStep } from '../ai'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
@@ -212,15 +211,22 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
         setError(`the game is stuck: ${cur.state.players[actor]?.name ?? `seat ${actor}`} has no legal moves`)
         return
       }
-      const chosen = aiChoose(cur.state, moves, actor, DEFAULT_WEIGHTS)
-      logInfo('AI', `Seat ${actor} chose move: ${chosen.type}`, chosen)
-      const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
-      if (!r.ok) {
-        logError('AI', `AI move rejected: ${r.error}`, { chosen, error: r.error })
-        setError(r.error)
+      const step = aiStep(cur.state, moves, actor, seed)
+      for (const r of step?.rejected ?? []) {
+        // an AI/engine drift is a bug worth seeing, but not worth freezing the game over: the next-best
+        // move was tried instead
+        logWarn('AI', `AI move rejected, trying the next-best: ${r.type}`, r)
+      }
+      if (!step) {
+        logError('AI', `seat ${actor} had no engine-acceptable move after several attempts`, {
+          phase: cur.state.phase, step: cur.state.tactical?.step ?? null,
+          faction: cur.state.players[actor]?.faction ?? null,
+        })
+        setError(`the AI could not find a legal move the engine accepts`)
         return
       }
-      const next = closeTurn(r.value, seed)
+      logInfo('AI', `Seat ${actor} chose move: ${step.chosen.type}`, step.chosen)
+      const next = closeTurn(step.state, seed)
       const keep = undoable(cur.state, next)
       setError(null)
       const handoff = handoffFor(cur.config, cur.state, next)

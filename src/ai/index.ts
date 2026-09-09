@@ -88,6 +88,43 @@ function seedOf(state: GameState): number {
   return h
 }
 
+/**
+ * Move types whose legalMoves entry is a template the chooser fills in (produce, moveShips, status): for
+ * those, one rejection excludes the whole template, of which there is only one. Concrete moves are
+ * excluded by their exact payload; a castVote is keyed by its outcome, so one rejected outcome does not
+ * take the others down with it.
+ */
+const TEMPLATE_MOVES: ReadonlySet<Move['type']> = new Set(['moveShips', 'produce', 'status'])
+const exclusionKey = (m: Move): string =>
+  m.type === 'castVote' ? `castVote:${m.outcome}` : TEMPLATE_MOVES.has(m.type) ? m.type : JSON.stringify(m)
+
+export interface AiStepResult { state: GameState; chosen: Move; rejected: Move[] }
+
+/**
+ * One AI move, with recovery. The chooser and the engine can drift (game 65TM45: the produce filler built
+ * an infantry order for the Arborec, whose docks may not produce infantry), and a rejection that simply
+ * stops the loop looks exactly like an AI refusing to move. The rejected candidate is excluded and the
+ * next-best tried, up to `maxAttempts`; null when nothing in the list is accepted.
+ */
+export function aiStep(
+  state: GameState, moves: Move[], seat: Seat, seed: number,
+  weights: Readonly<ScoreWeights> = DEFAULT_WEIGHTS,
+  choose: (state: GameState, moves: Move[], seat: Seat, weights: Readonly<ScoreWeights>) => Move = aiChoose,
+  maxAttempts = 3,
+): AiStepResult | null {
+  const rejected: Move[] = []
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const keys = new Set(rejected.map(exclusionKey))
+    const pool = moves.filter(m => !keys.has(exclusionKey(m)))
+    if (pool.length === 0) break
+    const chosen = choose(state, pool, seat, weights)
+    const r = applyMove(state, chosen, deriveSeed(seed, moveCount(state)))
+    if (r.ok) return { state: r.value, chosen, rejected }
+    rejected.push(chosen)
+  }
+  return null
+}
+
 /** The full AI loop for a seat: keep playing legal moves while it is `seat`'s turn and the game is live. */
 export function aiPlay(state: GameState, seat: Seat, seed: number, weights: Readonly<ScoreWeights> = DEFAULT_WEIGHTS): GameState {
   let current = state
@@ -117,7 +154,7 @@ export interface MatchResult {
 }
 
 /**
- * Play a whole duel between two per-seat personalities and report who won. This is the harness a
+ * Play a whole game between two per-seat personalities and report who won. This is the harness a
  * co-evolution loop (and the `npm run ai:match` CLI) calls over and over; it is pure and deterministic for a
  * given config, seed and weight pair, so evolution can evaluate offspring reliably.
  */
