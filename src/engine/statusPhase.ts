@@ -8,7 +8,7 @@ import { controlledPlanets, controlsMecatol, payObjective, scoreObjective, score
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS } from './setup'
 import { snakeOrder } from './strategyPhase'
-import type { GameState, Result, Seat, StatusParams, System } from './types'
+import type { GameState, Result, Seat, StatusParams, System, Unit } from './types'
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
@@ -206,12 +206,11 @@ export function applyMitosis(state: GameState, seat: Seat, planetId?: string): R
   const sys = state.systems[sysId]
   const nextId = state.nextUnitId
   const infantry: Unit = { id: nextId, type: 'infantry', owner: seat, damaged: false }
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...player, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - 1 } }
   const next: GameState = {
     ...state, nextUnitId: nextId + 1,
-    players: {
-      ...state.players,
-      [seat]: { ...player, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - 1 } },
-    },
+    players,
     systems: {
       ...state.systems,
       [sysId]: { ...sys, planets: sys.planets.map(p => p.id === target ? { ...p, ground: [...p.ground, infantry] } : p) },
