@@ -35,7 +35,7 @@ function passable(state: GameState, seat: Seat, id: string, destination: boolean
   const sys = state.systems[id]
   if (!sys) return false
   const anoms = anomaliesOf(sys)
-  if (anoms.includes('supernova')) return false
+  if (anoms.includes('supernova') && state.players[seat].faction !== 'muaat') return false
   if (anoms.includes('asteroid_field') && !state.players[seat].techs.includes('antimass_deflectors')) return false
   if (!destination && anoms.includes('nebula')) return false
   if (destination || ignoreFleets) return true
