@@ -331,7 +331,7 @@ export function BoardScreen() {
           humanSeat={humanSeat}
         />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
-        <div className={`stage${hasActiveModal ? ' has-modal' : ''}${!isSidePanelOpen ? ' side-collapsed' : ''}`} data-testid="stage">
+        <div className={`stage${hasActiveModal ? ' has-modal' : ''}${isRightDeckOpen ? ' right-deck-open' : ''}${!isSidePanelOpen ? ' side-collapsed' : ''}`} data-testid="stage">
           <ActiveTurnBanner state={state} config={session.config} />
           <BoardMap
             state={state}

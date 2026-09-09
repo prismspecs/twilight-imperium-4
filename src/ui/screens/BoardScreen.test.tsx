@@ -4,6 +4,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { toActionPhase, withPlanetOwner } from '../../engine/testUtils'
 import { renderWithSession } from '../test/harness'
+import type { GameState } from '../../engine/types'
 import { BoardScreen } from './BoardScreen'
 
 describe('the board screen layout', () => {
@@ -25,6 +26,18 @@ describe('the board screen layout', () => {
     // a single side panel; the second player has no separate right-hand column
     expect(stage.contains(screen.queryByTestId('panel-1'))).toBe(false)
     expect(stage.contains(screen.getByTestId('btn-tactical'))).toBe(false)
+  })
+
+  it('marks the stage as modal-with-deck while a secondary is open, so the right deck stays clickable above it', () => {
+    // The modal stage (z-index 85) used to swallow every click aimed at the right deck (z-index 80) while
+    // a dialog like the Politics secondary was open. The deck now floats at 86 and the stage pads itself
+    // out of its way; these two classes are the contract.
+    const state: GameState = { ...toActionPhase(), pendingSecondary: { card: 'politics', owner: 1, queue: [0] } }
+    renderWithSession(state, <BoardScreen />)
+    const stage = screen.getByTestId('stage')
+    expect(stage.className).toContain('has-modal')
+    expect(stage.className).toContain('right-deck-open')
+    expect(screen.getByTestId('secondary-panel')).toBeTruthy()
   })
 
   it('previews a hovered tile\'s owner in the side panel, and reverts once the mouse leaves', () => {

@@ -477,10 +477,15 @@ button { font-family: inherit; }
 .stage.side-collapsed {
   left: 8px;
 }
-/* above the floating right deck (z-index 80) and the unit hover card (also 80): a modal dialog's own
-   controls must never sit behind that persistent HUD panel, which the agenda dialog's confirm button did
-   before this, whenever the deck was open at a viewport narrow enough for the two to overlap */
+/* above the floating right deck (z-index 80): a modal dialog's own controls must never sit behind that
+   persistent HUD panel. The deck in turn floats one step higher (86) and the modal stage pads itself out
+   of the deck's way, so the deck's tabs (My Faction, objectives, strategy) stay clickable while a dialog
+   is open and the dialog still never slides underneath it on wide screens; on narrow ones the deck can
+   always be collapsed to reach a control it covers. */
 .stage.has-modal { z-index: 85; }
+@media (min-width: 1300px) {
+  .stage.has-modal.right-deck-open { padding-right: 362px; box-sizing: border-box; }
+}
 .stage > .flows-4b { display: contents; }
 
 /* ---- Map ------------------------------------------------------------- */
@@ -1401,7 +1406,9 @@ button { font-family: inherit; }
   bottom: 66px;
   width: 350px;
   zoom: var(--k);
-  z-index: 80;
+  /* one step above the modal stage (.stage.has-modal, 85): the deck's tabs (My Faction, objectives,
+     strategy) must stay clickable while a dialog such as a strategy-card secondary is open */
+  z-index: 86;
   display: flex;
   flex-direction: column;
   background: rgba(10, 14, 24, 0.92);
