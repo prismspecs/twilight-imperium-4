@@ -90,15 +90,6 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
             <span className="action-bar-waiting-text">
               Waiting for {activePlayer.name} ({FACTIONS[activePlayer.faction]?.name ?? activePlayer.faction})...
             </span>
-            <button
-              type="button"
-              className={`btn quiet${mode === 'actionCard' ? ' gold' : ''}`}
-              data-testid="btn-action-card"
-              disabled={!can.actionCard}
-              onClick={() => onMode(mode === 'actionCard' ? null : 'actionCard')}
-            >
-              Action cards ({myPlayer.actionCards.length})
-            </button>
           </div>
         )}
       </div>

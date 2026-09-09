@@ -214,7 +214,7 @@ describe('the HUD', () => {
     expect(writeText).toHaveBeenCalledTimes(2)
   })
 
-  it('shows personalized waiting state in bottom bar during opponent turn and keeps human action cards accessible', () => {
+  it('shows personalized waiting state in bottom bar during opponent turn and hides the action buttons', () => {
     const baseState = toActionPhase()
     const stateWithActiveAi: any = {
       ...baseState,
@@ -242,14 +242,7 @@ describe('the HUD', () => {
     expect(screen.queryByTestId('btn-strategic')).toBeNull()
     expect(screen.queryByTestId('btn-pass')).toBeNull()
 
-    // Human's own action cards (1 card) are displayed, NOT AI's 2 cards
-    const acBtn = screen.getByTestId('btn-action-card')
-    expect(acBtn.textContent).toContain('Action cards (1)')
-
-    // Human can open and view their action cards even on AI turn
-    fireEvent.click(acBtn)
-    expect(screen.getByTestId('action-card-panel')).toBeTruthy()
-    expect(screen.getByTestId('action-card-industrial_initiative')).toBeTruthy()
-    expect(screen.getByTestId('action-card-panel').textContent).toContain("It is currently B's turn")
+    // The hand is not offered while it is another player's turn
+    expect(screen.queryByTestId('btn-action-card')).toBeNull()
   })
 })
