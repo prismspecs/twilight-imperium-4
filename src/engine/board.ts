@@ -16,6 +16,18 @@ export function homeSystemOf(state: GameState, seat: Seat): string {
 }
 
 /**
+ * LRR: planets ready twice a round when the agenda phase runs — once in the status phase (for whatever the
+ * action phase exhausted) and again at the end of the agenda phase (for whatever voting exhausted) — so both
+ * callers share this rather than each readying planets their own way.
+ */
+export function readyAllPlanets(state: GameState): GameState {
+  const systems = Object.fromEntries(
+    Object.entries(state.systems).map(([id, sys]): [string, System] => [id, { ...sys, planets: sys.planets.map(p => ({ ...p, exhausted: false })) }])
+  )
+  return { ...state, systems }
+}
+
+/**
  * Always-on faction ability modifiers to a unit's combat rolls. Applies to space-combat and ground-combat
  * rolls only — not bombardment, anti-fighter barrage or space cannon, which are ability rolls, not combat
  * rolls (LRR 66). Sardakk N'orr's Unrelenting is +1, Jol-Nar's Fragile is -1.

@@ -2,6 +2,7 @@ import { objectiveDef } from '../data/objectives'
 import { drawActionCards } from './actionCards'
 import { neighbours } from './adjacency'
 import { enterAgendaOrNextRound } from './agendas'
+import { readyAllPlanets } from './board'
 import { distributeTokens } from './economy'
 import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
@@ -70,9 +71,10 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
   for (let i = 0; i < next.players.length; i++) {
     next = drawActionCards(next, (next.speaker + i) % next.players.length, 1, deriveSeed(seed, 110 + i))
   }
-  const systems: Record<string, System> = Object.fromEntries(Object.entries(next.systems).map(([id, sys]): [string, System] => [id, {
-    ...sys, activatedBy: [], planets: sys.planets.map(p => ({ ...p, exhausted: false })),
-  }]))
+  const readied = readyAllPlanets(next)
+  const systems: Record<string, System> = Object.fromEntries(
+    Object.entries(readied.systems).map(([id, sys]): [string, System] => [id, { ...sys, activatedBy: [] }])
+  )
   const players = [...next.players] as GameState['players']
   for (const seat of state.players.map((_, i) => i)) {
     players[seat] = {

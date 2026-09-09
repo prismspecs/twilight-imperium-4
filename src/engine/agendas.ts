@@ -1,6 +1,6 @@
 import { agendaDef } from '../data/agendas'
 import { drawActionCards } from './actionCards'
-import { destroyUnits } from './board'
+import { destroyUnits, readyAllPlanets } from './board'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { voteOrder } from './strategyPhase'
@@ -213,7 +213,9 @@ function resolveAgendaRound(state: GameState, _seed: number, startNextRound: (s:
   if (agenda.slot === 1 && next.agendaDeck.length > 0) {
     return { ...revealAgenda(next, 2, barred), phase: 'agenda' }
   }
-  return startNextRound(next)
+  // LRR agenda phase step 3: planets exhausted for voting ready again here, before the next round begins —
+  // separately from the status phase's own readying, which already happened earlier this round.
+  return startNextRound(readyAllPlanets(next))
 }
 
 /** R10: one seat's vote on the revealed agenda. */

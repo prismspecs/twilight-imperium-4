@@ -83,6 +83,20 @@ describe('R10 castVote', () => {
     s = value(vote(s, 'Against'))
     expect(s.agenda).toBeNull()   // the round resolved
   })
+
+  it('R10 agenda phase step 3: readies planets exhausted for voting before the next round begins', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] })   // one round only
+    const round = s.round
+    const seat1Planet = readyInfluencePlanets(s, 1)[0]
+    s = value(vote(s, 'For', [seat1Planet]))
+    const findExhausted = (state: GameState, planetId: string) =>
+      Object.values(state.systems).flatMap(sys => sys.planets).find(p => p.id === planetId)?.exhausted
+    expect(findExhausted(s, seat1Planet)).toBe(true)   // still exhausted mid-vote
+    s = value(vote(s, 'Against', []))   // resolves the round, no second agenda queued
+    expect(s.agenda).toBeNull()
+    expect(s.round).toBe(round + 1)
+    expect(findExhausted(s, seat1Planet)).toBe(false)
+  })
 })
 
 describe('R10 vote resolution: ties, the speaker breaks them, and victory is rechecked', () => {
