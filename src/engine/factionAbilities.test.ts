@@ -64,3 +64,43 @@ describe('faction combat-roll modifiers', () => {
     for (const roll of rolls) expect(roll.hit).toBe(roll.value >= 8)
   })
 })
+
+/** Returns a minimal GameState with a status phase active */
+function withStatusPhase(state: GameState, seat: Seat, faction: FactionId): GameState {
+  const base = withPlayer(toActionPhase(1), seat, { faction })
+  return { ...base, phase: 'status', statusSubmitted: [] }
+}
+
+describe('faction non-combat abilities', () => {
+  it('Arborec Mitosis places 1 infantry at start of status phase', () => {
+    const state = withStatusPhase({ systems: { systems: {} }, players: [{ faction: 'arborec', reinforcements: { infantry: 1 } }] }, 0, 'arborec')
+    const { status } = await import('./statusPhase')
+    const result = status(state, { mitosisPlanet: '01' }, 0)
+    expect(result.ok).toBe(true)
+    const updated = result.value
+    expect(updated.players[0].reinforcements.infantry).toBe(0)
+  })
+
+  it('Scavenge gains 1 trade good when taking control of a planet', () => {
+    const state = withPlayer(toActionPhase(1), 0, { faction: 'saar', tradeGoods: 0, pendingInfantry: 0 })
+    const invasion = await import('./invasion')
+    const result = invasion.resolveControl(state, 0, '01')
+    expect(result.ok).toBe(true)
+    expect(result.value.players[0].tradeGoods).toBe(1)
+  })
+
+  it('Versatile gains 1 additional command token during status phase', () => {
+    const state = withPlayer(toActionPhase(1), 0, { faction: 'sol', strategyCards: { used: false } })
+    const { status } = await import('./statusPhase')
+    const result = status(state, {}, 0)
+    expect(result.ok).toBe(true)
+    expect(result.value.players[0].tokens.strategy).toBe(1)  // should have gained 1 token
+  })
+
+  it('Masters of Trade secondary cost is 0 for Hacan', () => {
+    const state = withPlayer(toActionPhase(1), 0, { faction: 'hacan', pendingSecondary: { card: 'trade', freeSeats: [] } })
+    const strategicActions = await import('./strategicActions')
+    const result = strategicActions.isFree(state, 0, 'trade', false)
+    expect(result.ok).toBe(true)
+  })
+}

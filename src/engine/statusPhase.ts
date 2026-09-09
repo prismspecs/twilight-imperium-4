@@ -198,22 +198,23 @@ export function applyMitosis(state: GameState, seat: Seat, planetId?: string): R
   const player = state.players[seat]
   if (player.reinforcements.infantry < 1) return { ok: true, value: state }   // nothing to place
   const controlledIds = controlledPlanets(state, seat).map(c => c.planetId)
-  if (!controlledIds.length) return { ok: false, error: 'Mitosis: you control no planets to place infantry on' }
+  if (!controlledIds.length) return { ok: true, value: state }  // skip silently if no planets
   const target = planetId ?? controlledIds[0]
   if (!controlledIds.includes(target)) return { ok: false, error: `Mitosis: you do not control ${target}` }
   const sysId = Object.entries(state.systems).find(([, sys]) => sys.planets.some(p => p.id === target))?.[0]
   if (!sysId) return { ok: false, error: `Mitosis: ${target} is not on the board` }
   const sys = state.systems[sysId]
-  const nextId = state.nextUnitId + 1
+  const nextId = state.nextUnitId
+  const infantry: Unit = { id: nextId, type: 'infantry', owner: seat, damaged: false }
   const next: GameState = {
-    ...state, nextUnitId: nextId,
+    ...state, nextUnitId: nextId + 1,
     players: {
       ...state.players,
       [seat]: { ...player, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - 1 } },
     },
     systems: {
       ...state.systems,
-      [sysId]: { ...sys, planets: sys.planets.map(p => p.id === target ? { ...p, ground: [...p.ground, { id: nextId, type: 'infantry', owner: seat, damaged: false }] } : p) },
+      [sysId]: { ...sys, planets: sys.planets.map(p => p.id === target ? { ...p, ground: [...p.ground, infantry] } : p) },
     },
     log: [...state.log, { t: 'info', text: `Arborec Mitosis: seat ${seat} places 1 infantry on ${target}` }],
   }
