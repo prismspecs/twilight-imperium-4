@@ -140,6 +140,12 @@ describe('fleetScale', () => {
   it('gives a small box a smaller scale than a large one for the same fleet', () => {
     expect(fleetScale(6, { width: 100, height: 64 })).toBeLessThanOrEqual(fleetScale(6, { width: 168, height: 120 }))
   })
+  it('nets out .in\'s own CSS padding (theme.css: `padding: 0 10px 6px`, itself scaled by the zoom the stacks render at), so a shrunk fleet never claims room it does not have and gets clipped by the parent\'s overflow:hidden', () => {
+    // Mecatol's own space box: at scale 0.6 the padded content area is 104-20*0.6=92 wide, 120-6*0.6=116.4
+    // tall, fitting 3 columns and 4 rows (12) — a formula ignoring the padding would claim 4 columns and 5
+    // rows (20), overestimating room and letting the real (padded) layout wrap past the box and clip.
+    expect(fleetCapacity(SPACE_BOX.mecatol, 0.6)).toBe(12)
+  })
 })
 
 describe('planet centres', () => {

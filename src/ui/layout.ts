@@ -181,6 +181,10 @@ const STACK_W = 36
 const STACK_H = 34
 const FLEET_GAP = 4
 const SCALE_STEPS = [1, 0.9, 0.8, 0.7, 0.6]
+// .tile .fleet > .in's own CSS padding (theme.css: `padding: 0 10px 6px`) — it sits inside the zoomed
+// element, so it shrinks by `scale` right along with the stacks, the same as every other px value in there.
+const FLEET_PAD_X = 20
+const FLEET_PAD_BOTTOM = 6
 
 /**
  * How far to shrink a fleet so that every stack stays inside the space box. Full size while the stacks fit,
@@ -192,11 +196,12 @@ export function fleetScale(stackCount: number, box: { width: number; height: num
   return SCALE_STEPS[SCALE_STEPS.length - 1]
 }
 
-/** How many unit stacks a box shows at a given zoom, rows and columns of the mean stack cell. */
+/** How many unit stacks a box shows at a given zoom, rows and columns of the mean stack cell — net of the
+ * padding `.in` itself carries, which the box's own width/height do not already exclude. */
 export function fleetCapacity(box: { width: number; height: number }, scale: number): number {
-  const cols = Math.floor((box.width + FLEET_GAP) / (STACK_W * scale + FLEET_GAP))
-  const rows = Math.floor((box.height + FLEET_GAP) / (STACK_H * scale + FLEET_GAP))
-  return cols * rows
+  const cols = Math.floor((box.width - FLEET_PAD_X * scale + FLEET_GAP) / (STACK_W * scale + FLEET_GAP))
+  const rows = Math.floor((box.height - FLEET_PAD_BOTTOM * scale + FLEET_GAP) / (STACK_H * scale + FLEET_GAP))
+  return Math.max(0, cols) * Math.max(0, rows)
 }
 
 export const WORMHOLE_SPOTS: Record<string, Point> = {
