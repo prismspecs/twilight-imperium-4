@@ -195,7 +195,17 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     try {
       const actor = seatToAct(cur.state)
       const moves = legalMoves(cur.state)
-      if (moves.length === 0) return
+      if (moves.length === 0) {
+        // A seat the game waits on with zero legal moves is a deadlock (game 6C6RRJ: the Nekro seat sat at
+        // the head of the agenda vote order with no legal outcome). Nothing throws, so without this log
+        // the loop simply never runs again and the game looks like an AI that will not move.
+        logError('AI', `no legal moves for seat ${actor} — the game is stuck`, {
+          phase: cur.state.phase, step: cur.state.tactical?.step ?? null,
+          faction: cur.state.players[actor]?.faction ?? null,
+        })
+        setError(`the game is stuck: ${cur.state.players[actor]?.name ?? `seat ${actor}`} has no legal moves`)
+        return
+      }
       const chosen = aiChoose(cur.state, moves, actor, DEFAULT_WEIGHTS)
       logInfo('AI', `Seat ${actor} chose move: ${chosen.type}`, chosen)
       const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
