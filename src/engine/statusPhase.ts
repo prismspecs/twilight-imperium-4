@@ -12,7 +12,10 @@ import type { GameState, Result, Seat, StatusParams, System } from './types'
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
-  return state.players[seat].techs.includes('hyper_metabolism') ? 3 : 2
+  const player = state.players[seat]
+  let gained = player.techs.includes('hyper_metabolism') ? 3 : 2
+  if (player.faction === 'muaat' && player.abilities?.includes('versatile')) gained += 1
+  return gained
 }
 
 /** R3.3 step 1: every objective the seat may score. */
