@@ -14,7 +14,7 @@ import type { GameState, Result, Seat, StatusParams, System } from './types'
 export function tokensGained(state: GameState, seat: Seat): number {
   const player = state.players[seat]
   let gained = player.techs.includes('hyper_metabolism') ? 3 : 2
-  if (player.faction === 'muaat' && player.abilities?.includes('versatile')) gained += 1
+  if (player.faction === 'muaat') gained += 1
   return gained
 }
 
@@ -197,10 +197,10 @@ export function applyMitosis(state: GameState, seat: Seat, planetId?: string): R
   if (state.players[seat].faction !== 'arborec') return { ok: true, value: state }
   const player = state.players[seat]
   if (player.reinforcements.infantry < 1) return { ok: true, value: state }   // nothing to place
-  const controlled = controlledPlanets(state, seat)
-  if (!controlled.length) return { ok: false, error: 'Mitosis: you control no planets to place infantry on' }
-  const target = planetId ?? controlled[0]
-  if (!controlled.includes(target)) return { ok: false, error: `Mitosis: you do not control ${target}` }
+  const controlledIds = controlledPlanets(state, seat).map(c => c.planetId)
+  if (!controlledIds.length) return { ok: false, error: 'Mitosis: you control no planets to place infantry on' }
+  const target = planetId ?? controlledIds[0]
+  if (!controlledIds.includes(target)) return { ok: false, error: `Mitosis: you do not control ${target}` }
   const sysId = Object.entries(state.systems).find(([, sys]) => sys.planets.some(p => p.id === target))?.[0]
   if (!sysId) return { ok: false, error: `Mitosis: ${target} is not on the board` }
   const sys = state.systems[sysId]
