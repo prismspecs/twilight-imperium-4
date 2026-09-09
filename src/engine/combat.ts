@@ -629,15 +629,15 @@ function endCombat(state: GameState, ctx: Ctx): GameState {
   // you may take a technology they own.
   const attacker = ctx.attacker
   const defender = ctx.defender
-  if (attacker !== undefined && defender !== undefined) {
-    const attackerFaction = state.players[attacker]?.faction
-    const defenderFaction = state.players[defender]?.faction
-    if (attackerFaction === 'nekro' && defenderFaction !== undefined && defenderFaction !== 'nekro') {
-      const defenderTechs = state.players[defender]?.techs ?? []
+  if (defender !== 'guardian') {
+    const attackerFaction = state.players[attacker].faction
+    const defenderFaction = state.players[defender].faction
+    if (attackerFaction === 'nekro' && defenderFaction !== 'nekro') {
+      const defenderTechs = state.players[defender].techs
       if (defenderTechs.length > 0) {
-        const stolenTech = defenderTechs[0]
+        const stolenTech = defenderTechs[0] as string
         const updatedPlayers = [...state.players] as GameState['players']
-        updatedPlayers[attacker] = { ...updatedPlayers[attacker], techs: [...(updatedPlayers[attacker]?.techs ?? []), stolenTech] }
+        updatedPlayers[attacker] = { ...updatedPlayers[attacker], techs: [...updatedPlayers[attacker].techs, stolenTech] }
         updatedPlayers[defender] = { ...updatedPlayers[defender], techs: defenderTechs.filter(t => t !== stolenTech) }
         return trimCargo(trimCargo({ ...state, players: updatedPlayers, log: [...state.log, { t: 'info', text: `seat ${attacker} steals ${stolenTech} from seat ${defender} via Technological Singularity` }] }, ctx.systemId, attacker), ctx.systemId, defender)
       }
