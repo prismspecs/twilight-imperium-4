@@ -14,7 +14,7 @@ import type { GameState, Result, Seat, StatusParams, System } from './types'
 export function tokensGained(state: GameState, seat: Seat): number {
   const player = state.players[seat]
   let gained = player.techs.includes('hyper_metabolism') ? 3 : 2
-  if (player.faction === 'muaat') gained += 1
+  if (player.faction === 'sol') gained += 1
   return gained
 }
 

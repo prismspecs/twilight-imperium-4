@@ -26,6 +26,12 @@ export function secondaryTokenCost(card: StrategyCardId, isFree = false): number
   if (card === 'leadership' || isFree) return 0
   return 1
 }
+// Star Forge (Muaat): spend 1 strategy token to produce 2 fighters or 1 destroyer
+// in a system containing one of your war suns.
+export function starForgeAllowed(state: GameState, seat: Seat, systemId: string): boolean {
+  const p = state.players[seat]
+  return p.faction === 'muaat' && (state.systems[systemId]?.space.some(u => u.owner === seat && u.type === 'warsun') ?? false) && p.tokens.strategy >= 1
+}
 
 export function drawSecretObjective(state: GameState, seat: Seat): GameState {
   if (!state.secretObjectiveDeck || state.secretObjectiveDeck.length === 0) return state
@@ -530,7 +536,7 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
   if (pending.queue[0] !== seat) return { ok: false, error: 'R3.2: it is not your turn to answer this secondary' }
   let next = state
   if (accept) {
-    const isFree = pending.card === 'trade' && ((pending.freeSeats?.includes(seat) ?? false) || state.players[seat].faction === 'muaat')
+    const isFree = pending.card === 'trade' && ((pending.freeSeats?.includes(seat) ?? false) || state.players[seat].faction === 'hacan')
     const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card, isFree))
     if (!paid.ok) return paid
     const used = secondaryEffect(paid.value, seat, card, params ?? {}, seed)

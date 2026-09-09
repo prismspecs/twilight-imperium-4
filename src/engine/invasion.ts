@@ -181,7 +181,7 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
   }
   const sys = state.systems[systemId]
   // Scavenge: Sardakk gains 1 trade good after gaining control of a planet.
-  const scavenge = state.players[seat].faction === 'sardakk'
+  const scavenge = state.players[seat].faction === 'saar'
   const nextPlayers: GameState['players'] = scavenge
     ? { ...players, [seat]: { ...players[seat], tradeGoods: players[seat].tradeGoods + 1 } }
     : players
