@@ -74,6 +74,15 @@ function isSummary(value: unknown): value is GameSummary {
 function normalise(state: GameState, seed: number): GameState {
   const raw = state as unknown as Partial<GameState> & { turnDone?: unknown }
   let next = state
+  // Builds between the faction-ability wiring (Sep 2026) spread the players array into a plain object
+  // (`{ ...players, [seat]: ... }`) in Scavenge, Guild Ships and Mitosis; a game saved by one of them
+  // carries `players` as `{ "0": ..., "1": ... }` and every `players.map` throws the moment it loads.
+  // Numeric keys in order are unambiguous, so the array is rebuilt instead of dropping the game.
+  if (!Array.isArray(next.players) && typeof next.players === 'object' && next.players !== null) {
+    const record = next.players as unknown as Record<string, unknown>
+    const keys = Object.keys(record).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b))
+    if (keys.length > 0) next = { ...next, players: keys.map(k => record[k]) as GameState['players'] }
+  }
   // R9/R10: a game saved before the action card and agenda decks existed gets the decks its own seed would
   // have shuffled, with empty hands — the reading that leaves the game in progress playable.
   if (!Array.isArray(raw.actionCardDeck)) {
