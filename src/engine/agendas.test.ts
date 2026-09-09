@@ -1,9 +1,12 @@
 // src/engine/agendas.test.ts
 import { describe, expect, it } from 'vitest'
-import { agendaMoves, legalOutcomes, readyInfluencePlanets } from './agendas'
+import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets } from './agendas'
 import { applyMove, legalMoves } from './index'
+import { startNextRound } from './statusPhase'
+import { createGame } from './setup'
 import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer } from './testUtils'
-import type { GameState, Result, Seat } from './types'
+import { homeSystemOf } from './board'
+import type { GameConfig, GameState, Result, Seat } from './types'
 
 const value = (r: Result<GameState>): GameState => {
   if (!r.ok) throw new Error(r.error)
@@ -32,6 +35,36 @@ describe('R10 agenda phase: entry and vote order', () => {
     const s = toAgendaPhase(withPlayer(toActionPhase(), 0, {}))
     expect(s.agenda?.order).toEqual([1, 0])   // 2 players, speaker 0: seat 1 first, seat 0 (speaker) last
     expect(s.active).toBe(1)
+  })
+
+  it('Galactic Threat: the Nekro seat never enters the vote order (6C6RRJ regression)', () => {
+    // 6C6RRJ deadlocked in round 3: the vote order included the Nekro seat, legalOutcomes answered []
+    // for it, no castVote move existed, and the AI loop silently stopped on the empty move list.
+    // Galactic Threat says the Nekro Virus cannot vote, so the order must skip it outright.
+    const config: GameConfig = {
+      players: [
+        { faction: 'l1z1x', color: 'blue', name: 'P1', playerType: 'human' },
+        { faction: 'yin', color: 'red', name: 'P2', playerType: 'ai' },
+        { faction: 'nekro', color: 'green', name: 'P3', playerType: 'ai' },
+        { faction: 'mentak', color: 'yellow', name: 'P4', playerType: 'ai' },
+        { faction: 'sardakk', color: 'purple', name: 'P5', playerType: 'ai' },
+        { faction: 'naalu', color: 'orange', name: 'P6', playerType: 'ai' },
+      ],
+      speaker: 0,
+    }
+    let s: GameState = { ...createGame(config, 1758370400), custodiansToken: false }
+    s = enterAgendaOrNextRound(s, 1, startNextRound)
+    expect(s.phase).toBe('agenda')
+    expect(s.agenda?.order).not.toContain(2)
+    expect(s.agenda?.order).toHaveLength(5)
+    expect(s.active).not.toBe(2)
+    // and the whole agenda phase (both slots) plays out: every seat asked to vote has at least one move
+    for (let guard = 0; guard < 12 && s.phase === 'agenda'; guard++) {
+      const moves = agendaMoves(s)
+      expect(moves.length).toBeGreaterThan(0)
+      s = value(applyMove(s, moves[0], 7))
+    }
+    expect(s.phase).not.toBe('agenda')
   })
 
   it('legalOutcomes reads the agenda\'s printed target: For/Against, Elect Player, or a safe abstain', () => {
@@ -69,7 +102,8 @@ describe('R10 castVote', () => {
     const planet = readyInfluencePlanets(s, seat)[0]
     const voted = value(vote(s, 'For', [planet]))
     expect(voted.agenda?.votes[seat]?.influence).toBeGreaterThan(0)
-    expect(voted.systems['home-s'].planets.find(p => p.id === planet)?.exhausted).toBe(true)
+    const owning = Object.values(voted.systems).find(sys => sys.planets.some(p => p.id === planet))
+    expect(owning?.planets.find(p => p.id === planet)?.exhausted).toBe(true)
     const abstained = value(vote(toAgendaPhase(toActionPhase(), 'mutiny'), 'For', []))
     expect(abstained.agenda?.votes[seat]).toEqual({ outcome: 'For', influence: 0 })
   })
@@ -101,7 +135,8 @@ describe('R10 castVote', () => {
 
 describe('R10 vote resolution: ties, the speaker breaks them, and victory is rechecked', () => {
   it('the outcome with the most influence-weighted votes wins', () => {
-    let s = toAgendaPhase(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'mutiny')
+    // seat 1 already owns its home planets, so its vote carries influence without any extra setup
+    let s = toAgendaPhase(toActionPhase(), 'mutiny')
     const seat1Planet = readyInfluencePlanets(s, 1)[0]   // seat 1 (order[0]) votes first, with influence
     s = value(vote(s, 'For', [seat1Planet]))             // seat 1: For, weighted
     s = value(vote(s, 'Against', []))                    // seat 0 (speaker): Against, 0 weight
@@ -138,12 +173,15 @@ describe('R10 resolvers', () => {
   })
 
   it('Swords to Plowshares For: half (rounded up) of each planet\'s infantry dies for trade goods', () => {
-    let s = withoutGroundForces(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1))
-    s = { ...s, systems: { ...s.systems, bereg: { ...s.systems.bereg, planets: s.systems.bereg.planets.map(p => p.id === 'bereg' ? { ...p, ground: [1, 2, 3].map(id => ({ id, type: 'infantry' as const, owner: 1 as const, damaged: false })) } : p) } } }
+    const base = toActionPhase()
+    const sysId = homeSystemOf(base, 1)
+    const planetId = base.systems[sysId].planets[0].id
+    let s = withoutGroundForces(withPlanetOwner(base, sysId, planetId, 1))
+    s = { ...s, systems: { ...s.systems, [sysId]: { ...s.systems[sysId], planets: s.systems[sysId].planets.map(p => p.id === planetId ? { ...p, ground: [1, 2, 3].map(id => ({ id, type: 'infantry' as const, owner: 1 as const, damaged: false })) } : p) } } }
     s = deepFreeze({ ...toAgendaPhase(deepFreeze(s), 'swords_to_plowshares'), agendaDeck: [] as string[] })
     s = value(vote(s, 'For', []))
     s = value(vote(s, 'For', []))
-    const planet = s.systems.bereg.planets.find(p => p.id === 'bereg')
+    const planet = s.systems[sysId].planets.find(p => p.id === planetId)
     expect(planet?.ground).toHaveLength(1)          // 3 infantry, ceil(3/2) = 2 destroyed, 1 left
     expect(s.players[1].tradeGoods).toBe(2)
   })
