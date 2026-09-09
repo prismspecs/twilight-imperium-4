@@ -133,7 +133,12 @@ function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
   // R9 Flank Speed: +1 to the move value of each of the seat's ships for the rest of this tactical action.
   // A base fighter's move value is 0 (it cannot move without a carrier, LRR 91.3) and stays that way: Flank
   // Speed boosts an existing move value, it does not grant one a unit does not otherwise have.
-  return base > 0 ? base + moveBonus(state, seat) : base
+  // Slipstream (Creuss): +1 move when starting movement in home system or wormhole system.
+  const isCreuss = player.faction === 'creuss'
+  const sysId = state.systems ? Object.entries(state.systems).find(([, s]) => s.space.some(u => u.id === unit.id))?.[0] : undefined
+  const isHomeOrWormhole = isCreuss && (sysId === homeSystemOf(state, seat) || (sysId && state.systems?.[sysId]?.planets.some(p => p.id.includes('wormhole'))))
+  const slipstreamBonus = isHomeOrWormhole ? 1 : 0
+  return base > 0 ? base + moveBonus(state, seat) + slipstreamBonus : base
 }
 
 /** Every ship (plus a Saar Floating Factory) of the seat that could reach `systemId`, whether or not that
