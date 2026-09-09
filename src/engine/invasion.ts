@@ -180,14 +180,20 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
     replacements.push({ id: nextId++, type: s.type, owner: seat, damaged: false })
   }
   const sys = state.systems[systemId]
-  return {
-    ...state, players, nextUnitId: nextId,
+  // Scavenge: Sardakk gains 1 trade good after gaining control of a planet.
+  const scavenge = state.players[seat].faction === 'sardakk'
+  const nextPlayers: GameState['players'] = scavenge
+    ? { ...players, [seat]: { ...players[seat], tradeGoods: players[seat].tradeGoods + 1 } }
+    : players
+  const result: GameState = {
+    ...state, players: nextPlayers, nextUnitId: nextId,
     systems: {
       ...state.systems,
       [systemId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, owner: seat, exhausted: true, structures: replacements } : p) },
     },
-    log: [...state.log, { t: 'info', text: `seat ${seat} takes control of ${planetId}` }],
+    log: [...state.log, { t: 'info', text: `seat ${seat} takes control of ${planetId}`, ...scavenge && { next: 'scavenge' }, ...scavenge && { text: `seat ${seat} gains 1 trade good from Scavenge` } }],
   }
+  return result
 }
 
 export function bombard(state: GameState, planetId: string, seed: number): Result<GameState> {
