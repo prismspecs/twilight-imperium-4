@@ -356,6 +356,44 @@ describe('Anomalies & Gravity Drive legality (JVBR8F regression)', () => {
     expect(shipsThatCanReach(state, 3, 'home-4')).toHaveLength(0)
   })
 
+  it('Slipstream: +1 move from the home or a wormhole system, and no crash evaluating Creuss moves (MTMF8A regression)', async () => {
+    // MTMF8A froze the moment the Creuss AI had to move: moveValueOf called homeSystemOf without
+    // importing it, and Vite (unlike tsc) does not catch that, so the first reachability check for a
+    // Creuss unit threw ReferenceError inside the AI loop. Enumerating moves for every seat is the
+    // exact crash path; it must simply work.
+    const { createGame } = await import('./setup')
+    const config = {
+      players: [
+        { faction: 'xxcha' as const, color: 'green' as const, name: 'P1', playerType: 'human' as const },
+        { faction: 'yin' as const, color: 'red' as const, name: 'P2', playerType: 'ai' as const },
+        { faction: 'yssaril' as const, color: 'yellow' as const, name: 'P3', playerType: 'ai' as const },
+        { faction: 'creuss' as const, color: 'purple' as const, name: 'P4', playerType: 'ai' as const },
+        { faction: 'naalu' as const, color: 'blue' as const, name: 'P5', playerType: 'ai' as const },
+        { faction: 'jolnar' as const, color: 'orange' as const, name: 'P6', playerType: 'ai' as const },
+      ],
+      speaker: 0,
+    }
+    const state = createGame(config, 776489084)
+    for (const seat of [0, 1, 2, 3, 4, 5] as Seat[]) {
+      expect(() => shipsThatCanReach(state, seat, 'mecatol')).not.toThrow()
+    }
+
+    // Seed 776489084: Creuss (seat 3) starts with gravity_drive in home-3, and tile-42 is 3 systems
+    // away. A carrier's move 1 + gravity drive 1 + Slipstream 1 = 3 reaches it; move 2 alone cannot.
+    expect(pathLength(state, 3, 'home-3', 'tile-42', 2)).toBeNull()
+    const carrier = state.systems['home-3'].space.find(u => u.owner === 3 && u.type === 'carrier')
+    expect(carrier).toBeDefined()
+    expect(shipsThatCanReach(state, 3, 'tile-42').some(r => r.unitId === carrier!.id)).toBe(true)
+
+    // The same +1 applies when starting in any wormhole system (tile-39 is alpha, tile-37 is 3 away),
+    // and no one else gets it: a Xxcha carrier with gravity drive cannot reach a system 3 away.
+    const onWormhole = withUnits(state, 'tile-39', 3, ['carrier'])
+    const placed = onWormhole.systems['tile-39'].space.find(u => u.owner === 3 && u.type === 'carrier')
+    expect(placed).toBeDefined()
+    expect(pathLength(onWormhole, 3, 'tile-39', 'tile-37', 2)).toBeNull()
+    expect(shipsThatCanReach(onWormhole, 3, 'tile-37').some(r => r.unitId === placed!.id)).toBe(true)
+  })
+
   it('Fighter I cannot move on its own even when player has gravity_drive (baseMove < 1)', () => {
     // Only fighters in home-n, with gravity drive
     let s = toActionPhase()
