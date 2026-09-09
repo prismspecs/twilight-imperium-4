@@ -22,7 +22,7 @@ function savedGame(code: string, north: string, south: string) {
     players: [{ faction: 'l1z1x', color: 'blue', name: north }, { faction: 'letnev', color: 'red', name: south }],
     speaker: 0,
   }, 7)
-  saveGame({ code, seed: 7, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+  saveGame({ code, seed: 7, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
 }
 
 describe('the setup screen', () => {

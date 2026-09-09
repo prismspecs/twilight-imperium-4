@@ -34,8 +34,8 @@ function useDemoBootstrap() {
       void import('../engine/testUtils').then(({ cardsUsed, toActionPhase }) => {
         const state = toActionPhase(1, 0)
         resume(panel === 'handoff'
-          ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
-          : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+          ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1, agendaResult: null }
+          : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
         navigate(gamePath(DEMO_CODE))
       })
       return
@@ -53,7 +53,7 @@ function useDemoBootstrap() {
         state = withPlanetOwner(state, 'quann', 'quann', 1)
         state = withUnits(state, 'quann', 1, ['carrier', 'destroyer', 'fighter'])
         state = { ...state, systems: { ...state.systems, starpoint: { ...state.systems.starpoint, activatedBy: [0, 1] } } }
-        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
         navigate(gamePath(DEMO_CODE))
       })
       return
@@ -77,7 +77,7 @@ function useDemoBootstrap() {
             pending: [],
           },
         })
-        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
         navigate(gamePath(DEMO_CODE))
       })
       return
@@ -99,7 +99,7 @@ function useDemoBootstrap() {
           combat: { round: 1, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
         })
         state = openCombatWindows(state)
-        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
         navigate(gamePath(DEMO_CODE))
       })
       return
@@ -110,7 +110,7 @@ function useDemoBootstrap() {
     if (panel === 'agenda') {
       void import('../engine/testUtils').then(({ toActionPhase, toAgendaPhase, withPlanetOwner }) => {
         const state = toAgendaPhase(withPlanetOwner(toActionPhase(1, 0), 'bereg', 'bereg', 1), 'mutiny')
-        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null, agendaResult: null })
         navigate(gamePath(DEMO_CODE))
       })
       return

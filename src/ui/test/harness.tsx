@@ -19,7 +19,7 @@ export function renderWithSession(state: GameState, node: ReactNode, options?: {
   act(() => {
     const session: Session = {
       code: TEST_CODE, seed: options?.seed ?? 7, minutes: 15, state, history: [],
-      clockMs: options?.clockMs ?? state.players.map(() => 900000), handoff: null,
+      clockMs: options?.clockMs ?? state.players.map(() => 900000), handoff: null, agendaResult: null,
       config: options?.config,
     }
     current?.resume(session)

@@ -44,16 +44,34 @@ describe('R10 the agenda dialog', () => {
     expect(screen.getByTestId('agenda-outcome-1').textContent).toContain('B')
   })
 
-  it('shows a dismissible banner naming the resolved outcome once the round closes', () => {
+  it('shows a dismissible overlay naming the resolved outcome once the round closes, and holds the board inert behind it', () => {
     const s = { ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] }   // one round only
     renderWithSession(s, <BoardScreen />)
     fireEvent.click(screen.getByTestId('agenda-outcome-For'))
     fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 1 votes For
     fireEvent.click(screen.getByTestId('agenda-outcome-Against'))
     fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 0 (speaker) votes Against, round resolves
-    const banner = screen.getByTestId('agenda-outcome-banner')
-    expect(banner.textContent).toContain('Mutiny resolves: Against')   // a 0-0 tie goes to the speaker's own vote
-    fireEvent.click(screen.getByTestId('btn-dismiss-agenda-outcome'))
-    expect(screen.queryByTestId('agenda-outcome-banner')).toBeNull()
+    const overlay = screen.getByTestId('agenda-result')
+    expect(overlay.textContent).toContain('Mutiny resolves: Against')   // a 0-0 tie goes to the speaker's own vote
+    expect(screen.getByTestId('board-screen').getAttribute('inert')).not.toBeNull()
+    fireEvent.click(screen.getByTestId('agenda-result-continue'))
+    expect(screen.queryByTestId('agenda-result')).toBeNull()
+  })
+
+  it('R10 regression: the resolved-agenda overlay survives whatever move happens next, not just the instant it appears', () => {
+    // the old log-scanning banner looked only at entries since the most recent move, so the very next move
+    // (an AI's own, or the next player's) made the outcome invisible before anyone could read it
+    const s = { ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] }
+    const { store } = renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('agenda-outcome-For'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))
+    fireEvent.click(screen.getByTestId('agenda-outcome-Against'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))
+    expect(screen.getByTestId('agenda-result')).toBeTruthy()
+    // force a further state change the way a background AI turn would, without going through the dialog
+    const move = store().legal[0]
+    expect(move).toBeTruthy()
+    store().apply(move)
+    expect(screen.getByTestId('agenda-result')).toBeTruthy()
   })
 })

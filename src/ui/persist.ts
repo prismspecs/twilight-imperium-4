@@ -196,7 +196,7 @@ function migrate(): void {
   if (isLegacy(parsed)) {
     store({
       code: newGameCode(hasGame), seed: parsed.seed, minutes: parsed.minutes,
-      state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null,
+      state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null, agendaResult: null,
     })
   }
   remove(LEGACY_KEY)
@@ -230,7 +230,7 @@ export function loadGame(code: string): Session | null {
   if (!isPayload(parsed)) return null
   return {
     code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
-    state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null,
+    state: normalise(parsed.state, parsed.seed), history: parsed.history.map(h => normalise(h, parsed.seed)), clockMs: parsed.clockMs, handoff: null, agendaResult: null,
     config: parsed.config,
   }
 }

@@ -8,7 +8,7 @@ import {
 import type { Session } from './store'
 
 function session(code: string, clockMs: [number, number] = [123456, 654321]): Session {
-  return { code, seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs, handoff: null }
+  return { code, seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs, handoff: null, agendaResult: null }
 }
 
 describe('the saved games of one browser', () => {

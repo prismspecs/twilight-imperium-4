@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor, pendingReaction } from '../engine'
-import type { GameConfig, GameState, Move, Seat } from '../engine/types'
+import type { GameConfig, GameState, LogEntry, Move, Seat } from '../engine/types'
 import { aiChoose } from '../ai'
 import { DEFAULT_WEIGHTS } from '../ai/score'
 import { moveCount, undoable } from './history'
@@ -46,6 +46,17 @@ function humanSeats(config: GameConfig | undefined): number {
 function handoffFor(config: GameConfig | undefined, prevState: GameState, next: GameState): Seat | null {
   if (humanSeats(config) < 2) return null
   return next.active !== prevState.active && next.winner === null && !isAi(config, next.active) ? next.active : null
+}
+
+/** R10: the log entries an agenda's resolution just added — reveal, outcome, any riders and effects — the
+ * moment `castVote` closes it out (`prevState.agenda` non-null, `next.agenda` null). The dialog that showed
+ * the vote disappears in that same instant since `state.agenda` is what keeps it open, so without this the
+ * player never sees what the vote actually decided; held here until dismissed, it does. A fully unattended
+ * (all-AI) game has nobody to dismiss it, so it never blocks there — same reasoning as `handoffFor`. */
+function agendaResultFor(config: GameConfig | undefined, prevState: GameState, next: GameState): LogEntry[] | null {
+  if (humanSeats(config) < 1 || prevState.agenda === null || next.agenda !== null) return null
+  const added = next.log.slice(prevState.log.length)
+  return added.length > 0 ? added : null
 }
 
 /** Which seat is expected to provide input/act next in this game state. */
@@ -123,6 +134,9 @@ export interface Session {
   history: GameState[]
   clockMs: number[]
   handoff: Seat | null
+  /** Set the instant an agenda vote resolves it, cleared only by `dismissAgendaResult` — the outcome stays
+   * on screen until a player acknowledges it, the same way a handoff holds the board until dismissed. */
+  agendaResult: LogEntry[] | null
   /** Which seat is an AI. Absent (an old saved game) means both seats are human. */
   config?: GameConfig
   autoPassOnZero?: boolean
@@ -140,6 +154,7 @@ export interface GameStore {
   apply(move: Move): boolean
   undo(): void
   dismissHandoff(): void
+  dismissAgendaResult(): void
   abandon(): void
 }
 
@@ -189,10 +204,11 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const keep = undoable(cur.state, next)
     setError(null)
     const handoff = handoffFor(cur.config, cur.state, next)
-    const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff }
+    const agendaResult = agendaResultFor(cur.config, cur.state, next)
+    const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff, agendaResult }
     sessionRef.current = updated
     setSession(updated)
-    if (shouldAiStep(cur.config, next)) pumpAiRef.current(seed)
+    if (agendaResult === null && shouldAiStep(cur.config, next)) pumpAiRef.current(seed)
   }, [])
   stepAiRef.current = stepAi
 
@@ -214,7 +230,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       players: config.players.map((p, seat) => ({ seat, faction: p.faction, playerType: p.playerType })),
     })
     if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
-    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, config, autoPassOnZero: false }
+    const fresh: Session = { code, seed, minutes, state: createGame(config, seed), history: [], clockMs: config.players.map(() => ms), handoff: null, agendaResult: null, config, autoPassOnZero: false }
     sessionRef.current = fresh
     setSession(fresh)
     // the URL names the game from the first move on, so the code and the address cannot drift apart
@@ -249,16 +265,18 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const keep = undoable(session.state, next)
     setError(null)
     const handoff = handoffFor(config, session.state, next)
+    const agendaResult = agendaResultFor(config, session.state, next)
     const updated: Session = {
       ...session,
       state: next,
       history: keep ? [...session.history, session.state] : [],
       handoff,
+      agendaResult,
     }
     sessionRef.current = updated
     setSession(updated)
     // the AI is not burst: it plays each of its moves one at a time, a beat apart, so the game is watchable
-    if (shouldAiStep(config, next)) pumpAi(seed)
+    if (agendaResult === null && shouldAiStep(config, next)) pumpAi(seed)
     return true
   }, [session, pumpAi])
 
@@ -267,7 +285,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const previous = session.history[session.history.length - 1] as GameState
     if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
     setError(null)
-    const reverted: Session = { ...session, state: previous, history: session.history.slice(0, -1), handoff: null }
+    const reverted: Session = { ...session, state: previous, history: session.history.slice(0, -1), handoff: null, agendaResult: null }
     sessionRef.current = reverted
     setSession(reverted)
   }, [session])
@@ -275,6 +293,17 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const dismissHandoff = useCallback(() => {
     setSession(prev => prev ? { ...prev, handoff: null } : prev)
   }, [])
+
+  const dismissAgendaResult = useCallback(() => {
+    setSession(prev => {
+      if (!prev) return prev
+      const cleared: Session = { ...prev, agendaResult: null }
+      sessionRef.current = cleared
+      // the AI loop was held back while the result was on screen; pick it back up now that it is dismissed
+      if (shouldAiStep(cleared.config, cleared.state)) pumpAi(cleared.seed)
+      return cleared
+    })
+  }, [pumpAi])
 
   // R7: abandoning drops this one game, never the other games the browser holds
   const abandon = useCallback(() => {
@@ -301,7 +330,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // by sitting on a draft pick. `legal` is memoised on the state, so this costs no enumeration per tick.
   // An AI seat takes its turn inside `apply`, never against the clock, so a seat that is AI does not tick.
   const activeSeatIsAi = session !== null && isAi(session.config, session.state.active)
-  const running = session !== null && session.minutes > 0 && !activeSeatIsAi && session.state.winner === null && session.handoff === null && legal.length > 0
+  const running = session !== null && session.minutes > 0 && !activeSeatIsAi && session.state.winner === null && session.handoff === null && session.agendaResult === null && legal.length > 0
   const seat = session ? session.state.active : 0
   useEffect(() => {
     if (!ticking || !running) return
@@ -337,8 +366,8 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
 
   const store: GameStore = useMemo(() => ({
     session, legal, error, canUndo: session !== null && session.history.length > 0, clockRunning: running,
-    start, resume, apply, undo, dismissHandoff, abandon,
-  }), [session, legal, error, running, start, resume, apply, undo, dismissHandoff, abandon])
+    start, resume, apply, undo, dismissHandoff, dismissAgendaResult, abandon,
+  }), [session, legal, error, running, start, resume, apply, undo, dismissHandoff, dismissAgendaResult, abandon])
 
   return <GameContext.Provider value={store}>{children}</GameContext.Provider>
 }

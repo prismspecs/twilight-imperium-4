@@ -40,7 +40,7 @@ function wrapper(ticking: boolean) {
 }
 
 function session(state: Session['state'], clockMs: [number, number], autoPassOnZero = true): Session {
-  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null, autoPassOnZero }
+  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null, agendaResult: null, autoPassOnZero }
 }
 
 describe('the hot-seat store', () => {
