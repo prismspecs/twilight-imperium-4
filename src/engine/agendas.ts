@@ -22,10 +22,6 @@ import type { AgendaRound, GameState, Move, Result, Seat } from './types'
 /** The outcomes a voter may name for the revealed agenda, from its printed `target`. */
 export function legalOutcomes(state: GameState, agendaId: string): string[] {
   const def = agendaDef(agendaId)
-  // Galactic Threat (Nekro): cannot vote on agendas
-  const nekroSeats = state.players.map((p, i) => p.faction === 'nekro' ? i : -1).filter(s => s >= 0)
-  const seat = state.agenda?.order[0]
-  if (seat !== undefined && nekroSeats.includes(seat)) return []
   if (def.target === 'For/Against') return ['For', 'Against']
   if (def.target === 'Elect Player') return state.players.map((_, i) => String(i))
   // Elect Planet / Elect Law / Elect Scored Secret Objective and friends: this increment does not enumerate
@@ -184,7 +180,9 @@ function applyOutcome(state: GameState, agenda: AgendaRound, outcome: string): G
 /** Reveals the round's first (or second) agenda and seeds a fresh vote. */
 function revealAgenda(state: GameState, slot: 1 | 2, barredFromVoting: Seat[]): GameState {
   const revealed = state.agendaDeck[0]
-  const order = voteOrder(state).filter(s => !barredFromVoting.includes(s))
+  // Galactic Threat: the Nekro Virus cannot vote, so it never enters the order — filtering it out here,
+  // rather than offering it zero outcomes, is what keeps the vote able to run to completion.
+  const order = voteOrder(state).filter(s => !barredFromVoting.includes(s) && state.players[s].faction !== 'nekro')
   // Xxcha: Quash - discard the current agenda and reveal the next one
   const isQuash = state.players[state.active].faction === 'xxcha' && slot === 1 && state.agendaDeck.length > 1
   const nextSlot = isQuash ? 2 : slot
@@ -231,6 +229,7 @@ export function castVote(state: GameState, outcome: string, planets: string[], s
   const agenda = state.agenda
   const seat = agenda.order[0]
   if (seat === undefined || seat !== state.active) return { ok: false, error: 'R10: not this seat\'s vote' }
+  if (state.players[seat].faction === 'nekro') return { ok: false, error: 'R10: the Nekro Virus cannot vote (Galactic Threat)' }
   if (!legalOutcomes(state, agenda.revealed).includes(outcome)) return { ok: false, error: `R10: ${outcome} is not a legal outcome` }
   const paid = exhaustPlanets(state, seat, planets)
   if (!paid.ok) return paid

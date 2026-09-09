@@ -148,7 +148,8 @@ export function toStatusPhase(state: GameState): GameState {
  * the way `enterAgendaOrNextRound` would once the custodians token is gone. */
 export function toAgendaPhase(state: GameState, revealed?: string): GameState {
   const id = revealed ?? state.agendaDeck[0]
-  const order = voteOrder(state)
+  // Galactic Threat: the Nekro seat never votes, same filter revealAgenda applies
+  const order = voteOrder(state).filter(s => state.players[s].faction !== 'nekro')
   return deepFreeze({
     ...state,
     phase: 'agenda' as const,
