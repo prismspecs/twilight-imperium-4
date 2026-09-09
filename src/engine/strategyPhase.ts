@@ -25,7 +25,6 @@ export function voteOrder(state: GameState): Seat[] {
 }
 
 export function initiativeOrder(state: GameState): Seat[] {
-  const n = state.players.length
   const lowest = (seat: Seat) => {
     const cards = state.players[seat].strategyCards
     if (cards.length === 0) return Infinity
