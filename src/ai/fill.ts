@@ -223,11 +223,15 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     return true
   }
 
+  // Mitosis (lrr-factions.md): the Arborec's space docks cannot produce infantry — it arrives in the
+  // status phase — so an Arborec order never includes infantry at all (a rejected order freezes the loop)
+  const arborec = player.faction === 'arborec'
+
   // 1. Planetary Garrison: ensure at least 2 infantry on own planets in system
   const localInfantry = dest.planets
     .filter(p => p.owner === seat)
     .reduce((sum, p) => sum + p.ground.filter(g => g.owner === seat && g.type === 'infantry').length, 0)
-  if (localInfantry < 2) {
+  if (localInfantry < 2 && !arborec) {
     tryAdd('infantry', 2)
   }
 
@@ -254,7 +258,7 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
   let tries = 0
   while (remainingUnitsCount >= 2 && tries++ < 4) {
     const addedFighters = tryAdd('fighter', 2)
-    const addedInfantry = tryAdd('infantry', 2)
+    const addedInfantry = !arborec && tryAdd('infantry', 2)
     if (!addedFighters && !addedInfantry) break
   }
 
