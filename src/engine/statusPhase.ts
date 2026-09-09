@@ -153,7 +153,12 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
   const seat = state.active
   if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
-  let scored = scoreAll(state, seat)
+  // R3.3/Arborec Mitosis: "at the start of the status phase, place 1 infantry from your reinforcements
+  // on any planet you control" — mandatory unless the Arborec player controls no planets. Runs before this
+  // seat's token distribution, so the placement is part of the start-of-phase bookkeeping.
+  const mitosis = applyMitosis(state, seat, params.mitosisPlanet)
+  if (!mitosis.ok) return mitosis
+  let scored = scoreAll(mitosis.value, seat)
   // The status-phase-only spend objectives (SPEND_OBJECTIVES) are never auto-scored; each one this seat
   // chose to pay for is paid and scored here, in the order given.
   for (const [objectiveId, payment] of Object.entries(params.objectivePayments ?? {})) {
@@ -177,4 +182,37 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   // N-player: the phase closes once every seat has submitted its status move
   if (statusSubmitted.length < state.players.length) return { ok: true, value: { ...submitted, active: (seat + 1) % state.players.length } }
   return { ok: true, value: finishStatusPhase(submitted, seed) }
+}
+
+/**
+ * R3.3/Arborec Mitosis: "Your space docks cannot produce infantry. Instead, at the start of each status
+ * phase, place 1 infantry from your reinforcements on any planet you control." LRR: "Placing the infantry
+ * during the status phase is mandatory (unless the Arborec player controls no planets)."
+ * Runs once per seat at the start of that seat's status move, before token distribution.
+ */
+export function applyMitosis(state: GameState, seat: Seat, planetId?: string): Result<GameState> {
+  if (state.players[seat].faction !== 'arborec') return { ok: true, value: state }
+  const player = state.players[seat]
+  if (player.reinforcements.infantry < 1) return { ok: true, value: state }   // nothing to place
+  const controlled = controlledPlanets(state, seat)
+  if (!controlled.length) return { ok: false, error: 'Mitosis: you control no planets to place infantry on' }
+  const target = planetId ?? controlled[0]
+  if (!controlled.includes(target)) return { ok: false, error: `Mitosis: you do not control ${target}` }
+  const sysId = Object.entries(state.systems).find(([, sys]) => sys.planets.some(p => p.id === target))?.[0]
+  if (!sysId) return { ok: false, error: `Mitosis: ${target} is not on the board` }
+  const sys = state.systems[sysId]
+  const nextId = state.nextUnitId + 1
+  const next: GameState = {
+    ...state, nextUnitId: nextId,
+    players: {
+      ...state.players,
+      [seat]: { ...player, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - 1 } },
+    },
+    systems: {
+      ...state.systems,
+      [sysId]: { ...sys, planets: sys.planets.map(p => p.id === target ? { ...p, ground: [...p.ground, { id: nextId, type: 'infantry', owner: seat, damaged: false }] } : p) },
+    },
+    log: [...state.log, { t: 'info', text: `Arborec Mitosis: seat ${seat} places 1 infantry on ${target}` }],
+  }
+  return { ok: true, value: next }
 }

@@ -199,6 +199,7 @@ export interface StatusParams {
   // The "spend N resources/influence/trade goods during the status phase" objectives (SPEND_OBJECTIVES in
   // objectives.ts) are never scored automatically — a chosen one is paid for here, keyed by objective id.
   objectivePayments?: Record<string, { planets: string[]; tradeGoods: number }>
+  mitosisPlanet?: string
 }
 
 /**
