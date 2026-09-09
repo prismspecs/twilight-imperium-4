@@ -3,6 +3,7 @@ import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
 import { canResearch } from './research'
 import { grantTech } from './strategicActions'
+import { produce } from './production'
 import type { GameState, Result, Seat } from './types'
 
 const INHERITANCE_COST = 2
@@ -98,6 +99,77 @@ export function productionBiomes(state: GameState, target: Seat): Result<GameSta
     value: {
       ...state, players, turnDone: true,
       log: [...state.log, { t: 'info', text: `seat ${seat} uses Production Biomes: gains 4 trade goods, seat ${target} gains 2` }],
+    },
+  }
+}
+
+export function canStarForge(state: GameState, seat: Seat): boolean {
+  const player = state.players[seat]
+  return player.faction === 'muaat' && player.tokens.strategy >= 1
+    && Object.values(state.systems).some(sys => sys.space.some(unit => unit.owner === seat && unit.type === 'war_sun'))
+}
+
+export function starForge(state: GameState, seat: Seat, unitType: 'fighter' | 'destroyer'): Result<GameState> {
+  const ready = actionReady(state)
+  if (!ready.ok) return ready
+  if (!canStarForge(state, seat)) return { ok: false, error: 'R6: Star Forge is not available' }
+  const player = state.players[seat]
+  const systems = Object.entries(state.systems).filter(([, sys]) => sys.space.some(unit => unit.owner === seat && unit.type === 'war_sun'))
+  if (!systems.length) return { ok: false, error: 'R6: Star Forge requires a system containing one of your war suns' }
+  const systemId = systems[0][0]
+  const cost = unitType === 'destroyer' ? 4 : 0
+  const planets = cheapestPlanets(state, seat, cost)
+  if (!planets) return { ok: false, error: `R6: ${cost} resources are needed` }
+  const paid = payCost(state, seat, cost, planets, 0)
+  if (!paid.ok) return paid
+  const produced = produce(paid.value, { [unitType]: unitType === 'destroyer' ? 1 : 2 }, [systemId], 0)
+  if (!produced.ok) return produced
+  const players = [...produced.value.players] as GameState['players']
+  players[seat] = {
+    ...players[seat],
+    tokens: { ...players[seat].tokens, strategy: players[seat].tokens.strategy - 1, tokensSpentThisRound: players[seat].tokensSpentThisRound + 1 },
+  }
+  return { ok: true, value: { ...produced.value, players, turnDone: true } }
+}
+
+export function canOrbitalDrop(state: GameState, seat: Seat, planetId: string): boolean {
+  const player = state.players[seat]
+  if (player.faction !== 'sol') return false
+  if (player.tokens.strategy < 1) return false
+  if ((player.reinforcements?.infantry ?? 0) < 2) return false
+  const planet = Object.values(state.systems).find(sys => sys.planets.some(pl => pl.id === planetId))
+  if (!planet) return false
+  if (planet.owner !== seat) return false
+  return true
+}
+
+export function orbitalDrop(state: GameState, seat: Seat, planetId: string): Result<GameState> {
+  const ready = actionReady(state)
+  if (!ready.ok) return ready
+  if (!canOrbitalDrop(state, seat, planetId)) return { ok: false, error: 'R6: Orbital Drop is not available' }
+  const players = [...state.players] as GameState['players']
+  const target = Object.values(state.systems).flatMap(s => s.planets).find(pl => pl.id === planetId)
+  if (!target) return { ok: false, error: `planet ${planetId} not found` }
+  const systemId = Object.entries(state.systems).find(([, s]) => s.planets.some(pl => pl.id === planetId))?.[0]
+  if (!systemId) return { ok: false, error: `system containing ${planetId} not found` }
+  const sys = state.systems[systemId]
+  const infantry = { id: state.nextUnitId, owner: seat, type: 'infantry' as const }
+  const infantry2 = { id: state.nextUnitId + 1, owner: seat, type: 'infantry' as const }
+  const nextSystem = { ...sys, planets: sys.planets.map(pl => pl.id === planetId ? { ...pl, ground: [...pl.ground, infantry, infantry2] } : pl) }
+  players[seat] = {
+    ...players[seat],
+    tokens: { ...players[seat].tokens, strategy: players[seat].tokens.strategy - 1, tokensSpentThisRound: players[seat].tokensSpentThisRound + 1 },
+    reinforcements: { ...players[seat].reinforcements, infantry: (players[seat].reinforcements?.infantry ?? 0) - 2 },
+  }
+  return {
+    ok: true,
+    value: {
+      ...state,
+      systems: { ...state.systems, [systemId]: nextSystem },
+      players,
+      nextUnitId: state.nextUnitId + 2,
+      turnDone: true,
+      log: [...state.log, { t: 'info', text: `seat ${seat} uses Orbital Drop to place 2 infantry on ${planetId}` }],
     },
   }
 }

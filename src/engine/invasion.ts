@@ -181,17 +181,37 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
   }
   const sys = state.systems[systemId]
   // Scavenge: Sardakk gains 1 trade good after gaining control of a planet.
+  // Guild Ships (Hacan): after gaining control of a planet, may place 1 infantry on it.
   const scavenge = state.players[seat].faction === 'saar'
+  const guildShips = state.players[seat].faction === 'hacan'
+  const guildShipsCanPlace = guildShips && (state.players[seat].reinforcements?.infantry ?? 0) > 0
   const nextPlayers: GameState['players'] = scavenge
     ? { ...players, [seat]: { ...players[seat], tradeGoods: players[seat].tradeGoods + 1 } }
     : players
-  const result: GameState = {
-    ...state, players: nextPlayers, nextUnitId: nextId,
-    systems: {
+  const finalPlayers = guildShipsCanPlace
+    ? { ...nextPlayers, [seat]: { ...nextPlayers[seat], reinforcements: { ...nextPlayers[seat].reinforcements, infantry: (nextPlayers[seat].reinforcements?.infantry ?? 0) - 1 } } }
+    : nextPlayers
+  let finalNextUnitId = nextId
+  let finalSystems = { ...state.systems }
+  if (guildShipsCanPlace) {
+    finalNextUnitId = nextId + 1
+    finalSystems = {
+      ...state.systems,
+      [systemId]: { ...sys, planets: sys.planets.map(p => {
+        if (p.id !== planetId) return p
+        return { ...p, owner: seat, exhausted: true, structures: replacements, ground: [...p.ground, { id: nextId, owner: seat, type: 'infantry' }] }
+      }) },
+    }
+  } else {
+    finalSystems = {
       ...state.systems,
       [systemId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, owner: seat, exhausted: true, structures: replacements } : p) },
-    },
-    log: [...state.log, { t: 'info', text: `seat ${seat} takes control of ${planetId}`, ...scavenge && { next: 'scavenge' }, ...scavenge && { text: `seat ${seat} gains 1 trade good from Scavenge` } }],
+    }
+  }
+  const result: GameState = {
+    ...state, players: finalPlayers, nextUnitId: finalNextUnitId,
+    systems: finalSystems,
+    log: [...state.log, { t: 'info', text: `seat ${seat} takes control of ${planetId}`, ...scavenge && { next: 'scavenge' }, ...scavenge && { text: `seat ${seat} gains 1 trade good from Scavenge` }, ...guildShipsCanPlace && { text: `seat ${seat} places 1 infantry on ${planetId} via Guild Ships` } }],
   }
   return result
 }
