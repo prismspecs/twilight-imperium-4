@@ -97,6 +97,17 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
     players[other] = { ...players[other], tradeGoods: players[other].tradeGoods + 4 }
     log = [...log, { t: 'info', text: `seat ${other} gains 4 trade goods from E-Res Siphons` }]
   }
+  // Pillage (Mentak): after another player activates a system containing one of your units,
+  // if they have trade goods, you may take 1 from them.
+  for (const other of players.map((_, i) => i as Seat)) {
+    if (other === seat || players[other].faction !== 'mentak') continue
+    if (!sys.space.some(u => u.owner === other)) continue
+    if (players[seat].tradeGoods > 0) {
+      players[seat] = { ...players[seat], tradeGoods: players[seat].tradeGoods - 1 }
+      players[other] = { ...players[other], tradeGoods: players[other].tradeGoods + 1 }
+      log = [...log, { t: 'info', text: `seat ${other} takes 1 trade good from seat ${seat} via Pillage` }]
+    }
+  }
   return {
     ok: true,
     value: {

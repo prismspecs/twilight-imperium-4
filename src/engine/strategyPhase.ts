@@ -25,12 +25,20 @@ export function voteOrder(state: GameState): Seat[] {
 }
 
 export function initiativeOrder(state: GameState): Seat[] {
+  const n = state.players.length
   const lowest = (seat: Seat) => {
     const cards = state.players[seat].strategyCards
-    if (cards.length === 0) return Infinity   // no card played: goes last
+    if (cards.length === 0) return Infinity
     return Math.min(...cards.map(c => INITIATIVE[c.id]))
   }
-  return [...state.players.keys()].sort((a, b) => lowest(a) - lowest(b))
+  const sorted = [...state.players.keys()].sort((a, b) => lowest(a) - lowest(b))
+  // Telepathic (Naalu): always first in initiative order after strategy phase.
+  const naalu = sorted.findIndex(s => state.players[s].faction === 'naalu')
+  if (naalu > 0) {
+    const [naaluSeat] = sorted.splice(naalu, 1)
+    sorted.unshift(naaluSeat)
+  }
+  return sorted
 }
 
 export function pickStrategyCard(state: GameState, card: StrategyCardId): Result<GameState> {
