@@ -36,8 +36,9 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     if (!PRODUCIBLE.includes(type)) return { ok: false, error: `R4.4: ${type} cannot be produced` }
     if (blockaded && isShip(type)) return { ok: false, error: 'R14.1: this dock is blockaded by another player\'s ships — it can still produce ground forces' }
   }
-  // R3.3/Arborec Mitosis: space docks cannot produce infantry. Production of infantry is handled by
-  // the mandatory status-phase placement instead.
+  // R3.3/Arborec Mitosis (lrr-factions.md 9-13): space docks cannot produce Letani Warriors — infantry
+  // arrive via the mandatory status-phase placement instead. (Their own PRODUCTION ability, which CAN
+  // build infantry, and the dock-producible Letani Behemoth mech, are not implemented yet.)
   if (player.faction === 'arborec' && (units.infantry ?? 0) > 0) {
     return { ok: false, error: 'Mitosis: Arborec space docks cannot produce infantry — infantry are placed during the status phase instead' }
   }
