@@ -15,10 +15,14 @@ export interface FactionDef {
 }
 
 /**
- * All 17 base-game factions. Only l1z1x and letnev are currently selectable and placed (the duel map has
- * their two home systems); the other fifteen are complete data — starting units/techs, commodities and
- * ability ids — pending per-faction ability wiring, and are placed once a galaxy is generated for N-player
- * games. Home-planet indices follow the catalogue home-tile planet order.
+ * All 17 base-game factions. Only l1z1x and letnev (full duel map) are selectable;
+ * the other 15 have complete data (units/tech/commodities) and ability IDs, but
+ * 30 of 34 faction abilities remain unwired (display-only in factionAbilities.ts).
+ * See src/data/factionAbilities.ts — only `assimilate`, `harrow`, `munitions_reserves`,
+ * `armada`, `unrelenting`, `ambush` and `fragile` have engine wiring today.
+ * Winnu and Sardakk have `startingTechs: []`; 8 factions have zero faction-specific
+ * tech entries in techs.ts (saar, muaat, mentak, sardakk, winnu, xxcha, yin, yssaril,
+ * plus sol/creuss — total 10 with no `kind: 'faction'` tech).
  */
 export const FACTIONS: Record<FactionId, FactionDef> = {
   l1z1x: {
