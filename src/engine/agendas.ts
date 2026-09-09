@@ -185,12 +185,15 @@ function applyOutcome(state: GameState, agenda: AgendaRound, outcome: string): G
 function revealAgenda(state: GameState, slot: 1 | 2, barredFromVoting: Seat[]): GameState {
   const revealed = state.agendaDeck[0]
   const order = voteOrder(state).filter(s => !barredFromVoting.includes(s))
+  // Xxcha: Quash - discard the current agenda and reveal the next one
+  const isQuash = state.players[state.active].faction === 'xxcha' && slot === 1 && state.agendaDeck.length > 1
+  const nextSlot = isQuash ? 2 : slot
   return {
     ...state,
-    agendaDeck: state.agendaDeck.slice(1),
-    agenda: { revealed, slot, votes: {}, order, barredFromVoting },
+    agendaDeck: isQuash ? state.agendaDeck.slice(2) : state.agendaDeck.slice(1),
+    agenda: { revealed: isQuash ? state.agendaDeck[1] : revealed, slot: nextSlot, votes: {}, order, barredFromVoting },
     active: order[0] ?? state.speaker,
-    log: [...state.log, { t: 'info', text: `agenda revealed: ${agendaDef(revealed).name}` }],
+    log: [...state.log, { t: 'info', text: `agenda revealed: ${agendaDef(isQuash ? state.agendaDeck[1] : revealed).name}` }],
   }
 }
 
