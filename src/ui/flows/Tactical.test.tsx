@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { homeSystemOf } from '../../engine'
 import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withTechs, withUnits } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
 import { BoardScreen } from '../screens/BoardScreen'
@@ -212,6 +213,33 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('custodians-block')).toBeTruthy()
     expect(screen.getByTestId('custodians-breakdown').textContent).toContain('6 / 6')
     expect(screen.getByTestId('btn-remove-custodians')).toBeTruthy()
+  })
+
+  it('pays the Custodians token with trade goods before touching a ready planet, so a player who has both never loses one for free', () => {
+    let s = withUnits(toActionPhase(), 'mecatol', 0, ['carrier', 'infantry'])
+    const home = homeSystemOf(s, 0)
+    // give seat 0 a ready influence planet as well as enough trade goods, so the fix is actually exercised
+    s = {
+      ...s,
+      custodiansToken: true,
+      players: s.players.map((p, i) => i === 0 ? { ...p, tradeGoods: 6 } : p),
+      systems: {
+        ...s.systems,
+        [home]: {
+          ...s.systems[home],
+          planets: s.systems[home].planets.map(p => p.owner === 0 ? { ...p, influence: Math.max(p.influence, 3), exhausted: false } : p),
+        },
+      },
+    }
+    s = withTactical(s, { systemId: 'mecatol', step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+    renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-remove-custodians'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
+    expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('0')
+    // every home planet is still ready — none were exhausted to help pay
+    for (const planet of s.systems[home].planets) {
+      expect(screen.getByTestId(`planet-0-${planet.id}`).className).not.toContain('exh')
+    }
   })
 
   it('warns before leaving the invasion step while the Custodians token is still affordable, so a player heading to production does not miss it', () => {

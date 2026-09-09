@@ -22,6 +22,26 @@ export function suggestedSplit(total: number, planets: number, seed: number): nu
   return Array.from({ length: planets }, (_, i) => base + ((i - offset + planets) % planets < extra ? 1 : 0))
 }
 
+/** Spends trade goods before touching any planet: a planet stays available for whatever else the turn
+ * still holds, where a banked trade good has no other use this turn. Falls back to the fewest planets
+ * (highest influence first) only for whatever the trade goods alone do not cover. */
+function tradeGoodsFirstPayment(
+  readyPlanets: { id: string; influence: number }[],
+  tradeGoods: number,
+  cost: number
+): { planets: string[]; tradeGoods: number } | null {
+  const tg = Math.min(tradeGoods, cost)
+  let remaining = cost - tg
+  if (remaining <= 0) return { planets: [], tradeGoods: tg }
+  const planets: string[] = []
+  for (const p of [...readyPlanets].sort((a, b) => b.influence - a.influence)) {
+    if (remaining <= 0) break
+    planets.push(p.id)
+    remaining -= p.influence
+  }
+  return remaining <= 0 ? { planets, tradeGoods: tg } : null
+}
+
 export function InvasionPanel() {
   const { session, legal, apply } = useGame()
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -40,6 +60,10 @@ export function InvasionPanel() {
   const tradeGoods = state.players[seat]?.tradeGoods ?? 0
   const totalInf = readyInf + tradeGoods
   const canRemoveCustodians = legal.some(m => m.type === 'removeCustodians')
+  const readyInfPlanets = Object.values(state.systems)
+    .flatMap(sys => sys.planets)
+    .filter(p => p.owner === seat && !p.exhausted && p.influence > 0)
+  const custodiansPayment = tradeGoodsFirstPayment(readyInfPlanets, tradeGoods, 6)
   const exhaustedInfPlanets = Object.values(state.systems)
     .flatMap(sys => sys.planets)
     .filter(p => p.owner === seat && p.exhausted && p.influence > 0)
@@ -103,12 +127,13 @@ export function InvasionPanel() {
                 ) : null}
               </span>
             </div>
-            {canRemoveCustodians ? (
+            {canRemoveCustodians && custodiansPayment ? (
               <button
                 type="button"
                 className="btn gold"
                 data-testid="btn-remove-custodians"
-                onClick={() => apply({ type: 'removeCustodians' })}
+                title={`Pays ${String(custodiansPayment.tradeGoods)} trade good${custodiansPayment.tradeGoods === 1 ? '' : 's'}${custodiansPayment.planets.length ? ` + ${custodiansPayment.planets.map(id => planetLabel(state, id)).join(', ')}` : ''} — trade goods spend first, planets stay ready wherever they can`}
+                onClick={() => apply({ type: 'removeCustodians', planets: custodiansPayment.planets, tradeGoods: custodiansPayment.tradeGoods })}
               >
                 Remove Custodians (6 Influence · +1 VP)
               </button>
