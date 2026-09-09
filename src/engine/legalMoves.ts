@@ -354,7 +354,7 @@ export function legalMoves(state: GameState): Move[] {
     // queue who is not the head must not act, and the enumerator stays on the decline so a live phase never
     // hands back an empty list
     if (pending.queue[0] !== seat) return [{ type: 'secondary', card: pending.card, accept: false }]
-    const isFree = pending.card === 'trade' && (pending.freeSeats?.includes(seat) ?? false)
+    const isFree = pending.card === 'trade' && ((pending.freeSeats?.includes(seat) ?? false) || state.players[seat].faction === 'muaat')
     return [{ type: 'secondary', card: pending.card, accept: false }, ...secondaryMoves(state, seat, pending.card, isFree)]
   }
   if (state.players[seat].passed) return []

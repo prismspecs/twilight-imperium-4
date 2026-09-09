@@ -530,7 +530,7 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
   if (pending.queue[0] !== seat) return { ok: false, error: 'R3.2: it is not your turn to answer this secondary' }
   let next = state
   if (accept) {
-    const isFree = pending.card === 'trade' && (pending.freeSeats?.includes(seat) ?? false)
+    const isFree = pending.card === 'trade' && ((pending.freeSeats?.includes(seat) ?? false) || state.players[seat].faction === 'muaat')
     const paid = spendStrategyTokens(state, seat, secondaryTokenCost(card, isFree))
     if (!paid.ok) return paid
     const used = secondaryEffect(paid.value, seat, card, params ?? {}, seed)
