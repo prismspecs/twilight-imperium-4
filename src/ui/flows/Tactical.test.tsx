@@ -214,6 +214,21 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('btn-remove-custodians')).toBeTruthy()
   })
 
+  it('warns before leaving the invasion step while the Custodians token is still affordable, so a player heading to production does not miss it', () => {
+    let s = withUnits(toActionPhase(), 'mecatol', 0, ['carrier', 'infantry'])
+    s = {
+      ...s,
+      custodiansToken: true,
+      players: s.players.map((p, i) => i === 0 ? { ...p, tradeGoods: 6 } : p),
+    }
+    s = withTactical(s, { systemId: 'mecatol', step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('btn-remove-custodians')).toBeTruthy()
+    expect(screen.getByTestId('invasion-panel').textContent).toContain('Remove the Custodians below before leaving')
+    const endBtn = screen.getByTestId('btn-end-invasion')
+    expect(endBtn.className).not.toContain('gold')
+  })
+
   it('allows activating home system space dock with no ships in range and proceeds to production', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-tactical'))

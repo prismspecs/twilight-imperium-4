@@ -52,9 +52,11 @@ export function InvasionPanel() {
         <div className="dhead">
           <span className="tab">Invasion</span>
           <span className="sub">
-            {canProduceHere
-              ? 'Land infantry to invade, or proceed to production at your space dock.'
-              : 'Bombard, then land your infantry and fight it out.'}
+            {canRemoveCustodians
+              ? 'Remove the Custodians below before leaving — that option disappears once you end this invasion step.'
+              : canProduceHere
+                ? 'Land infantry to invade, or proceed to production at your space dock.'
+                : 'Bombard, then land your infantry and fight it out.'}
           </span>
           <div className="right">
             {hasGroundFight ? (
@@ -64,9 +66,10 @@ export function InvasionPanel() {
             ) : null}
             <button
               type="button"
-              className={canProduceHere && !hasGroundFight ? 'btn gold' : 'btn quiet'}
+              className={canProduceHere && !hasGroundFight && !canRemoveCustodians ? 'btn gold' : 'btn quiet'}
               data-testid="btn-end-invasion"
               disabled={!legal.some(m => m.type === 'endInvasion')}
+              title={canRemoveCustodians ? 'You can still afford to remove the Custodians token here — leaving forfeits it until you activate Mecatol Rex again' : undefined}
               onClick={() => apply({ type: 'endInvasion' })}
             >
               {canProduceHere ? 'Proceed to production' : 'Done invading'}
