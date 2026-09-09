@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { logError } from './debugLogger'
 import { deleteGame, latestGameCode } from './persist'
 import { codeFromRoute } from './route'
 import { SpaceBackdrop } from './SpaceBackdrop'
@@ -26,6 +27,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
+    // the console alone never reaches the dev server's debug.log; a render crash must be diagnosable afterwards
+    logError('Crash', `render crashed: ${error.message}`, { stack: error.stack, componentStack: info.componentStack })
     console.error('the hot-seat client crashed', error, info.componentStack)
   }
 
