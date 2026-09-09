@@ -6,11 +6,15 @@ import { ownedPlanets } from '../format'
 import { useGame } from '../store'
 
 /** R10: which label a legal outcome shows on its button. For/Against and abstain print as-is; an
- * "Elect Player" outcome is a seat number as a string, shown as the player's own name instead. */
+ * "Elect Player" outcome is a seat number as a string, shown as the player's own name; an "Elect Planet"
+ * outcome is a planet id, shown as the planet's name. */
 function outcomeLabel(state: GameState, outcome: string): string {
   if (outcome === 'For' || outcome === 'Against' || outcome === 'abstain') return outcome === 'abstain' ? 'Pass (no legal target to elect yet)' : outcome
   const seat = Number.parseInt(outcome, 10)
-  return Number.isInteger(seat) && state.players[seat] ? `Elect ${state.players[seat].name}` : outcome
+  if (Number.isInteger(seat) && state.players[seat]) return `Elect ${state.players[seat].name}`
+  const planet = Object.values(state.systems).flatMap(sys => sys.planets).find(p => p.id === outcome)
+  if (planet) return `Elect ${planet.name}`
+  return outcome
 }
 
 export function AgendaDialog() {

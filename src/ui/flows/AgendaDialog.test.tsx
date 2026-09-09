@@ -3,6 +3,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { toActionPhase, toAgendaPhase, withPlanetOwner } from '../../engine/testUtils'
+import { homeSystemOf } from '../../engine/board'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -27,14 +28,17 @@ describe('R10 the agenda dialog', () => {
   })
 
   it('committing a planet for influence exhausts it once the vote is cast', () => {
-    const s = toAgendaPhase(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'mutiny')
+    const base = toActionPhase()
+    const sysId = homeSystemOf(base, 1)
+    const planetId = base.systems[sysId].planets.find(p => p.influence > 0)?.id ?? base.systems[sysId].planets[0].id
+    const s = toAgendaPhase(withPlanetOwner(base, sysId, planetId, 1), 'mutiny')
     const { store } = renderWithSession(s, <BoardScreen />)
-    fireEvent.click(screen.getByTestId('agenda-pay-bereg'))
+    fireEvent.click(screen.getByTestId(`agenda-pay-${planetId}`))
     expect(screen.getByTestId('agenda-dialog').textContent).toContain('influence committed')
     fireEvent.click(screen.getByTestId('agenda-outcome-For'))
     fireEvent.click(screen.getByTestId('btn-agenda-confirm'))
     const after = store().session?.state
-    expect(after?.systems.bereg.planets.find(p => p.id === 'bereg')?.exhausted).toBe(true)
+    expect(after?.systems[sysId].planets.find(p => p.id === planetId)?.exhausted).toBe(true)
   })
 
   it('an Elect Player agenda offers each player by name', () => {
