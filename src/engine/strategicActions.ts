@@ -1,3 +1,4 @@
+import { neighbours } from './adjacency'
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
@@ -31,6 +32,43 @@ export function secondaryTokenCost(card: StrategyCardId, isFree = false): number
 export function starForgeAllowed(state: GameState, seat: Seat, systemId: string): boolean {
   const p = state.players[seat]
   return p.faction === 'muaat' && (state.systems[systemId]?.space.some(u => u.owner === seat && u.type === 'warsun') ?? false) && p.tokens.strategy >= 1
+}
+
+// Orbital Drop (Sol): spend 1 strategy token to place 2 infantry from reinforcements
+// on a planet you control in a system containing one of your planets.
+export function orbitalDropAllowed(state: GameState, seat: Seat, planetId: string): boolean {
+  const p = state.players[seat]
+  if (p.faction !== 'sol') return false
+  const hasPlanet = Object.values(state.systems).some(s => s.planets.some(pl => pl.id === planetId && pl.owner === seat))
+  return hasPlanet && p.tokens.strategy >= 1
+}
+
+// Peace Accords (Xxcha): after resolving Diplomacy, take control of an empty planet
+// adjacent to one you already control.
+export function peaceAccords(state: GameState, seat: Seat, planetId: string): Result<GameState> {
+  const player = state.players[seat]
+  if (player.faction !== 'xxcha') return { ok: false, error: 'not a Xxcha player' }
+  const targetPlanet = Object.entries(state.systems).flatMap(([sysId, sys]) =>
+    sys.planets.filter(p => p.id === planetId).map(p => ({ sysId, planet: p }))
+  )[0]
+  if (!targetPlanet) return { ok: false, error: `planet ${planetId} not found` }
+  if (targetPlanet.planet.owner !== seat) return { ok: false, error: `you do not control ${planetId}` }
+  if (targetPlanet.planet.ground.length > 0 || targetPlanet.planet.structures.length > 0) {
+    return { ok: false, error: `${planetId} is not empty` }
+  }
+  const neighborSysIds = neighbours(state.systems, targetPlanet.sysId)
+  const ownsNeighbor = neighborSysIds.some(id => {
+    const s = state.systems[id]
+    return s.planets.some(p => p.owner === seat)
+  })
+  if (!ownsNeighbor) return { ok: false, error: `${planetId} is not adjacent to a planet you control` }
+  const systems = { ...state.systems, [targetPlanet.sysId]: {
+    ...state.systems[targetPlanet.sysId],
+    planets: state.systems[targetPlanet.sysId].planets.map(p =>
+      p.id === planetId ? { ...p, owner: seat } : p
+    )
+  }}
+  return { ok: true, value: { ...state, systems } }
 }
 
 export function drawSecretObjective(state: GameState, seat: Seat): GameState {
