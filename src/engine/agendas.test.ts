@@ -117,6 +117,30 @@ describe('R10 agenda phase: entry and vote order', () => {
     expect(s.players[1].tradeGoods).toBe(goodsBefore + destroyed)
   })
 
+  it('Demilitarized Zone: destroys every unit on the elected planet immediately (6C6RRJ: only the ongoing ban is unwired)', () => {
+    let s = toAgendaPhase(toActionPhase(), 'demilitarized_zone')
+    const target = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1 && p.ground.length > 0)
+    if (!target) throw new Error('no garrisoned planet in the fixture')
+    s = value(vote(s, target.id, []))
+    s = value(vote(s, target.id, []))
+    const elected = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.id === target.id)
+    expect(elected?.ground).toHaveLength(0)
+    expect(elected?.structures).toHaveLength(0)
+    expect(elected?.attachments).toContain('demilitarized_zone')
+  })
+
+  it('Holy Planet of Ixth: the elected planet’s owner gains 1 victory point immediately', () => {
+    let s = toAgendaPhase(toActionPhase(), 'holy_planet_of_ixth')
+    const target = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1)
+    if (!target) throw new Error('no controlled planet in the fixture')
+    const vpBefore = s.players[1].vp
+    s = value(vote(s, target.id, []))
+    s = value(vote(s, target.id, []))
+    expect(s.players[1].vp).toBe(vpBefore + 1)
+    const elected = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.id === target.id)
+    expect(elected?.attachments).toContain('holy_planet_of_ixth')
+  })
+
   it('legalOutcomes reads the agenda\'s printed target: For/Against, Elect Player, or a safe abstain', () => {
     const s = toActionPhase()
     expect(legalOutcomes(s, 'mutiny')).toEqual(['For', 'Against'])

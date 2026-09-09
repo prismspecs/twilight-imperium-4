@@ -173,8 +173,22 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   },
   // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
   // the law is at least visible in the state (Elect Law needs it too), and the resolution says so.
-  demilitarized_zone: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'demilitarized_zone', outcome), 'Demilitarized Zone', 'landing/production ban'),
-  holy_planet_of_ixth: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'holy_planet_of_ixth', outcome), 'Holy Planet of Ixth', 'the VP swings and the PRODUCTION ban'),
+  // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
+  // the law is at least visible in the state (Elect Law needs it too), and the resolution says so. The
+  // immediate effects printed on the same cards (the destruction, the 1 VP) ARE resolved here.
+  demilitarized_zone: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    const sysId = systemOfPlanet(state, outcome)
+    const units = planet ? [...planet.ground, ...planet.structures] : []
+    const destroyed = sysId && units.length > 0 ? destroyUnits(state, sysId, units) : state
+    return notEnforced(attachLaw(destroyed, 'demilitarized_zone', outcome), 'Demilitarized Zone', 'the landing/production ban')
+  },
+  holy_planet_of_ixth: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    let next = attachLaw(state, 'holy_planet_of_ixth', outcome)
+    if (planet && planet.owner !== null) next = addVp(next, planet.owner, 1, 'Holy Planet of Ixth')
+    return notEnforced(next, 'Holy Planet of Ixth', 'the control-change VP swings and the PRODUCTION ban')
+  },
   research_team_biotic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_biotic', outcome), 'Research Team: Biotic', 'the prerequisite ignore'),
   research_team_cybernetic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_cybernetic', outcome), 'Research Team: Cybernetic', 'the prerequisite ignore'),
   research_team_propulsion: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_propulsion', outcome), 'Research Team: Propulsion', 'the prerequisite ignore'),
