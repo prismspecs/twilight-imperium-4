@@ -1,11 +1,12 @@
 import { agendaDef } from '../data/agendas'
+import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { destroyUnits, readyAllPlanets } from './board'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { voteOrder } from './strategyPhase'
 import { victoryCheck } from './statusPhase'
-import type { AgendaRound, GameState, Move, Result, Seat } from './types'
+import type { AgendaRound, GameState, Move, Planet, Result, Seat } from './types'
 
 /**
  * R10: the agenda phase.
@@ -24,10 +25,52 @@ export function legalOutcomes(state: GameState, agendaId: string): string[] {
   const def = agendaDef(agendaId)
   if (def.target === 'For/Against') return ['For', 'Against']
   if (def.target === 'Elect Player') return state.players.map((_, i) => String(i))
-  // Elect Planet / Elect Law / Elect Scored Secret Objective and friends: this increment does not enumerate
-  // real targets for them, so the only legal outcome is a 0-vote pass — the round still resolves, and
+  // LRR: an elected planet must be controlled by a player — every controlled planet is a legal target.
+  if (def.target === 'Elect Planet') {
+    const ids = electablePlanets(state, 'any')
+    return ids.length ? ids : ['abstain']
+  }
+  if (def.target === 'Elect Non-Home Planet Other Than Mecatol Rex') {
+    const ids = electablePlanets(state, 'non-home')
+    return ids.length ? ids : ['abstain']
+  }
+  // Elect Law / Elect Scored Secret Objective and friends: this increment does not enumerate real targets
+  // for them, so the only legal outcome is a 0-vote pass — the round still resolves, and
   // `resolveAgendaRound`'s no-resolver path records that nothing was enacted.
   return ['abstain']
+}
+
+/** The planets a vote may elect: controlled by a player (LRR), narrowed to non-home non-Mecatol on request. */
+function electablePlanets(state: GameState, kind: 'any' | 'non-home'): string[] {
+  const out: string[] = []
+  for (const sys of Object.values(state.systems)) {
+    if (kind === 'non-home' && (sys.home !== null || sys.id === MECATOL_ID)) continue
+    for (const p of sys.planets) if (p.owner !== null) out.push(p.id)
+  }
+  return out
+}
+
+/** Applies `fn` to the one planet with `planetId`, wherever it sits. */
+function withPlanet(state: GameState, planetId: string, fn: (p: Planet) => Planet): GameState {
+  const systems = Object.fromEntries(Object.entries(state.systems).map(([id, sys]) => [id, {
+    ...sys, planets: sys.planets.map(p => p.id === planetId ? fn(p) : p),
+  }]))
+  return { ...state, systems }
+}
+
+/** The system a planet lives in. */
+function systemOfPlanet(state: GameState, planetId: string): string | undefined {
+  return Object.values(state.systems).find(sys => sys.planets.some(p => p.id === planetId))?.id
+}
+
+/** Attaches a law agenda to its elected planet, applying any value change it prints. */
+function attachLaw(state: GameState, agendaId: string, planetId: string, patch?: Partial<Pick<Planet, 'resources' | 'influence'>>): GameState {
+  return withPlanet(state, planetId, p => ({ ...p, attachments: [...(p.attachments ?? []), agendaId], ...(patch ?? {}) }))
+}
+
+/** The planet with `planetId`, or undefined. */
+function planetById(state: GameState, planetId: string): Planet | undefined {
+  return Object.values(state.systems).flatMap(sys => sys.planets).find(p => p.id === planetId)
 }
 
 /** One castVote move per legal outcome, each suggesting "commit every ready planet" — the UI or AI may
@@ -73,7 +116,69 @@ function winningOutcome(state: GameState, agenda: AgendaRound): string | null {
 
 type Resolver = (state: GameState, agenda: AgendaRound, outcome: string) => GameState
 
+/** The law attached and its value change (if any) applied, but the ongoing effect needs engine support
+ * that does not exist yet — say so in the log instead of pretending. */
+function notEnforced(state: GameState, name: string, what: string): GameState {
+  return { ...state, log: [...state.log, { t: 'info', text: `${name}: the law is attached, but ${what} is not enforced by the engine yet` }] }
+}
+
 const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
+  senate_sanctuary: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    return planet ? attachLaw(state, 'senate_sanctuary', outcome, { influence: planet.influence + 2 }) : state
+  },
+  terraforming_initiative: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    return planet ? attachLaw(state, 'terraforming_initiative', outcome, { resources: planet.resources + 1, influence: planet.influence + 1 }) : state
+  },
+  core_mining: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    if (!planet) return state
+    let next = attachLaw(state, 'core_mining', outcome, { resources: planet.resources + 2 })
+    const sysId = systemOfPlanet(next, outcome)
+    if (sysId && planet.ground.length > 0) next = destroyUnits(next, sysId, planet.ground.slice(0, 1))
+    return next
+  },
+  compensated_disarmament: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    const sysId = systemOfPlanet(state, outcome)
+    if (!planet || !sysId || planet.owner === null) return state
+    const destroyed = planet.ground.length
+    if (destroyed === 0) return state
+    const next = destroyUnits(state, sysId, planet.ground)
+    const players = [...next.players] as GameState['players']
+    players[planet.owner] = { ...players[planet.owner], tradeGoods: players[planet.owner].tradeGoods + destroyed }
+    return { ...next, players }
+  },
+  minister_of_war: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    const sysId = systemOfPlanet(state, outcome)
+    if (!planet || !sysId) return state
+    let next = destroyUnits(state, sysId, [...planet.ground, ...planet.structures])
+    // Ruling (a choice the engine takes for the table): "the player who controls that planet chooses 1
+    // player with the fewest victory points" resolves to the lowest-VP seat, ties to the lowest seat.
+    const controller = planet.owner
+    if (controller === null) return next
+    const seats = next.players.map((_, i) => i as Seat)
+    const fewest = seats.reduce((best, s) => next.players[s].vp < next.players[best].vp ? s : best, seats[0])
+    if (next.players[fewest].reinforcements.infantry < 1) return next
+    const players = [...next.players] as GameState['players']
+    players[fewest] = { ...players[fewest], reinforcements: { ...players[fewest].reinforcements, infantry: players[fewest].reinforcements.infantry - 1 } }
+    const infantry = { id: next.nextUnitId, type: 'infantry' as const, owner: fewest, damaged: false }
+    next = {
+      ...withPlanet({ ...next, players, nextUnitId: next.nextUnitId + 1 }, outcome, p => ({ ...p, ground: [...p.ground, infantry] })),
+      log: [...next.log, { t: 'info', text: `Minister of War: seat ${fewest} (fewest VP) places 1 infantry on ${planet.name}` }],
+    }
+    return next
+  },
+  // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
+  // the law is at least visible in the state (Elect Law needs it too), and the resolution says so.
+  demilitarized_zone: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'demilitarized_zone', outcome), 'Demilitarized Zone', 'landing/production ban'),
+  holy_planet_of_ixth: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'holy_planet_of_ixth', outcome), 'Holy Planet of Ixth', 'the VP swings and the PRODUCTION ban'),
+  research_team_biotic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_biotic', outcome), 'Research Team: Biotic', 'the prerequisite ignore'),
+  research_team_cybernetic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_cybernetic', outcome), 'Research Team: Cybernetic', 'the prerequisite ignore'),
+  research_team_propulsion: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_propulsion', outcome), 'Research Team: Propulsion', 'the prerequisite ignore'),
+  research_team_warfare: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_warfare', outcome), 'Research Team: Warfare', 'the prerequisite ignore'),
   economic_equality: (state, _agenda, outcome) => {
     const players = state.players.map(p => ({
       ...p, tradeGoods: outcome === 'For' ? 5 : 0,

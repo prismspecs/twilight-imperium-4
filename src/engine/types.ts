@@ -28,6 +28,7 @@ export interface Planet {
   owner: Seat | null; exhausted: boolean
   ground: Unit[]        // infantry
   structures: Unit[]    // spacedock, pds
+  attachments?: string[]           // ids of law agendas attached to this planet (Senate Sanctuary and friends)
 }
 export interface System {
   id: string; name: string
