@@ -625,6 +625,24 @@ function wonBy(state: GameState, ctx: Ctx, winner: Owner): GameState {
 
 /** Cargo above the remaining capacity is destroyed when the combat is over. */
 function endCombat(state: GameState, ctx: Ctx): GameState {
+  // Technological Singularity (Nekro): once per combat, after opponent loses a unit,
+  // you may take a technology they own.
+  const attacker = ctx.attacker
+  const defender = ctx.defender
+  if (attacker !== undefined && defender !== undefined) {
+    const attackerFaction = state.players[attacker]?.faction
+    const defenderFaction = state.players[defender]?.faction
+    if (attackerFaction === 'nekro' && defenderFaction !== undefined && defenderFaction !== 'nekro') {
+      const defenderTechs = state.players[defender]?.techs ?? []
+      if (defenderTechs.length > 0) {
+        const stolenTech = defenderTechs[0]
+        const updatedPlayers = [...state.players] as GameState['players']
+        updatedPlayers[attacker] = { ...updatedPlayers[attacker], techs: [...(updatedPlayers[attacker]?.techs ?? []), stolenTech] }
+        updatedPlayers[defender] = { ...updatedPlayers[defender], techs: defenderTechs.filter(t => t !== stolenTech) }
+        return trimCargo(trimCargo({ ...state, players: updatedPlayers, log: [...state.log, { t: 'info', text: `seat ${attacker} steals ${stolenTech} from seat ${defender} via Technological Singularity` }] }, ctx.systemId, attacker), ctx.systemId, defender)
+      }
+    }
+  }
   return trimCargo(trimCargo(state, ctx.systemId, ctx.attacker), ctx.systemId, ctx.defender)
 }
 
