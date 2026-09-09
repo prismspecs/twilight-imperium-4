@@ -4,7 +4,7 @@ import { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, drawActionCards, pl
 import { applyMove, legalMoves, validateMove } from './index'
 import { PLAYABLE_REACTION_CARDS } from './reactions'
 import { createGame, shuffledActionCards } from './setup'
-import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
+import { BASE_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
 const ALL_PLAYABLE_CARDS: readonly string[] = [...PLAYABLE_ACTION_CARDS, ...PLAYABLE_REACTION_CARDS]
@@ -34,14 +34,14 @@ describe('R9 the action card deck', () => {
   })
 
   it('starts a game with a full deck, an empty discard pile and empty hands', () => {
-    const state = createGame(DUEL_CONFIG, 3)
+    const state = createGame(BASE_CONFIG, 3)
     expect(state.actionCardDeck.length).toBe(ALL_PLAYABLE_CARDS.length)
     expect(state.actionCardDiscard).toEqual([])
     for (const p of state.players) expect(p.actionCards).toEqual([])
   })
 
   it('draws off the top of the deck into the hand', () => {
-    const state = createGame(DUEL_CONFIG, 3)
+    const state = createGame(BASE_CONFIG, 3)
     const top = state.actionCardDeck.slice(0, 2)
     const drawn = drawActionCards(state, 1, 2, 5)
     expect(drawn.players[1].actionCards).toEqual(top)
@@ -50,7 +50,7 @@ describe('R9 the action card deck', () => {
   })
 
   it('shuffles the discard pile back in when the deck runs out', () => {
-    const state = createGame(DUEL_CONFIG, 3)
+    const state = createGame(BASE_CONFIG, 3)
     const empty: GameState = { ...state, actionCardDeck: [], actionCardDiscard: ['war_effort', 'uprising'] }
     const drawn = drawActionCards(empty, 0, 2, 5)
     expect([...drawn.players[0].actionCards].sort()).toEqual(['uprising', 'war_effort'])
@@ -59,7 +59,7 @@ describe('R9 the action card deck', () => {
   })
 
   it('draws nothing at all when deck and discard pile are both empty, and says so', () => {
-    const state = createGame(DUEL_CONFIG, 3)
+    const state = createGame(BASE_CONFIG, 3)
     const empty: GameState = { ...state, actionCardDeck: [], actionCardDiscard: [] }
     const drawn = drawActionCards(empty, 0, 2, 5)
     expect(drawn.players[0].actionCards).toEqual([])
@@ -67,7 +67,7 @@ describe('R9 the action card deck', () => {
   })
 
   it('holds the hand at the limit of seven and discards the surplus', () => {
-    const state = createGame(DUEL_CONFIG, 3)
+    const state = createGame(BASE_CONFIG, 3)
     const full = withHand(state, 0, state.actionCardDeck.slice(0, HAND_LIMIT))
     const drawn = drawActionCards(full, 0, 2, 5)
     expect(drawn.players[0].actionCards.length).toBe(HAND_LIMIT)

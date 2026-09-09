@@ -11,7 +11,7 @@
  */
 import { playMatch } from '../src/ai'
 import { PERSONALITIES, type ScoreWeights } from '../src/ai/score'
-import { DUEL_CONFIG } from '../src/engine/testUtils'
+import { BASE_CONFIG } from '../src/engine/testUtils'
 
 const args = process.argv.slice(2)
 const seedCount = Number.parseInt(args[0] ?? '20', 10) || 20
@@ -28,7 +28,7 @@ let corrupt = 0
 for (let a = 0; a < names.length; a += 1) {
   for (let b = 0; b < names.length; b += 1) {
     for (let seed = 1; seed <= seedCount; seed += 1) {
-      const r = playMatch(DUEL_CONFIG, seed, [weights[a], weights[b]])
+      const r = playMatch(BASE_CONFIG, seed, [weights[a], weights[b]])
       if (r.failed !== null) { corrupt += 1; continue }
       if (r.winner === 0) stats[a][b].w += 1
       else if (r.winner === 1) stats[a][b].l += 1

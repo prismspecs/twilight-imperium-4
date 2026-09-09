@@ -12,6 +12,9 @@ Remaining (alphabetical by faction):
 - yssaril: stall_tactics, scheming, crafty
 
 Known limitations of current wirings (rulings taken during execution, need design passes):
+- arborec: the Letani Warriors' PRODUCTION ability (pooled, can build infantry without a dock,
+  lrr-factions.md 39-43) is not implemented; neither are mechs (the dock-producible Letani Behemoth,
+  lrr-factions.md 76). Mitosis itself (no dock-built infantry, mandatory status-phase placement) is wired.
 - nekro propagation: grants 3 strategy tokens instead of researching technology (no tech-choice UI).
 - nekro galactic_threat: the seat is correctly skipped in the vote order; the outcome-prediction tech steal is not wired.
 - agendas: Elect Planet is enumerated and Senate Sanctuary/Terraforming Initiative/Core Mining/Compensated

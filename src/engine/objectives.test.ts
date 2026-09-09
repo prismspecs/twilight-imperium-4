@@ -3,7 +3,7 @@ import { objectiveDef } from '../data/objectives'
 import { createGame, shuffledObjectives } from './setup'
 import { controlsMecatol, fulfils, payObjective, payableObjectives, scoreObjective, scoreable } from './objectives'
 import {
-  DUEL_CONFIG,
+  BASE_CONFIG,
   deepFreeze,
   toActionPhase,
   withPlanetOwner,
@@ -435,7 +435,7 @@ describe('scoring and deck setup', () => {
   })
 
   it('createGame reveals 1 Stage I objective at setup', () => {
-    const game = createGame(DUEL_CONFIG, 7)
+    const game = createGame(BASE_CONFIG, 7)
     expect(game.objectiveOrder).toHaveLength(10)
     expect(game.publicObjectives).toEqual([game.objectiveOrder[0]])
     expect(objectiveDef(game.publicObjectives[0])?.stage).toBe('stage1')

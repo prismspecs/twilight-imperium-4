@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../engine'
-import { DUEL_CONFIG } from '../engine/testUtils'
+import { BASE_CONFIG } from '../engine/testUtils'
 import type { Move } from '../engine/types'
 import { playerView } from './fog'
 import { DEFAULT_WEIGHTS, scoreMove, scoreTech } from './score'
 
 describe('scoreTech and calibrated tech scoring', () => {
   it('scores signature faction techs higher than low-affinity techs', () => {
-    const state = createGame(DUEL_CONFIG, 101)
+    const state = createGame(BASE_CONFIG, 101)
     const view = playerView(state, 0) // seat 0 is L1Z1X
     const w = DEFAULT_WEIGHTS
 
@@ -18,7 +18,7 @@ describe('scoreTech and calibrated tech scoring', () => {
   })
 
   it('elevates unit upgrade techs when develop_weaponry is an active public objective', () => {
-    let state = createGame(DUEL_CONFIG, 102)
+    let state = createGame(BASE_CONFIG, 102)
     state = {
       ...state,
       publicObjectives: ['develop_weaponry'],
@@ -34,7 +34,7 @@ describe('scoreTech and calibrated tech scoring', () => {
   })
 
   it('differentiates secondary technology moves based on the selected techId', () => {
-    const state = createGame(DUEL_CONFIG, 103)
+    const state = createGame(BASE_CONFIG, 103)
     const view = playerView(state, 0) // L1Z1X
     const w = DEFAULT_WEIGHTS
 
@@ -59,7 +59,7 @@ describe('scoreTech and calibrated tech scoring', () => {
   })
 
   it('differentiates strategic technology moves based on tech1 and tech2 choices', () => {
-    const state = createGame(DUEL_CONFIG, 104)
+    const state = createGame(BASE_CONFIG, 104)
     const view = playerView(state, 1) // Letnev
     const w = DEFAULT_WEIGHTS
 

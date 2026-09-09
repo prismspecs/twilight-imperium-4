@@ -15,7 +15,9 @@ export function deepFreeze<T>(value: T): T {
   return value
 }
 
-export const DUEL_CONFIG: GameConfig = {
+/** The base test fixture: the smallest game the generated galaxy supports (2 players, L1Z1X vs Letnev).
+ *  It is not the removed duel variant — that one had a fixed map and trade posts; this is the full game. */
+export const BASE_CONFIG: GameConfig = {
   players: [{ faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }],
   speaker: 0,
 }
@@ -27,7 +29,7 @@ export const SAAR_CONFIG: GameConfig = {
 }
 
 /** A new game plus the whole snake draft, so the state sits in the action phase with `active` to hand. */
-export function toActionPhase(seed = 1, active: Seat = 0, config: GameConfig = DUEL_CONFIG): GameState {
+export function toActionPhase(seed = 1, active: Seat = 0, config: GameConfig = BASE_CONFIG): GameState {
   let s = createGame(config, seed)
   for (const card of ['warfare', 'leadership', 'imperial', 'technology'] as StrategyCardId[]) {
     const r = applyMove(s, { type: 'pickStrategyCard', card }, 0)

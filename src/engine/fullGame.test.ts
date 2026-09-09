@@ -5,7 +5,7 @@ import { otherSeat } from './actionPhase'
 import { checkFleet, homeSystemOf } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
-import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { BASE_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
 const MAX_MOVES = 3000
@@ -76,7 +76,7 @@ interface GameRun {
 function playGame(seed: number): GameRun {
   let bits = (seed * 2654435761) >>> 0
   const rng = () => { bits = (Math.imul(bits, 1664525) + 1013904223) >>> 0; return bits / 4294967296 }
-  let state = createGame(DUEL_CONFIG, seed)
+  let state = createGame(BASE_CONFIG, seed)
   const landed = new Map<string, Set<Seat>>()
   let moves = 0
   let attempts = 0
@@ -323,7 +323,7 @@ describe('R3.1 to R3.3 full game', () => {
   it('the log replays: the logged moves and their logged seeds rebuild the final state', () => {
     for (const seed of [1, 13, 89]) {
       const { state } = runGame(seed)
-      let replayed = createGame(DUEL_CONFIG, seed)
+      let replayed = createGame(BASE_CONFIG, seed)
       // the log carries the seed of every move, so a replay needs nothing the engine did not record
       for (const entry of state.log) {
         if (entry.t !== 'move') continue

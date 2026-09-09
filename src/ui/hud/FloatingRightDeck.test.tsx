@@ -3,7 +3,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../../engine/setup'
-import { DUEL_CONFIG, toActionPhase, withPlayer } from '../../engine/testUtils'
+import { BASE_CONFIG, toActionPhase, withPlayer } from '../../engine/testUtils'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -71,7 +71,7 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
   })
 
   it('allows drafting strategy cards in strategy phase and displays trade good bonuses', () => {
-    let state = createGame(DUEL_CONFIG, 42)
+    let state = createGame(BASE_CONFIG, 42)
     state = {
       ...state,
       strategyPool: state.strategyPool.map(c => c.id === 'leadership' ? { ...c, bonus: 2 } : c),

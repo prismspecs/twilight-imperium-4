@@ -5,7 +5,7 @@ import { capacity, fleetPoolLimit, nonFighterShips, productionCost } from './eco
 import { applyMove, legalMoves, validateMove } from './index'
 import { movableShips } from './movement'
 import { createGame, unitsOf } from './setup'
-import { DUEL_CONFIG, cardsUsed, deepFreeze, toActionPhase, withPlayer, withTactical, withUnits } from './testUtils'
+import { BASE_CONFIG, cardsUsed, deepFreeze, toActionPhase, withPlayer, withTactical, withUnits } from './testUtils'
 import type { GameState, Move, Seat } from './types'
 
 function draft(state: GameState): GameState {
@@ -188,7 +188,7 @@ describe('tactical legal moves', () => {
     expect(ended.value.active).toBe(1)
   })
   it('a seeded 200-move run keeps every invariant', () => {
-    let s = cardsUsed(draft(createGame(DUEL_CONFIG, 9)))
+    let s = cardsUsed(draft(createGame(BASE_CONFIG, 9)))
     let seedState = 12345
     const rng = () => { seedState = (Math.imul(seedState, 1664525) + 1013904223) >>> 0; return seedState / 4294967296 }
     let applied = 0
