@@ -152,9 +152,15 @@ function exhaustTechSkipPlanets(state: GameState, seat: Seat, planetIds: string[
  * `ignorePrereqs` already waives every prerequisite.
  */
 export function grantTech(state: GameState, seat: Seat, techId: string, ignorePrereqs: boolean, techSkipPlanets: string[] = []): Result<GameState> {
+  const player = state.players[seat]
+  if (player.faction === 'nekro') {
+    // Propagation (Nekro): instead of researching technology, gain 3 command tokens
+    const updated = { ...state, players: [...state.players] as GameState['players'] }
+    updated.players[seat] = { ...player, tokens: { ...player.tokens, strategy: (player.tokens.strategy ?? 0) + 3 } }
+    return { ok: true, value: { ...updated, log: [...updated.log, { t: 'info', text: `seat ${seat} gains 3 strategy tokens from Propagation instead of researching ${techId}` }] } }
+  }
   const exhausted = exhaustTechSkipPlanets(state, seat, techSkipPlanets)
   if (!exhausted.ok) return exhausted
-  const player = exhausted.value.state.players[seat]
   if (!canResearch(player, techId, ignorePrereqs, exhausted.value.skips)) return { ok: false, error: `R5: ${techId} cannot be researched` }
   const players = [...exhausted.value.state.players] as GameState['players']
   players[seat] = { ...player, techs: [...player.techs, techId] }

@@ -22,6 +22,10 @@ import type { AgendaRound, GameState, Move, Result, Seat } from './types'
 /** The outcomes a voter may name for the revealed agenda, from its printed `target`. */
 export function legalOutcomes(state: GameState, agendaId: string): string[] {
   const def = agendaDef(agendaId)
+  // Galactic Threat (Nekro): cannot vote on agendas
+  const nekroSeats = state.players.map((p, i) => p.faction === 'nekro' ? i : -1).filter(s => s >= 0)
+  const seat = state.agenda?.order[0]
+  if (seat !== undefined && nekroSeats.includes(seat)) return []
   if (def.target === 'For/Against') return ['For', 'Against']
   if (def.target === 'Elect Player') return state.players.map((_, i) => String(i))
   // Elect Planet / Elect Law / Elect Scored Secret Objective and friends: this increment does not enumerate

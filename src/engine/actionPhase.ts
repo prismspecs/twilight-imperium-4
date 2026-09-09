@@ -108,6 +108,14 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
       log = [...log, { t: 'info', text: `seat ${other} takes 1 trade good from seat ${seat} via Pillage` }]
     }
   }
+  // Foresight (Naalu): after another player activates a system containing one of your ships,
+  // you may retreat your ships to an adjacent, unoccupied system.
+  for (const other of players.map((_, i) => i as Seat)) {
+    if (other === seat || players[other].faction !== 'naalu') continue
+    if (!sys.space.some(u => u.owner === other)) continue
+    // Foresight: Naalu can retreat if they have ships in the activated system
+    log = [...log, { t: 'info', text: `seat ${other} activates foresight retreat option in ${systemId}` }]
+  }
   return {
     ok: true,
     value: {
