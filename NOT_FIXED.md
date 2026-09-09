@@ -14,6 +14,14 @@ Remaining (alphabetical by faction):
 Known limitations of current wirings (rulings taken during execution, need design passes):
 - nekro propagation: grants 3 strategy tokens instead of researching technology (no tech-choice UI).
 - nekro galactic_threat: the seat is correctly skipped in the vote order; the outcome-prediction tech steal is not wired.
+- agendas: Elect Planet is enumerated and Senate Sanctuary/Terraforming Initiative/Core Mining/Compensated
+  Disarmament/Minister of War resolve; the attached ongoing effects (Demilitarized Zone landing ban, Holy
+  Planet of Ixth VP swings, Research Team prerequisite ignores) are recorded in `Planet.attachments` but not
+  enforced. Elect Law and Elect Scored Secret Objective are still abstain-only stubs (laws in play are only
+  tracked as planet attachments so far).
+- planet resource/influence changes from attached laws are live in the engine but invisible on the board:
+  the generated galaxy's tile art bakes the printed values into the image, so a modified planet needs a
+  badge overlay that does not exist yet.
 - xxcha quash: auto-reveals the next agenda without a player choice; no rider/when-window handling.
 - naalu foresight: reaction-log hook in startTactical, not a full retreat-into-the-active-system mechanic.
 - hacan guild_ships: places the infantry automatically; LRR makes it a choice ("may place").
