@@ -62,6 +62,22 @@ describe('R10 the agenda dialog', () => {
     expect(screen.queryByTestId('agenda-result')).toBeNull()
   })
 
+  it('shows the first agenda\'s result even though the second agenda is revealed in the same move', () => {
+    // resolveAgendaRound reveals slot 2 in the same transition that closes slot 1, so state.agenda is
+    // never null between them — and the overlay only fired on null. The first agenda's outcome never
+    // appeared at all.
+    const s = { ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: ['economic_equality'] }
+    const { store } = renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('agenda-outcome-For'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 1 votes For
+    fireEvent.click(screen.getByTestId('agenda-outcome-Against'))
+    fireEvent.click(screen.getByTestId('btn-agenda-confirm'))         // seat 0 (speaker) votes Against, slot 1 resolves
+    expect(screen.getByTestId('agenda-result').textContent).toContain('Mutiny resolves: Against')
+    expect(store().session?.state.agenda?.slot).toBe(2)               // the vote has already moved on
+    fireEvent.click(screen.getByTestId('agenda-result-continue'))
+    expect(screen.getByTestId('agenda-dialog').textContent).toContain('Economic Equality')
+  })
+
   it('R10 regression: the resolved-agenda overlay survives whatever move happens next, not just the instant it appears', () => {
     // the old log-scanning banner looked only at entries since the most recent move, so the very next move
     // (an AI's own, or the next player's) made the outcome invisible before anyone could read it

@@ -49,12 +49,18 @@ function handoffFor(config: GameConfig | undefined, prevState: GameState, next: 
 }
 
 /** R10: the log entries an agenda's resolution just added — reveal, outcome, any riders and effects — the
- * moment `castVote` closes it out (`prevState.agenda` non-null, `next.agenda` null). The dialog that showed
- * the vote disappears in that same instant since `state.agenda` is what keeps it open, so without this the
- * player never sees what the vote actually decided; held here until dismissed, it does. A fully unattended
+ * moment `castVote` closes it out. The dialog that showed the vote disappears in that same instant since
+ * `state.agenda` is what keeps it open, so without this the player never sees what the vote actually
+ * decided; held here until dismissed, it does. Note the close-out is not just `next.agenda` going null:
+ * resolving the first agenda reveals the second in the same move, so the slot (or the card) changing is
+ * the first agenda closing out — otherwise its result would never be shown at all. A fully unattended
  * (all-AI) game has nobody to dismiss it, so it never blocks there — same reasoning as `handoffFor`. */
 function agendaResultFor(config: GameConfig | undefined, prevState: GameState, next: GameState): LogEntry[] | null {
-  if (humanSeats(config) < 1 || prevState.agenda === null || next.agenda !== null) return null
+  if (humanSeats(config) < 1 || prevState.agenda === null) return null
+  const closedOut = next.agenda === null
+    || next.agenda.slot !== prevState.agenda.slot
+    || next.agenda.revealed !== prevState.agenda.revealed
+  if (!closedOut) return null
   const added = next.log.slice(prevState.log.length)
   return added.length > 0 ? added : null
 }
