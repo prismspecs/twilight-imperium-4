@@ -478,13 +478,17 @@ button { font-family: inherit; }
   left: 8px;
 }
 /* above the floating right deck (z-index 80): a modal dialog's own controls must never sit behind that
-   persistent HUD panel. The deck in turn floats one step higher (86) and the modal stage pads itself out
-   of the deck's way, so the deck's tabs (My Faction, objectives, strategy) stay clickable while a dialog
-   is open and the dialog still never slides underneath it on wide screens; on narrow ones the deck can
-   always be collapsed to reach a control it covers. */
+   persistent HUD panel. The deck in turn floats one step higher (86) and stays clickable while a dialog
+   is open; on wide screens the stage's absolutely-centred dialogs shift left by half the deck's width
+   (left:50% resolves against the full padding box, padding included, so padding alone would not move
+   them), keeping them clear of the deck; on narrow ones the deck can always be collapsed to reach a
+   control it covers. */
 .stage.has-modal { z-index: 85; }
 @media (min-width: 1300px) {
-  .stage.has-modal.right-deck-open { padding-right: 362px; box-sizing: border-box; }
+  .stage.has-modal.right-deck-open .dialog,
+  .stage.has-modal.right-deck-open .drawer { left: calc(50% - 181px); }
+  /* the tech grid is the widest dialog: with the deck open it gets the visible width beside it, never more */
+  .stage.has-modal.right-deck-open .drawer.tech-dialog { width: calc(100vw - 690px); }
 }
 .stage > .flows-4b { display: contents; }
 
