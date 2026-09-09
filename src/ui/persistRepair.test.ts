@@ -38,4 +38,20 @@ describe('loadGame repair of array-corrupted players', () => {
     expect(loaded.history.length).toBe(1)
     expect(Array.isArray(loaded.history[0].players)).toBe(true)
   })
+
+  it('drops the Nekro seat from a saved agenda vote order (the 6C6RRJ deadlock rescue)', () => {
+    const s = session('RPAIR2')
+    const base = s.state
+    const nekroPlayers = base.players.map((p, i) => i === 1 ? { ...p, faction: 'nekro' as const } : p)
+    s.state = {
+      ...base, players: nekroPlayers, phase: 'agenda' as const, custodiansToken: false,
+      agenda: { revealed: 'mutiny', slot: 1 as const, votes: {}, order: [1, 0], barredFromVoting: [] },
+      active: 1,
+    }
+    saveGame(s)
+    const loaded = loadGame('RPAIR2')
+    if (loaded === null) throw new Error('game did not load')
+    expect(loaded.state.agenda?.order).toEqual([0])
+    expect(loaded.state.active).toBe(0)
+  })
 })

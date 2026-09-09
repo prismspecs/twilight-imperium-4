@@ -88,6 +88,15 @@ function normalise(state: GameState, seed: number): GameState {
   if (!Array.isArray(raw.actionCardDeck)) {
     next = { ...next, actionCardDeck: shuffledActionCards(seed), actionCardDiscard: [], agendaDeck: shuffledAgendas(seed) }
   }
+  // A game saved with the Nekro seat in the agenda vote order (the 6C6RRJ deadlock: Galactic Threat says
+  // it cannot vote, but legalOutcomes just answered [] for it, leaving the phase unfinishable) gets the
+  // seat dropped on load, the way revealAgenda now filters it for new rounds.
+  if (next.agenda !== null && Array.isArray(next.agenda.order)) {
+    const order = next.agenda.order.filter(s => next.players[s]?.faction !== 'nekro')
+    if (order.length !== next.agenda.order.length) {
+      next = { ...next, agenda: { ...next.agenda, order }, active: order[0] ?? next.speaker }
+    }
+  }
   if (Array.isArray(next.players)) {
     next = { ...next, players: next.players.map(p => ({ ...p, actionCards: Array.isArray(p.actionCards) ? p.actionCards : [] })) }
   }
