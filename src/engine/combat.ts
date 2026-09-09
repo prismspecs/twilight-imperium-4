@@ -787,13 +787,18 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
 export function retreatTargets(state: GameState, seat: Seat): string[] {
   const tac = state.tactical
   if (!tac) return []
+  const isSaar = state.players[seat].faction === 'saar'
   return neighbours(state.systems, tac.systemId).filter(id => {
     const sys = state.systems[id]
     if (sys.space.some(u => u.owner !== seat && isShip(u.type))) return false
     return sys.activatedBy.includes(seat)
       || sys.space.some(u => u.owner === seat)
       || sys.planets.some(p => p.ground.some(u => u.owner === seat) || p.structures.some(u => u.owner === seat))
-  })
+  }).concat(
+    isSaar ? Object.entries(state.systems)
+      .filter(([, sys]) => sys.space.some(u => u.owner === seat) || sys.activatedBy.includes(seat))
+      .map(([id]) => id).filter(id => !neighbours(state.systems, tac.systemId).includes(id)) : []
+  )
 }
 
 /** R4.1 step 5: announcement only; the next `combatRound` fights the round and then carries it out. */
