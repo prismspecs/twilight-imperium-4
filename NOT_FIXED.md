@@ -13,6 +13,7 @@ Remaining (alphabetical by faction):
 
 Known limitations of current wirings (rulings taken during execution, need design passes):
 - nekro propagation: grants 3 strategy tokens instead of researching technology (no tech-choice UI).
+- nekro galactic_threat: the seat is correctly skipped in the vote order; the outcome-prediction tech steal is not wired.
 - xxcha quash: auto-reveals the next agenda without a player choice; no rider/when-window handling.
 - naalu foresight: reaction-log hook in startTactical, not a full retreat-into-the-active-system mechanic.
 - hacan guild_ships: places the infantry automatically; LRR makes it a choice ("may place").
