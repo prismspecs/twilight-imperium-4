@@ -38,9 +38,9 @@ export const UPGRADE_TECH: Partial<Record<UnitType, string>> = {
 
 /**
  * A faction's own named unit upgrade occupies the same tech-tree slot as the generic one (same prerequisite,
- * mutually exclusive by having its own id) but prints different stats. Sardakk's Exotrireme II and L1Z1X's
- * Super-Dreadnought II also carry an active ability beyond stats, so they stay special-cased in `unitStats`
- * below rather than joining this table.
+ * mutually exclusive by having its own id) but prints different stats. L1Z1X's Super-Dreadnought II also
+ * carries an active ability beyond stats, so it stays special-cased in `unitStats` below rather than
+ * joining this table.
  */
 const FACTION_UPGRADE_TECH: Partial<Record<UnitType, Partial<Record<FactionId, string>>>> = {
   infantry: { sol: 'spec_ops_ii' },

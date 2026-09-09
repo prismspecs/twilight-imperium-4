@@ -4,7 +4,7 @@ import type { FactionId, System } from './types'
  * Adjacency is state-driven: it reads the systems that were placed in the game (each carries its hex
  * `neighbours`), not a static map module, so a generated galaxy works the same as the fixed duel map.
  * Wormholes link every pair of systems that share a wormhole type, on top of hex adjacency.
- * Ghosts of Creuss (Quantum Entanglement) treat delta as alpha/beta and vice versa.
+ * Ghosts of Creuss (Quantum Entanglement) treat all alpha and beta wormholes as adjacent.
  */
 type Systems = Readonly<Record<string, System>>
 
@@ -24,8 +24,7 @@ export function neighbours(systems: Systems, id: string, faction?: FactionId, li
         if (s.wormhole === sys.wormhole) {
           out.add(s.id)
         } else if (isCreuss) {
-          if ((sys.wormhole === 'delta' && (s.wormhole === 'alpha' || s.wormhole === 'beta')) ||
-              (s.wormhole === 'delta' && (sys.wormhole === 'alpha' || sys.wormhole === 'beta'))) {
+          if ((sys.wormhole === 'alpha' || sys.wormhole === 'beta') && (s.wormhole === 'alpha' || s.wormhole === 'beta')) {
             out.add(s.id)
           }
         } else if (linkAlphaBeta && (sys.wormhole === 'alpha' || sys.wormhole === 'beta') && (s.wormhole === 'alpha' || s.wormhole === 'beta')) {

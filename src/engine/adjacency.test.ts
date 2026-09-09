@@ -14,6 +14,7 @@ const systems: Record<string, System> = {
   f: { id: 'f', name: 'F', planets: [], wormhole: null, neighbours: ['mecatol', 'a', 'e'], home: null, space: [], activatedBy: [] },
   alphaA: { id: 'alphaA', name: 'AlphaA', planets: [], wormhole: 'alpha', neighbours: ['alphaB'], home: null, space: [], activatedBy: [] },
   alphaB: { id: 'alphaB', name: 'AlphaB', planets: [], wormhole: 'alpha', neighbours: ['alphaA'], home: null, space: [], activatedBy: [] },
+  beta: { id: 'beta', name: 'Beta', planets: [], wormhole: 'beta', neighbours: [], home: null, space: [], activatedBy: [] },
 }
 
 describe('R1 adjacency: the centre touches every ring system', () => {
@@ -35,23 +36,25 @@ describe('R1 adjacency: the centre touches every ring system', () => {
     expect(adjacent(systems, 'alphaA', 'alphaB')).toBe(true)
     expect(neighbours(systems, 'alphaA').sort()).toEqual(['alphaB'])
   })
-  it('Quantum Entanglement: Ghosts of Creuss connects delta wormholes to alpha and beta wormholes', () => {
+  it('Quantum Entanglement: Ghosts of Creuss connects all alpha and beta wormholes to each other for Creuss', () => {
     const creussSystems: Record<string, System> = {
       ...systems,
-      'creuss-gate': { id: 'creuss-gate', name: 'Creuss Gate', planets: [], wormhole: 'delta', neighbours: ['alphaA'], home: null, space: [], activatedBy: [] },
+      'creuss-gate': { id: 'creuss-gate', name: 'Creuss Gate', planets: [], wormhole: 'delta', neighbours: [], home: null, space: [], activatedBy: [] },
       'creuss-home': { id: 'creuss-home', name: 'Creuss', planets: [], wormhole: 'delta', neighbours: [], home: 0, space: [], activatedBy: [] },
     }
     // For non-Creuss: delta only connects to delta
     expect(adjacent(creussSystems, 'creuss-gate', 'creuss-home')).toBe(true)
     expect(adjacent(creussSystems, 'creuss-gate', 'alphaA')).toBe(false)
     expect(adjacent(creussSystems, 'creuss-gate', 'alphaB')).toBe(false)
-    // For Creuss: delta connects to alpha
-    expect(adjacent(creussSystems, 'creuss-gate', 'alphaA', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-gate', 'alphaB', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'creuss-home', 'alphaA', 'creuss')).toBe(true)
-    // And vice-versa: alpha systems connect to delta systems for Creuss
-    expect(adjacent(creussSystems, 'alphaA', 'creuss-home', 'creuss')).toBe(true)
-    expect(adjacent(creussSystems, 'alphaB', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'beta')).toBe(false)
+    // For Creuss: alpha systems connect to each other (and to beta) via wormhole link; delta stays separate
+    expect(adjacent(creussSystems, 'alphaA', 'alphaB', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'alphaA', 'beta', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'alphaB', 'beta', 'creuss')).toBe(true)
+    // Delta (Creuss Gate/home) connects only to delta via wormhole; not to alpha for Creuss
+    expect(adjacent(creussSystems, 'creuss-gate', 'creuss-home', 'creuss')).toBe(true)
+    expect(adjacent(creussSystems, 'creuss-gate', 'alphaA', 'creuss')).toBe(false)
+    expect(adjacent(creussSystems, 'creuss-home', 'alphaA', 'creuss')).toBe(false)
     expect(adjacent(creussSystems, 'alphaA', 'creuss-home', 'letnev')).toBe(false)
   })
 })
