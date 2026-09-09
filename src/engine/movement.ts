@@ -1,7 +1,7 @@
 import { tileByNumber } from '../data/tiles'
 import { isMovable, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, hasTech, returnToReinforcements, statsOwner, trimCargo } from './board'
+import { checkFleet, hasTech, homeSystemOf, returnToReinforcements, statsOwner, trimCargo } from './board'
 import { ignoresFleets, moveBonus, tacticalEffect, wormholesLinked } from './effects'
 import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
@@ -135,8 +135,11 @@ function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
   // Speed boosts an existing move value, it does not grant one a unit does not otherwise have.
   // Slipstream (Creuss): +1 move when starting movement in home system or wormhole system.
   const isCreuss = player.faction === 'creuss'
-  const sysId = state.systems ? Object.entries(state.systems).find(([, s]) => s.space.some(u => u.id === unit.id))?.[0] : undefined
-  const isHomeOrWormhole = isCreuss && (sysId === homeSystemOf(state, seat) || (sysId && state.systems?.[sysId]?.planets.some(p => p.id.includes('wormhole'))))
+  const sysId = Object.entries(state.systems).find(([, s]) => s.space.some(u => u.id === unit.id))?.[0]
+  // LRR: Slipstream gives +1 to a ship that starts in the Creuss home system or in any system containing
+  // a wormhole. Wormholes are a property of the system tile (`System.wormhole`), never of its planets.
+  const isHomeOrWormhole = isCreuss && sysId !== undefined
+    && (sysId === homeSystemOf(state, seat) || state.systems[sysId].wormhole !== null)
   const slipstreamBonus = isHomeOrWormhole ? 1 : 0
   return base > 0 ? base + moveBonus(state, seat) + slipstreamBonus : base
 }
