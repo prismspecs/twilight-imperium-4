@@ -67,11 +67,61 @@ describe('R10 agenda phase: entry and vote order', () => {
     expect(s.phase).not.toBe('agenda')
   })
 
+  it('Elect Planet: every controlled planet is a legal outcome (LRR agenda rule 10), never a bare abstain', () => {
+    // Senate Sanctuary in a live game offered only "Pass (no legal target to elect yet)" with a board
+    // full of controlled planets: the Elect Planet stub never enumerated real targets.
+    const s = toAgendaPhase(toActionPhase(), 'senate_sanctuary')
+    const outcomes = legalOutcomes(s, 'senate_sanctuary')
+    expect(outcomes).not.toEqual(['abstain'])
+    // every controlled planet is offered, unowned ones (e.g. Mecatol Rex under the custodians) are not
+    const controlled = Object.values(s.systems).flatMap(sys => sys.planets).filter(p => p.owner !== null).map(p => p.id)
+    expect(outcomes.slice().sort()).toEqual(controlled.slice().sort())
+  })
+
+  it('Senate Sanctuary: attaches to the elected planet and raises its influence by 2', () => {
+    let s = toAgendaPhase(toActionPhase(), 'senate_sanctuary')
+    const target = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1)
+    if (!target) throw new Error('no controlled planet in the fixture')
+    const before = target.influence
+    s = value(vote(s, target.id, []))
+    s = value(vote(s, target.id, []))
+    const elected = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.id === target.id)
+    expect(elected?.influence).toBe(before + 2)
+    expect(elected?.attachments).toContain('senate_sanctuary')
+  })
+
+  it('Core Mining: attaches, raises resources by 2 and destroys 1 infantry on the elected planet', () => {
+    let s = toAgendaPhase(toActionPhase(), 'core_mining')
+    const target = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1 && p.ground.length > 0)
+    if (!target) throw new Error('no garrisoned planet in the fixture')
+    const before = target.resources
+    const groundBefore = target.ground.length
+    s = value(vote(s, target.id, []))
+    s = value(vote(s, target.id, []))
+    const elected = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.id === target.id)
+    expect(elected?.resources).toBe(before + 2)
+    expect(elected?.attachments).toContain('core_mining')
+    expect(elected?.ground).toHaveLength(groundBefore - 1)
+  })
+
+  it('Compensated Disarmament: destroys every ground force on the elected planet, paying the controller 1 trade good each', () => {
+    let s = toAgendaPhase(toActionPhase(), 'compensated_disarmament')
+    const target = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1 && p.ground.length > 0)
+    if (!target) throw new Error('no garrisoned planet in the fixture')
+    const destroyed = target.ground.length
+    const goodsBefore = s.players[1].tradeGoods
+    s = value(vote(s, target.id, []))
+    s = value(vote(s, target.id, []))
+    const elected = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.id === target.id)
+    expect(elected?.ground).toHaveLength(0)
+    expect(s.players[1].tradeGoods).toBe(goodsBefore + destroyed)
+  })
+
   it('legalOutcomes reads the agenda\'s printed target: For/Against, Elect Player, or a safe abstain', () => {
     const s = toActionPhase()
     expect(legalOutcomes(s, 'mutiny')).toEqual(['For', 'Against'])
     expect(legalOutcomes(s, 'archived_secret')).toEqual(['0', '1'])
-    expect(legalOutcomes(s, 'core_mining')).toEqual(['abstain'])   // Elect Planet: not enumerated this increment
+    expect(legalOutcomes(s, 'judicial_abolishment')).toEqual(['abstain'])   // Elect Law: not enumerated this increment
   })
 
   it('agendaMoves offers one castVote per legal outcome, each suggesting every ready planet', () => {
@@ -211,7 +261,7 @@ describe('R10 resolvers', () => {
   })
 
   it('an agenda with no resolver still resolves the vote and logs that nothing was enforced', () => {
-    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'core_mining'), agendaDeck: [] as string[] })   // one round only
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'judicial_abolishment'), agendaDeck: [] as string[] })   // one round only
     s = value(vote(s, 'abstain', []))
     s = value(vote(s, 'abstain', []))
     expect(s.agenda).toBeNull()
