@@ -24,21 +24,23 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     expect(objEl.textContent).toContain('VP')
   })
 
-  it('switches between Objectives and Strategy tabs using TopBar buttons and deck tabs', () => {
+  it('switches between Objectives and Strategy tabs using the TopBar buttons (the deck itself carries no duplicate tabs)', () => {
     const state = toActionPhase()
     renderWithSession(state, <BoardScreen />)
 
     // Initially on objectives tab
-    expect(screen.getByTestId('tab-btn-objectives').className).toContain('active')
+    expect(screen.getByTestId('frd-title').textContent).toBe('Objectives')
+    expect(screen.queryByTestId('tab-btn-objectives')).toBeNull()   // the in-deck tabs are gone
 
-    // Switch to strategy via TopBar button
+    // Switch to strategy via the TopBar button
     fireEvent.click(screen.getByTestId('topbar-btn-strategy'))
-    expect(screen.getByTestId('tab-btn-strategy').className).toContain('active')
+    expect(screen.getByTestId('topbar-btn-strategy').className).toContain('active')
+    expect(screen.getByTestId('frd-title').textContent).toBe('Strategy Cards')
     expect(screen.getByTestId('strategy-card-leadership')).toBeTruthy()
 
-    // Switch back to objectives via deck tab
-    fireEvent.click(screen.getByTestId('tab-btn-objectives'))
-    expect(screen.getByTestId('tab-btn-objectives').className).toContain('active')
+    // And back to objectives
+    fireEvent.click(screen.getByTestId('topbar-btn-objectives'))
+    expect(screen.getByTestId('frd-title').textContent).toBe('Objectives')
   })
 
   it('toggles the floating deck collapsed and expanded state', () => {
@@ -78,7 +80,7 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
     const { store } = renderWithSession(state, <BoardScreen />)
 
     // Strategy tab is active by default in strategy phase
-    expect(screen.getByTestId('tab-btn-strategy').className).toContain('active')
+    expect(screen.getByTestId('frd-title').textContent).toBe('Strategy Cards')
     expect(screen.getByTestId('pick-prompt')).toBeTruthy()
 
     // Bonus trade goods are visible
@@ -136,7 +138,7 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
 
     // Click Faction button in TopBar
     fireEvent.click(screen.getByTestId('topbar-btn-faction'))
-    expect(screen.getByTestId('tab-btn-faction').className).toContain('active')
+    expect(screen.getByTestId('frd-title').textContent).toBe('My Faction')
     expect(screen.getByTestId('panel-faction')).toBeTruthy()
 
     // Faction hero and stats are rendered
@@ -159,7 +161,7 @@ describe('FloatingRightDeck and streamlined TopBar', () => {
 
     renderWithSession(state, <BoardScreen />)
     fireEvent.click(screen.getByTestId('topbar-btn-objectives'))
-    expect(screen.getByTestId('tab-btn-objectives').className).toContain('active')
+    expect(screen.getByTestId('frd-title').textContent).toBe('Objectives')
 
     const secretCard = screen.getByTestId('frd-secret-0-fwm')
     expect(secretCard).toBeTruthy()

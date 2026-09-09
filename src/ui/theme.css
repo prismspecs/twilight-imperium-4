@@ -1411,12 +1411,8 @@ button { font-family: inherit; }
   z-index: 86;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 14, 24, 0.92);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* no panel chrome: the content floats over the board, each block on its own little surface below */
+  background: transparent;
   overflow: hidden;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
@@ -1431,60 +1427,21 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  background: rgba(11, 17, 30, 0.98);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 4px 6px;
   gap: 10px;
 }
 
-.frd-tabs {
-  display: flex;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0;
-  padding: 3px;
-  gap: 3px;
-  flex: 1;
-}
-
-.frd-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  justify-content: center;
-  padding: 5px 8px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  color: #94a3b8;
+/* The deck has no panel chrome of its own — the section title floats over the board, so it gets its
+   contrast from a shadow, not a background. */
+.frd-title {
   font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.frd-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
-}
-
-.frd-tab-btn.active {
-  background: rgba(59, 130, 246, 0.35);
-  color: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.frd-tab-count {
-  font-family: var(--font-data);
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 0;
-  background: rgba(0, 0, 0, 0.4);
-  color: var(--gold);
+  color: var(--gold, #eab308);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+  padding-left: 6px;
 }
 
 .frd-close-btn {
@@ -1531,10 +1488,10 @@ button { font-family: inherit; }
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94a3b8;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 4px;
+  color: #cbd5e1;
+  padding-left: 6px;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.9);
 }
 
 /* My Faction: identity reference (abilities, flagship, starting tech) */
@@ -1718,9 +1675,20 @@ button { font-family: inherit; }
   border-radius: 0;
   white-space: nowrap;
 }
+.frd-slots, .frd-tot, .frd-econ-row, .frd-tech-list, .frd-flagship {
+  background: rgba(10, 14, 24, 0.66);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
 .frd-slots { margin-bottom: 6px; }
 .frd-tot { margin-top: 4px; margin-bottom: 6px; }
 .frd-econ-row { margin-top: 6px; margin-bottom: 6px; }
+/* the economy icons carry meaning (trade goods vs commodities vs cards), so they print a size up */
+.frd-econ-row .econ img { width: 22px; height: 22px; }
+.frd-econ-row .econ b { font-size: 15px; }
 .frd-empty-hint {
   font-family: var(--font-text);
   font-size: 11px;
@@ -1750,6 +1718,28 @@ button { font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+/* starting techs: side by side while they fit */
+.frd-tech-list.start {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+}
+.frd-tech-list.start .techrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 14, 24, 0.66);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 5px 9px;
 }
 .frd-planets {
   display: flex;

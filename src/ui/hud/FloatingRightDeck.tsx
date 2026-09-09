@@ -22,6 +22,7 @@ const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier',
 export interface FloatingRightDeckProps {
   state: GameState
   activeTab: 'objectives' | 'strategy' | 'faction'
+  /** tab switching lives in the top bar; the deck only renders what it is told to show */
   onTabChange: (tab: 'objectives' | 'strategy' | 'faction') => void
   isOpen: boolean
   onToggleOpen: () => void
@@ -32,7 +33,6 @@ export interface FloatingRightDeckProps {
 export function FloatingRightDeck({
   state,
   activeTab,
-  onTabChange,
   isOpen,
   onToggleOpen,
   onPick,
@@ -63,48 +63,12 @@ export function FloatingRightDeck({
       inert={!isOpen ? true : undefined}
       aria-hidden={!isOpen}
     >
-      {/* Header with tabs and collapse toggle */}
+      {/* Header: just the section name and the collapse toggle. The tabs themselves live in the top bar
+          (Faction/Objectives/Strategy); duplicated here they only ate vertical space. */}
       <div className="frd-header">
-        <div className="frd-tabs" role="tablist">
-          <button
-            id="tab-faction"
-            type="button"
-            role="tab"
-            aria-selected={isOpen && activeTab === 'faction'}
-            aria-controls="panel-faction"
-            className={`frd-tab-btn${activeTab === 'faction' ? ' active' : ''}`}
-            data-testid="tab-btn-faction"
-            onClick={() => onTabChange('faction')}
-          >
-            <span className="frd-tab-title">My Faction</span>
-          </button>
-          <button
-            id="tab-objectives"
-            type="button"
-            role="tab"
-            aria-selected={isOpen && activeTab === 'objectives'}
-            aria-controls="panel-objectives"
-            className={`frd-tab-btn${activeTab === 'objectives' ? ' active' : ''}`}
-            data-testid="tab-btn-objectives"
-            onClick={() => onTabChange('objectives')}
-          >
-            <span className="frd-tab-title">Objectives</span>
-            <span className="frd-tab-count">{state.publicObjectives.length}</span>
-          </button>
-          <button
-            id="tab-strategy"
-            type="button"
-            role="tab"
-            aria-selected={isOpen && activeTab === 'strategy'}
-            aria-controls="panel-strategy"
-            className={`frd-tab-btn${activeTab === 'strategy' ? ' active' : ''}`}
-            data-testid="tab-btn-strategy"
-            onClick={() => onTabChange('strategy')}
-          >
-            <span className="frd-tab-title">Strategy</span>
-            <span className="frd-tab-count">8</span>
-          </button>
-        </div>
+        <span className="frd-title" data-testid="frd-title">
+          {activeTab === 'faction' ? 'My Faction' : activeTab === 'objectives' ? 'Objectives' : 'Strategy Cards'}
+        </span>
         <button
           type="button"
           className="frd-close-btn"
@@ -173,9 +137,9 @@ export function FloatingRightDeck({
             <FlagshipCard faction={myPlayer.faction} colour={myPlayer.color} />
           </div>
 
-          {/* Starting Technology */}
+          {/* Starting Technology: a flex row, so a faction with several starts lays them side by side */}
           <div className="frd-section-title">Starting Technology</div>
-          <div className="tech-list frd-tech-list">
+          <div className="tech-list frd-tech-list start">
             {myFaction.startingTechs.length === 0 ? (
               <div className="frd-empty-hint">Chosen at setup</div>
             ) : (
@@ -204,41 +168,15 @@ export function FloatingRightDeck({
           </div>
           <div className="tot frd-tot"><span className="k">Fleet pool:</span>{fleetPoolLimit(myPlayer)} ships / system</div>
 
-          {/* Economy & Resources */}
-          <div className="frd-section-title">Economy & Resources</div>
-          <div className="tot frd-tot">
-            <span className="k">Ready:</span>
-            <span className="econ-badge-val" title="Ready Resources" aria-label={`Ready Resources: ${readyResources(state, safeSeat)}`}>
-              <span className="badge res" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
-              <b data-testid={`frd-economy-${safeSeat}-resources`}>{readyResources(state, safeSeat)}</b>
-            </span>
-            <span className="econ-badge-val" title="Ready Influence" aria-label={`Ready Influence: ${readyInfluence(state, safeSeat)}`}>
-              <span className="badge inf" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
-              <b data-testid={`frd-economy-${safeSeat}-influence`}>{readyInfluence(state, safeSeat)}</b>
-            </span>
-          </div>
+          {/* Economy */}
+          <div className="frd-section-title">Economy</div>
           <div className="econ-row frd-econ-row">
             <span className="econ"><img src={MISC.tradeGood} alt="Trade goods" /> <b data-testid={`frd-economy-${safeSeat}-tradegoods`}>{myPlayer.tradeGoods}</b></span>
             <span className="econ"><img src={MISC.commodity} alt="Commodities" /> <b data-testid={`frd-economy-${safeSeat}-commodities`}>{myPlayer.commodities} of {myFaction.commodityValue}</b></span>
             <span className="econ"><img src={MISC.mandateBack} alt="Action cards" /> <b data-testid={`frd-action-cards-${safeSeat}`}>{myPlayer.actionCards.length} of {HAND_LIMIT}</b></span>
           </div>
 
-          {/* Technologies */}
-          <div className="frd-section-title">Technologies ({myPlayer.techs.length})</div>
-          <div className="tech-list frd-tech-list">
-            {myPlayer.techs.length === 0 ? (
-              <div className="frd-empty-hint">No technologies researched</div>
-            ) : (
-              myPlayer.techs.map(id => (
-                <div className="techrow" key={id} data-testid={`frd-tech-${safeSeat}-${id}`}>
-                  <TechIcon techId={id} colour={myPlayer.color} />
-                  <span>{techDef(id).name}</span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Controlled Planets */}
+          {/* Controlled Planets: the ready totals sit with the planet pills — one is the sum of the other */}
           <div className="frd-section-title">Controlled Planets ({myPlanets.length})</div>
           <div className="planets frd-planets">
             {myPlanets.length === 0 ? (
@@ -254,6 +192,17 @@ export function FloatingRightDeck({
                 </div>
               ))
             )}
+          </div>
+          <div className="tot frd-tot">
+            <span className="k">Ready:</span>
+            <span className="econ-badge-val" title="Ready Resources" aria-label={`Ready Resources: ${readyResources(state, safeSeat)}`}>
+              <span className="badge res" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.resourceReady})` }} />
+              <b data-testid={`frd-economy-${safeSeat}-resources`}>{readyResources(state, safeSeat)}</b>
+            </span>
+            <span className="econ-badge-val" title="Ready Influence" aria-label={`Ready Influence: ${readyInfluence(state, safeSeat)}`}>
+              <span className="badge inf" aria-hidden="true" style={{ backgroundImage: `url(${BADGE.influenceReady})` }} />
+              <b data-testid={`frd-economy-${safeSeat}-influence`}>{readyInfluence(state, safeSeat)}</b>
+            </span>
           </div>
 
           {/* Forces */}
