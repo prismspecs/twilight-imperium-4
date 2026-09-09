@@ -10,6 +10,7 @@ Full Twilight Imperium 4 (base game plus Codices), for 2-6 players (primarily 6)
 - Before a commit that touches `src/`: `npm test`, `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` must be clean.
 - Engine and data modules: strict TypeScript, no `any`, no non-null assertions, no React/DOM/Node imports, never mutate an input `GameState`, all randomness from the seed passed in, every dice roll logged.
 - The spec in `docs/spec/game-rules.md` is the binding authority; plans in `docs/superpowers/plans/` argue from it. Rulings taken during execution are recorded in the plan's `.ledger.md`.
+- Before wiring or fixing any card, ability, tech, unit or agenda, consult the spec FIRST — never from memory: use the `ti4-rules` skill (`.agents/skills/ti4-rules/`), whose `scripts/spec-section.sh "<name>"` prints the whole FAQ section for a component. Both Fleet Logistics and the Arborec production rules were once wired wrong from memory.
 
 ## Rules the interface must respect
 
