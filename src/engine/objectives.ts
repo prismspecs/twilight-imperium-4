@@ -4,7 +4,24 @@ import { findTech } from '../data/techs'
 import { isShip } from '../data/units'
 import { neighbours } from './adjacency'
 import { homeSystemOf } from './board'
-import type { GameState, PlanetTrait, Seat, TechColor } from './types'
+import { payCost, payInfluence } from './economy'
+import type { GameState, PlanetTrait, Result, Seat, TechColor } from './types'
+
+/**
+ * lrr-components.md: Erect a Monument, Found a Golden Age, Sway the Council, Manipulate Galactic Law,
+ * Negotiate Trade Routes and Centralize Galactic Trade all carry the same ruling — "must be spent during the
+ * status phase; any [resource] spent during the action phase will have no effect" — so unlike every other
+ * objective these are never auto-scored from a passive state check. `payObjective` is the only way to score
+ * one, and it is the actual spend the ruling requires, not a retroactive read of round-total spending.
+ */
+export const SPEND_OBJECTIVES: Readonly<Record<string, { kind: 'resources' | 'influence' | 'tradeGoods'; amount: number }>> = {
+  erect_a_monument: { kind: 'resources', amount: 8 },
+  sway_the_council: { kind: 'influence', amount: 8 },
+  negotiate_trade_routes: { kind: 'tradeGoods', amount: 5 },
+  found_a_golden_age: { kind: 'resources', amount: 16 },
+  manipulate_galactic_law: { kind: 'influence', amount: 16 },
+  centralize_galactic_trade: { kind: 'tradeGoods', amount: 10 },
+}
 
 export function controlledPlanets(state: GameState, seat: Seat): { systemId: string; planetId: string }[] {
   const out: { systemId: string; planetId: string }[] = []
@@ -97,8 +114,6 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       return unitUpgradeCount(state, seat) >= 2
     case 'diversify_research':
       return techColorsWithAtLeast(state, seat, 2) >= 2
-    case 'erect_a_monument':
-      return player.resourcesSpentThisRound >= 8
     case 'expand_borders':
       return controlledNonHomePlanets(state, seat) >= 6
     case 'found_research_outposts':
@@ -107,24 +122,14 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       return shipsAdjacentToMecatol(state, seat) >= 2
     case 'lead_from_the_front':
       return player.tokensSpentThisRound >= 3
-    case 'negotiate_trade_routes':
-      return player.tradeGoodsSpentThisRound >= 5
-    case 'sway_the_council':
-      return player.influenceSpentThisRound >= 8
 
     // Stage II public objectives (2 VP)
-    case 'centralize_galactic_trade':
-      return player.tradeGoodsSpentThisRound >= 10
     case 'conquer_the_weak':
       return controlledPlanetsInOtherHome(state, seat) >= 1
     case 'form_galactic_brain_trust':
       return techSpecialtyPlanets(state, seat) >= 5
-    case 'found_a_golden_age':
-      return player.resourcesSpentThisRound >= 16
     case 'galvanize_the_people':
       return player.tokensSpentThisRound >= 6
-    case 'manipulate_galactic_law':
-      return player.influenceSpentThisRound >= 16
     case 'master_the_sciences':
       return techColorsWithAtLeast(state, seat, 2) >= 4
     case 'revolutionize_warfare':
@@ -209,6 +214,44 @@ export function scoreable(state: GameState, seat: Seat): string[] {
     if (!player.scoredObjectives.includes(id) && fulfils(state, seat, id)) out.push(id)
   }
   return out
+}
+
+/** The status-phase-only spend objectives (see SPEND_OBJECTIVES) still on the board and not yet scored by
+ * this seat — a player may choose to pay for any of these during the status phase, but nothing scores them
+ * automatically the way `scoreable` does. */
+export function payableObjectives(state: GameState, seat: Seat): string[] {
+  const player = state.players[seat]
+  if (!player) return []
+  return state.publicObjectives.filter(id => id in SPEND_OBJECTIVES && !player.scoredObjectives.includes(id))
+}
+
+/**
+ * lrr-components.md rulings on Erect a Monument / Found a Golden Age / Sway the Council / Manipulate
+ * Galactic Law / Negotiate Trade Routes / Centralize Galactic Trade: the resources, influence or trade
+ * goods must be spent during the status phase itself — this is that spend, not a check of what a player
+ * already happened to spend earlier in the round. Resources and influence may be paid partly in trade
+ * goods (one for one); the two trade-goods objectives take only trade goods, per their own rulings.
+ */
+export function payObjective(state: GameState, seat: Seat, objectiveId: string, planets: string[], tradeGoods: number): Result<GameState> {
+  const spend = SPEND_OBJECTIVES[objectiveId]
+  if (!spend) return { ok: false, error: `${objectiveId} is not a spend objective` }
+  const player = state.players[seat]
+  if (!player) return { ok: false, error: 'unknown seat' }
+  if (player.scoredObjectives.includes(objectiveId)) return { ok: false, error: `${objectiveId} already scored` }
+  if (!state.publicObjectives.includes(objectiveId)) return { ok: false, error: `${objectiveId} is not in play` }
+  if (spend.kind === 'tradeGoods') {
+    if (planets.length > 0) return { ok: false, error: `${objectiveId} is paid in trade goods only, not planets` }
+    if (!Number.isInteger(tradeGoods) || tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'not enough trade goods' }
+    if (tradeGoods < spend.amount) return { ok: false, error: `${objectiveId} needs ${String(spend.amount)} trade goods` }
+    const players = [...state.players] as GameState['players']
+    players[seat] = { ...player, tradeGoods: player.tradeGoods - tradeGoods, tradeGoodsSpentThisRound: player.tradeGoodsSpentThisRound + tradeGoods }
+    return { ok: true, value: scoreObjective({ ...state, players }, seat, objectiveId) }
+  }
+  const paid = spend.kind === 'resources'
+    ? payCost(state, seat, spend.amount, planets, tradeGoods)
+    : payInfluence(state, seat, spend.amount, planets, tradeGoods)
+  if (!paid.ok) return paid
+  return { ok: true, value: scoreObjective(paid.value, seat, objectiveId) }
 }
 
 export function addVp(state: GameState, seat: Seat, points: number, reason: string): GameState {

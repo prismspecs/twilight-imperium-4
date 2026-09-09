@@ -31,7 +31,8 @@ function invariants(state: GameState): void {
   for (const seat of [0, 1] as Seat[]) {
     const p = state.players[seat]
     expect(Math.min(p.vp, p.tradeGoods, p.commodities, p.tokens.tactic, p.tokens.fleet, p.tokens.strategy)).toBeGreaterThanOrEqual(0)
-    expect(p.vp).toBeGreaterThanOrEqual(p.scoredObjectives.length)
+    // Not vp >= scoredObjectives.length: the Mutiny agenda docks 1 VP from every seat that voted For once it
+    // resolves Against (lrr-components.md), so a seat can hold more scored objectives than current VP.
   }
 }
 

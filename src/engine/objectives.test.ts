@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { objectiveDef } from '../data/objectives'
 import { createGame, shuffledObjectives } from './setup'
-import { controlsMecatol, fulfils, scoreObjective, scoreable } from './objectives'
+import { controlsMecatol, fulfils, payObjective, payableObjectives, scoreObjective, scoreable } from './objectives'
 import {
   DUEL_CONFIG,
   deepFreeze,
@@ -92,10 +92,16 @@ describe('Stage I public objectives (1 VP)', () => {
     expect(fulfils(fulfilled, 0, 'diversify_research')).toBe(true)
   })
 
-  it('erect_a_monument: spend 8 resources in the round', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 7 }), 0, 'erect_a_monument')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 8 }), 0, 'erect_a_monument')).toBe(true)
+  it('erect_a_monument: lrr-components.md ruling — 8 resources spent during the status phase itself, not tallied from the round', () => {
+    let s = deepFreeze({ ...toActionPhase(), publicObjectives: ['erect_a_monument'] })
+    // spending 8 resources earlier in the round (action phase) does not qualify it any more
+    s = withPlayer(s, 0, { resourcesSpentThisRound: 8, tradeGoods: 8 })
+    expect(fulfils(s, 0, 'erect_a_monument')).toBe(false)
+    expect(payObjective(s, 0, 'erect_a_monument', [], 7).ok).toBe(false)   // short by 1
+    const paid = payObjective(s, 0, 'erect_a_monument', [], 8)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('erect_a_monument')
+    expect(paid.value.players[0].tradeGoods).toBe(0)   // trade goods may be spent as resources here
   })
 
   it('expand_borders: control 6 planets in non-home systems', () => {
@@ -179,24 +185,39 @@ describe('Stage I public objectives (1 VP)', () => {
     expect(fulfils(withPlayer(s, 0, { tokensSpentThisRound: 3 }), 0, 'lead_from_the_front')).toBe(true)
   })
 
-  it('negotiate_trade_routes: spend 5 trade goods', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { tradeGoodsSpentThisRound: 4 }), 0, 'negotiate_trade_routes')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { tradeGoodsSpentThisRound: 5 }), 0, 'negotiate_trade_routes')).toBe(true)
+  it('negotiate_trade_routes: 5 trade goods, spent as trade goods only — no planet may substitute', () => {
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: ['negotiate_trade_routes'] })
+    const short = withPlayer(s, 0, { tradeGoods: 4 })
+    expect(payObjective(short, 0, 'negotiate_trade_routes', [], 4).ok).toBe(false)
+    const flush = withPlayer(s, 0, { tradeGoods: 5 })
+    const rejectsPlanets = payObjective(flush, 0, 'negotiate_trade_routes', ['some-planet'], 5)
+    expect(rejectsPlanets.ok).toBe(false)
+    const paid = payObjective(flush, 0, 'negotiate_trade_routes', [], 5)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('negotiate_trade_routes')
+    expect(paid.value.players[0].tradeGoods).toBe(0)
   })
 
-  it('sway_the_council: spend 8 influence', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { influenceSpentThisRound: 7 }), 0, 'sway_the_council')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { influenceSpentThisRound: 8 }), 0, 'sway_the_council')).toBe(true)
+  it('sway_the_council: lrr-components.md ruling — 8 influence spent during the status phase itself, not tallied from the round', () => {
+    let s = deepFreeze({ ...toActionPhase(), publicObjectives: ['sway_the_council'] })
+    s = withPlayer(s, 0, { influenceSpentThisRound: 8, tradeGoods: 8 })
+    expect(fulfils(s, 0, 'sway_the_council')).toBe(false)
+    expect(payObjective(s, 0, 'sway_the_council', [], 7).ok).toBe(false)
+    const paid = payObjective(s, 0, 'sway_the_council', [], 8)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('sway_the_council')
   })
 })
 
 describe('Stage II public objectives (2 VP)', () => {
-  it('centralize_galactic_trade: spend 10 trade goods', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { tradeGoodsSpentThisRound: 9 }), 0, 'centralize_galactic_trade')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { tradeGoodsSpentThisRound: 10 }), 0, 'centralize_galactic_trade')).toBe(true)
+  it('centralize_galactic_trade: 10 trade goods, spent as trade goods only', () => {
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: ['centralize_galactic_trade'] })
+    const short = withPlayer(s, 0, { tradeGoods: 9 })
+    expect(payObjective(short, 0, 'centralize_galactic_trade', [], 9).ok).toBe(false)
+    const flush = withPlayer(s, 0, { tradeGoods: 10 })
+    const paid = payObjective(flush, 0, 'centralize_galactic_trade', [], 10)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('centralize_galactic_trade')
   })
 
   it("conquer_the_weak: control 1 planet in another player's home system", () => {
@@ -224,10 +245,14 @@ describe('Stage II public objectives (2 VP)', () => {
     expect(fulfils(s, 0, 'form_galactic_brain_trust')).toBe(true)
   })
 
-  it('found_a_golden_age: spend 16 resources', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 15 }), 0, 'found_a_golden_age')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 16 }), 0, 'found_a_golden_age')).toBe(true)
+  it('found_a_golden_age: 16 resources, trade goods substitute one for one', () => {
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: ['found_a_golden_age'] })
+    const short = withPlayer(s, 0, { tradeGoods: 15 })
+    expect(payObjective(short, 0, 'found_a_golden_age', [], 15).ok).toBe(false)
+    const flush = withPlayer(s, 0, { tradeGoods: 16 })
+    const paid = payObjective(flush, 0, 'found_a_golden_age', [], 16)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('found_a_golden_age')
   })
 
   it('galvanize_the_people: spend 6 tokens from tactic and/or strategy pools', () => {
@@ -236,10 +261,14 @@ describe('Stage II public objectives (2 VP)', () => {
     expect(fulfils(withPlayer(s, 0, { tokensSpentThisRound: 6 }), 0, 'galvanize_the_people')).toBe(true)
   })
 
-  it('manipulate_galactic_law: spend 16 influence', () => {
-    const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { influenceSpentThisRound: 15 }), 0, 'manipulate_galactic_law')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { influenceSpentThisRound: 16 }), 0, 'manipulate_galactic_law')).toBe(true)
+  it('manipulate_galactic_law: 16 influence, trade goods substitute one for one', () => {
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: ['manipulate_galactic_law'] })
+    const short = withPlayer(s, 0, { tradeGoods: 15 })
+    expect(payObjective(short, 0, 'manipulate_galactic_law', [], 15).ok).toBe(false)
+    const flush = withPlayer(s, 0, { tradeGoods: 16 })
+    const paid = payObjective(flush, 0, 'manipulate_galactic_law', [], 16)
+    if (!paid.ok) throw new Error(paid.error)
+    expect(paid.value.players[0].scoredObjectives).toContain('manipulate_galactic_law')
   })
 
   it('master_the_sciences: own 2 technologies in each of 4 colors', () => {
@@ -433,19 +462,32 @@ describe('scoring and deck setup', () => {
   it('scoreable filters fulfilled, revealed, and unscored objectives', () => {
     const base = toActionPhase()
     const s = deepFreeze({
-      ...withPlayer(base, 0, {
-        resourcesSpentThisRound: 8,
-        influenceSpentThisRound: 8,
-      }),
-      publicObjectives: ['erect_a_monument', 'sway_the_council', 'negotiate_trade_routes'],
+      ...withPlayer(base, 0, { resourcesSpentThisRound: 8, influenceSpentThisRound: 8 }),
+      publicObjectives: ['erect_a_monument', 'develop_weaponry'],
     })
+    // Round-total resource/influence spending never auto-scores erect_a_monument (SPEND_OBJECTIVES,
+    // payableObjectives/payObjective below) — only a real state check like develop_weaponry does
+    expect(scoreable(s, 0)).toEqual([])
+    const withUpgrades = withPlayer(s, 0, { techs: ['cruiser_ii', 'dreadnought_ii'] })
+    expect(scoreable(withUpgrades, 0)).toEqual(['develop_weaponry'])
+  })
 
-    // 0 has spent 8 resources and 8 influence, but 0 trade goods
-    expect(scoreable(s, 0)).toEqual(['erect_a_monument', 'sway_the_council'])
-
-    // Once erect_a_monument is scored, only sway_the_council remains
+  it('payableObjectives lists the status-phase spend objectives still on the board and unscored', () => {
+    const s = deepFreeze({
+      ...toActionPhase(),
+      publicObjectives: ['erect_a_monument', 'sway_the_council', 'develop_weaponry'],
+    })
+    expect(payableObjectives(s, 0)).toEqual(['erect_a_monument', 'sway_the_council'])
     const scored = withPlayer(s, 0, { scoredObjectives: ['erect_a_monument'] })
-    expect(scoreable(scored, 0)).toEqual(['sway_the_council'])
+    expect(payableObjectives(scored, 0)).toEqual(['sway_the_council'])
+  })
+
+  it('payObjective refuses an objective that is not in play or already scored', () => {
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: [] })
+    expect(payObjective(withPlayer(s, 0, { tradeGoods: 5 }), 0, 'negotiate_trade_routes', [], 5).ok).toBe(false)
+    const inPlay = deepFreeze({ ...toActionPhase(), publicObjectives: ['negotiate_trade_routes'] })
+    const already = withPlayer(inPlay, 0, { scoredObjectives: ['negotiate_trade_routes'], tradeGoods: 5 })
+    expect(payObjective(already, 0, 'negotiate_trade_routes', [], 5).ok).toBe(false)
   })
 
   it('controlsMecatol is true only when controlling a planet on Mecatol Rex', () => {

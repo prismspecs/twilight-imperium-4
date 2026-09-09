@@ -4,7 +4,7 @@ import { neighbours } from './adjacency'
 import { enterAgendaOrNextRound } from './agendas'
 import { readyAllPlanets } from './board'
 import { distributeTokens } from './economy'
-import { controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
+import { controlledPlanets, controlsMecatol, payObjective, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS } from './setup'
 import { snakeOrder } from './strategyPhase'
@@ -153,7 +153,14 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
   const seat = state.active
   if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
-  const scored = scoreAll(state, seat)
+  let scored = scoreAll(state, seat)
+  // The status-phase-only spend objectives (SPEND_OBJECTIVES) are never auto-scored; each one this seat
+  // chose to pay for is paid and scored here, in the order given.
+  for (const [objectiveId, payment] of Object.entries(params.objectivePayments ?? {})) {
+    const paid = payObjective(scored, seat, objectiveId, payment.planets, payment.tradeGoods)
+    if (!paid.ok) return paid
+    scored = paid.value
+  }
   // R3.3/TI4 rule: after gaining the round's new tokens, a player may also redistribute every command
   // token they already hold among the three pools, not just place the new ones.
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat), true)

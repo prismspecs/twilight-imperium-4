@@ -196,6 +196,9 @@ export interface StatusParams {
   // Arborec faction tech Bioplasmosis: at the end of the status phase, freely relocate any of your ground
   // forces to a planet you control in the same or an adjacent system. Empty/omitted for every other faction.
   redistribute?: { infantryId: number; to: string }[]
+  // The "spend N resources/influence/trade goods during the status phase" objectives (SPEND_OBJECTIVES in
+  // objectives.ts) are never scored automatically — a chosen one is paid for here, keyed by objective id.
+  objectivePayments?: Record<string, { planets: string[]; tradeGoods: number }>
 }
 
 /**

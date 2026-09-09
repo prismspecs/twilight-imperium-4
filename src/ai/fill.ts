@@ -250,16 +250,7 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     tryAdd('dreadnought', 1)
   }
 
-  // 3. Objective Synergies:
-  const needsSpend8 = state.publicObjectives.includes('erect_a_monument') && !player.scoredObjectives.includes('erect_a_monument')
-  const needsSpend6 = state.publicObjectives.includes('spend_6_resources') && !player.scoredObjectives.includes('spend_6_resources')
-  if (needsSpend8 || needsSpend6) {
-    tryAdd('dreadnought', 1)
-    tryAdd('carrier', 1)
-    tryAdd('cruiser', 1)
-  }
-
-  // 4. Fill remaining production limit and budget with fighters and infantry
+  // 3. Fill remaining production limit and budget with fighters and infantry
   let tries = 0
   while (remainingUnitsCount >= 2 && tries++ < 4) {
     const addedFighters = tryAdd('fighter', 2)
@@ -267,7 +258,7 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     if (!addedFighters && !addedInfantry) break
   }
 
-  // 5. If odd capacity / fleet room and single resource remains, try destroyer
+  // 4. If odd capacity / fleet room and single resource remains, try destroyer
   if (remainingUnitsCount >= 1 && remainingFleetRoom >= 1) {
     const destroyerAffinity = getFactionUnitAffinity(player.faction, 'destroyer')
     if (destroyerAffinity >= 1.0) {

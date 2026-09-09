@@ -105,13 +105,13 @@ describe('strategic actions', () => {
     view.unmount()
 
     const imperial = {
-      ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { resourcesSpentThisRound: 8 }),
-      publicObjectives: ['erect_a_monument'],
+      ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { techs: ['cruiser_ii', 'dreadnought_ii'] }),
+      publicObjectives: ['develop_weaponry'],
     }
     const view2 = renderWithSession(imperial, <BoardScreen />)
     playCard('imperial')
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
-    fireEvent.click(screen.getByTestId('objective-pick-erect_a_monument'))
+    fireEvent.click(screen.getByTestId('objective-pick-develop_weaponry'))
     expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
     view2.unmount()
 
@@ -140,16 +140,26 @@ describe('strategic actions', () => {
 
   it('R7: the Imperial primary scores a fulfilled public objective', () => {
     const s = {
+      ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { techs: ['cruiser_ii', 'dreadnought_ii'] }),
+      publicObjectives: ['develop_weaponry'],
+    }
+    renderWithSession(s, <BoardScreen />)
+    playCard('imperial')
+    fireEvent.click(screen.getByTestId('objective-pick-develop_weaponry'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
+    expect(screen.getByTestId('scored-develop_weaponry-0')).toBeTruthy()
+  })
+
+  it('R7/lrr-components.md: Imperial cannot score a status-phase-only spend objective (erect_a_monument), even when it would otherwise look fulfilled', () => {
+    const s = {
       ...withPlayer(withCards(withCards(toActionPhase(), 0, ['imperial']), 1, []), 0, { resourcesSpentThisRound: 8 }),
       publicObjectives: ['erect_a_monument'],
     }
     renderWithSession(s, <BoardScreen />)
     playCard('imperial')
-    fireEvent.click(screen.getByTestId('objective-pick-erect_a_monument'))
-    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
-    fireEvent.click(screen.getByTestId('tab-side-0'))
-    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
-    expect(screen.getByTestId('scored-erect_a_monument-0')).toBeTruthy()
+    expect(screen.queryByTestId('objective-pick-erect_a_monument')).toBeNull()
   })
 
   it('R8: a trade post sells two commodities for two trade goods without ending the turn', () => {
@@ -174,6 +184,32 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('4')
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
+  })
+
+  it('lrr-components.md: a status-phase spend objective is paid for on the spot, not auto-scored, and disabled when unaffordable', () => {
+    const affordable = {
+      ...withPlayer(toStatusPhase(toActionPhase()), 0, { tradeGoods: 5 }),
+      publicObjectives: ['negotiate_trade_routes'],
+    }
+    renderWithSession(affordable, <BoardScreen />)
+    // not scored merely by being fulfillable — it takes an explicit choice
+    expect(screen.getByTestId('status-payable').textContent).toContain('Spend 5 trade goods')
+    fireEvent.click(screen.getByTestId('status-pay-negotiate_trade_routes'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('token-fleet-plus'))
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    fireEvent.click(screen.getByTestId('tab-side-0'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
+    expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('0')
+  })
+
+  it('lrr-components.md: cannot pay for a status-phase spend objective without enough trade goods', () => {
+    const short = {
+      ...withPlayer(toStatusPhase(toActionPhase()), 0, { tradeGoods: 2 }),
+      publicObjectives: ['negotiate_trade_routes'],
+    }
+    renderWithSession(short, <BoardScreen />)
+    expect(screen.getByTestId('status-pay-negotiate_trade_routes').hasAttribute('disabled')).toBe(true)
   })
   it('R10 Bioplasmosis: an Arborec seat relocates infantry to an adjacent-system planet from the status dialog', () => {
     const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'bereg', 'bereg', 0), 0, ['bioplasmosis'])
