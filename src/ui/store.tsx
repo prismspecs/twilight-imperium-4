@@ -189,26 +189,38 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const stepAi = useCallback((seed: number) => {
     const cur = sessionRef.current
     if (!cur || !shouldAiStep(cur.config, cur.state)) return
-    const actor = seatToAct(cur.state)
-    const moves = legalMoves(cur.state)
-    if (moves.length === 0) return
-    const chosen = aiChoose(cur.state, moves, actor, DEFAULT_WEIGHTS)
-    logInfo('AI', `Seat ${actor} chose move: ${chosen.type}`, chosen)
-    const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
-    if (!r.ok) {
-      logError('AI', `AI move rejected: ${r.error}`, { chosen, error: r.error })
-      setError(r.error)
-      return
+    // An engine bug here must not kill the loop without a word (game MTMF8A: a ReferenceError only tsc
+    // would have caught froze the Creuss AI mid-game). Log it with the context that reproduces it and
+    // surface it; the loop stops either way, but now it says why.
+    try {
+      const actor = seatToAct(cur.state)
+      const moves = legalMoves(cur.state)
+      if (moves.length === 0) return
+      const chosen = aiChoose(cur.state, moves, actor, DEFAULT_WEIGHTS)
+      logInfo('AI', `Seat ${actor} chose move: ${chosen.type}`, chosen)
+      const r = applyMove(cur.state, chosen, deriveSeed(seed, moveCount(cur.state)))
+      if (!r.ok) {
+        logError('AI', `AI move rejected: ${r.error}`, { chosen, error: r.error })
+        setError(r.error)
+        return
+      }
+      const next = closeTurn(r.value, seed)
+      const keep = undoable(cur.state, next)
+      setError(null)
+      const handoff = handoffFor(cur.config, cur.state, next)
+      const agendaResult = agendaResultFor(cur.config, cur.state, next)
+      const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff, agendaResult }
+      sessionRef.current = updated
+      setSession(updated)
+      if (agendaResult === null && shouldAiStep(cur.config, next)) pumpAiRef.current(seed)
+    } catch (err) {
+      logError('AI', `AI step crashed: ${err instanceof Error ? err.message : String(err)}`, {
+        seat: cur.state.active, phase: cur.state.phase, step: cur.state.tactical?.step ?? null,
+        faction: cur.state.players[cur.state.active]?.faction ?? null,
+        stack: err instanceof Error ? err.stack : undefined,
+      })
+      setError(`the AI could not move: ${err instanceof Error ? err.message : String(err)}`)
     }
-    const next = closeTurn(r.value, seed)
-    const keep = undoable(cur.state, next)
-    setError(null)
-    const handoff = handoffFor(cur.config, cur.state, next)
-    const agendaResult = agendaResultFor(cur.config, cur.state, next)
-    const updated: Session = { ...cur, state: next, history: keep ? [...cur.history, cur.state] : [], handoff, agendaResult }
-    sessionRef.current = updated
-    setSession(updated)
-    if (agendaResult === null && shouldAiStep(cur.config, next)) pumpAiRef.current(seed)
   }, [])
   stepAiRef.current = stepAi
 
