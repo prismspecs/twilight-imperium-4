@@ -94,6 +94,27 @@ export function logInfo(category: string, message: string, data?: unknown) {
   logDebug('INFO', category, message, data)
 }
 
+/**
+ * Uncaught exceptions and rejected promises are the failures that otherwise never reach this log: an AI
+ * step, a render, an event handler can die without a single line here, which is exactly how the Creuss
+ * movement crash (game MTMF8A, a homeSystemOf ReferenceError only tsc would have caught) stayed invisible
+ * while the AI loop silently stopped. Installed once, in the browser only; every entry is also POSTed to
+ * the dev server's debug.log.
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', event => {
+    logDebug('ERROR', 'Crash', event.message, {
+      source: event.filename, line: event.lineno, col: event.colno,
+      stack: event.error instanceof Error ? event.error.stack : undefined,
+    })
+  })
+  window.addEventListener('unhandledrejection', event => {
+    const reason: unknown = event.reason
+    logDebug('ERROR', 'Crash', 'unhandled rejection',
+      reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason)
+  })
+}
+
 export function logWarn(category: string, message: string, data?: unknown) {
   logDebug('WARN', category, message, data)
 }
