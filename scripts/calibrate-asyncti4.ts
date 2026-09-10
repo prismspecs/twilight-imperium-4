@@ -292,6 +292,7 @@ export function calibrateDataset(games: RawGame[]) {
       spacedock: 1.0,
       warsun: f === 'muaat' ? 2.0 : 0.5,
       flagship: 1.0,
+      floating_factory: 1.0,
     }
 
     factionsData[f] = {

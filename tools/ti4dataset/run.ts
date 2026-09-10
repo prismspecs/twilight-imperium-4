@@ -27,8 +27,21 @@ export interface DatasetReport {
   reasons: Record<string, number>
 }
 
+/** Extract winner from GAME_ENDED event payload. */
+function extractWinner(events: RawEvent[]): string | null {
+  for (const e of events) {
+    if (e.archetype === 'GAME_ENDED' && e.payload && typeof e.payload === 'object') {
+      const w = e.payload['winner']
+      if (Array.isArray(w) && w.length > 0 && typeof w[0] === 'string') return w[0]
+      if (typeof w === 'string') return w
+    }
+  }
+  return null
+}
+
 export function extractGame(fileName: string, events: RawEvent[], web?: RawWebData): { records: Record<string, unknown>[]; report: DatasetReport } {
   const replay = new Replay(events, web).run()
+  const gameWinner = extractWinner(events)
   const records: Record<string, unknown>[] = []
   const report: DatasetReport = {
     game: fileName,
@@ -74,6 +87,8 @@ export function extractGame(fileName: string, events: RawEvent[], web?: RawWebDa
       reason: mapped.reason,
       board,
       players,
+      gameWinner,
+      factionMapped: mapped.factionMapped,
     })
   }
   const total = report.mapped + report.unmappedClone

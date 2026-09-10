@@ -10,9 +10,7 @@ export interface FactionCalibration {
   targetFleetTokens: number
   strategyCardWeights: Record<StrategyCardId, number>
   techBonuses: Record<string, number>
-  // Partial: this is empirical data from AsyncTI4 games and floating_factory is a newly-modelled unit type
-  // this dataset predates — getFactionUnitAffinity falls back to the neutral 1.0 for any unit it lacks.
-  unitAffinities: Partial<Record<UnitType, number>>
+  unitAffinities: Record<UnitType, number>
 }
 
 export interface CalibrationData {
@@ -63,7 +61,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":28,"diplomacy":26,"politics":25,"construction":21,"trade":21,"warfare":26,"technology":25,"imperial":27},
       techBonuses: {"sarween_tools":5,"gravity_drive":21,"neural_motivator":24,"light_wave_deflector":10,"carrier_ii":9,"plasma_scoring":25,"antimass_deflectors":9,"super_dreadnought_ii":23,"graviton_laser_system":-2,"fleet_logistics":17,"fighter_ii":3,"dreadnought_ii":-10,"space_dock_ii":1,"hyper_metabolism":9,"infantry_ii":3,"dacxive_animators":-6,"assault_cannon":5,"duranium_armor":9,"cruiser_ii":0,"integrated_economy":0,"x89_bacterial_weapon":13,"destroyer_ii":11,"magen_defense_grid":5,"inheritance_systems":4,"transit_diodes":5,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "letnev": {
       gamesCount: 3248,
@@ -71,7 +69,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 3,
       strategyCardWeights: {"leadership":28,"diplomacy":25,"politics":26,"construction":22,"trade":21,"warfare":28,"technology":24,"imperial":25},
       techBonuses: {"sarween_tools":2,"gravity_drive":22,"neural_motivator":3,"light_wave_deflector":14,"carrier_ii":10,"plasma_scoring":24,"antimass_deflectors":24,"super_dreadnought_ii":-3,"graviton_laser_system":-10,"fleet_logistics":19,"fighter_ii":-3,"dreadnought_ii":14,"space_dock_ii":5,"hyper_metabolism":10,"infantry_ii":18,"dacxive_animators":-10,"assault_cannon":8,"duranium_armor":15,"cruiser_ii":4,"integrated_economy":3,"x89_bacterial_weapon":11,"destroyer_ii":15,"magen_defense_grid":11,"inheritance_systems":-7,"transit_diodes":8,"non_euclidean_shielding":21,"l4_disruptors":2},
-      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":1.2,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":1.2,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "sol": {
       gamesCount: 4101,
@@ -79,7 +77,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":28,"diplomacy":27,"politics":27,"construction":22,"trade":21,"warfare":25,"technology":23,"imperial":28},
       techBonuses: {"sarween_tools":-3,"gravity_drive":24,"neural_motivator":24,"light_wave_deflector":17,"carrier_ii":24,"plasma_scoring":8,"antimass_deflectors":24,"super_dreadnought_ii":-3,"graviton_laser_system":-1,"fleet_logistics":14,"fighter_ii":14,"dreadnought_ii":5,"space_dock_ii":4,"hyper_metabolism":5,"infantry_ii":11,"dacxive_animators":0,"assault_cannon":3,"duranium_armor":14,"cruiser_ii":3,"integrated_economy":-3,"x89_bacterial_weapon":8,"destroyer_ii":12,"magen_defense_grid":7,"inheritance_systems":-7,"transit_diodes":0,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1.5,"fighter":1.4,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1.5,"fighter":1.4,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "hacan": {
       gamesCount: 3566,
@@ -87,7 +85,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":29,"diplomacy":22,"politics":21,"construction":20,"trade":21,"warfare":25,"technology":23,"imperial":39},
       techBonuses: {"sarween_tools":24,"gravity_drive":23,"neural_motivator":0,"light_wave_deflector":14,"carrier_ii":11,"plasma_scoring":7,"antimass_deflectors":25,"super_dreadnought_ii":-3,"graviton_laser_system":-6,"fleet_logistics":18,"fighter_ii":8,"dreadnought_ii":16,"space_dock_ii":10,"hyper_metabolism":3,"infantry_ii":7,"dacxive_animators":-9,"assault_cannon":5,"duranium_armor":9,"cruiser_ii":1,"integrated_economy":-2,"x89_bacterial_weapon":8,"destroyer_ii":4,"magen_defense_grid":7,"inheritance_systems":-7,"transit_diodes":9,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "jolnar": {
       gamesCount: 3838,
@@ -95,7 +93,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":28,"diplomacy":27,"politics":26,"construction":24,"trade":21,"warfare":26,"technology":20,"imperial":29},
       techBonuses: {"sarween_tools":0,"gravity_drive":23,"neural_motivator":1,"light_wave_deflector":20,"carrier_ii":12,"plasma_scoring":17,"antimass_deflectors":7,"super_dreadnought_ii":-3,"graviton_laser_system":18,"fleet_logistics":19,"fighter_ii":5,"dreadnought_ii":19,"space_dock_ii":3,"hyper_metabolism":9,"infantry_ii":5,"dacxive_animators":16,"assault_cannon":21,"duranium_armor":12,"cruiser_ii":3,"integrated_economy":0,"x89_bacterial_weapon":18,"destroyer_ii":13,"magen_defense_grid":9,"inheritance_systems":-7,"transit_diodes":12,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1.5,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "xxcha": {
       gamesCount: 3429,
@@ -103,7 +101,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":26,"diplomacy":27,"politics":26,"construction":22,"trade":19,"warfare":25,"technology":26,"imperial":28},
       techBonuses: {"sarween_tools":-6,"gravity_drive":17,"neural_motivator":4,"light_wave_deflector":11,"carrier_ii":10,"plasma_scoring":13,"antimass_deflectors":6,"super_dreadnought_ii":-3,"graviton_laser_system":25,"fleet_logistics":19,"fighter_ii":12,"dreadnought_ii":9,"space_dock_ii":8,"hyper_metabolism":3,"infantry_ii":12,"dacxive_animators":5,"assault_cannon":3,"duranium_armor":-2,"cruiser_ii":9,"integrated_economy":-5,"x89_bacterial_weapon":4,"destroyer_ii":11,"magen_defense_grid":6,"inheritance_systems":-7,"transit_diodes":1,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":1.5,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":1.5,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "saar": {
       gamesCount: 3810,
@@ -111,7 +109,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":27,"diplomacy":25,"politics":26,"construction":22,"trade":24,"warfare":28,"technology":22,"imperial":26},
       techBonuses: {"sarween_tools":10,"gravity_drive":16,"neural_motivator":3,"light_wave_deflector":13,"carrier_ii":16,"plasma_scoring":10,"antimass_deflectors":25,"super_dreadnought_ii":-3,"graviton_laser_system":-12,"fleet_logistics":13,"fighter_ii":6,"dreadnought_ii":10,"space_dock_ii":9,"hyper_metabolism":-2,"infantry_ii":-3,"dacxive_animators":-6,"assault_cannon":6,"duranium_armor":-2,"cruiser_ii":0,"integrated_economy":-15,"x89_bacterial_weapon":5,"destroyer_ii":10,"magen_defense_grid":-14,"inheritance_systems":-7,"transit_diodes":-10,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1.5,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1.5,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "muaat": {
       gamesCount: 3549,
@@ -119,7 +117,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":29,"diplomacy":24,"politics":26,"construction":21,"trade":21,"warfare":27,"technology":23,"imperial":28},
       techBonuses: {"sarween_tools":-3,"gravity_drive":17,"neural_motivator":1,"light_wave_deflector":12,"carrier_ii":8,"plasma_scoring":25,"antimass_deflectors":5,"super_dreadnought_ii":-3,"graviton_laser_system":6,"fleet_logistics":18,"fighter_ii":7,"dreadnought_ii":6,"space_dock_ii":15,"hyper_metabolism":11,"infantry_ii":11,"dacxive_animators":-7,"assault_cannon":8,"duranium_armor":0,"cruiser_ii":9,"integrated_economy":4,"x89_bacterial_weapon":9,"destroyer_ii":14,"magen_defense_grid":1,"inheritance_systems":-7,"transit_diodes":15,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":2,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":2,"flagship":1,"floating_factory":1},
     },
     "creuss": {
       gamesCount: 3529,
@@ -127,7 +125,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":29,"diplomacy":26,"politics":27,"construction":22,"trade":22,"warfare":25,"technology":24,"imperial":26},
       techBonuses: {"sarween_tools":-5,"gravity_drive":25,"neural_motivator":-4,"light_wave_deflector":12,"carrier_ii":18,"plasma_scoring":4,"antimass_deflectors":4,"super_dreadnought_ii":-3,"graviton_laser_system":2,"fleet_logistics":13,"fighter_ii":11,"dreadnought_ii":8,"space_dock_ii":-1,"hyper_metabolism":0,"infantry_ii":15,"dacxive_animators":-7,"assault_cannon":2,"duranium_armor":-1,"cruiser_ii":3,"integrated_economy":4,"x89_bacterial_weapon":7,"destroyer_ii":6,"magen_defense_grid":8,"inheritance_systems":-7,"transit_diodes":6,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "mentak": {
       gamesCount: 2597,
@@ -135,7 +133,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":27,"diplomacy":24,"politics":26,"construction":23,"trade":24,"warfare":26,"technology":24,"imperial":26},
       techBonuses: {"sarween_tools":24,"gravity_drive":14,"neural_motivator":7,"light_wave_deflector":11,"carrier_ii":2,"plasma_scoring":24,"antimass_deflectors":10,"super_dreadnought_ii":-3,"graviton_laser_system":-3,"fleet_logistics":11,"fighter_ii":2,"dreadnought_ii":4,"space_dock_ii":3,"hyper_metabolism":3,"infantry_ii":7,"dacxive_animators":9,"assault_cannon":6,"duranium_armor":4,"cruiser_ii":24,"integrated_economy":8,"x89_bacterial_weapon":13,"destroyer_ii":4,"magen_defense_grid":6,"inheritance_systems":-7,"transit_diodes":15,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":1.6,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":1.6,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "naalu": {
       gamesCount: 3487,
@@ -143,7 +141,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":22,"diplomacy":26,"politics":24,"construction":23,"trade":24,"warfare":27,"technology":28,"imperial":26},
       techBonuses: {"sarween_tools":24,"gravity_drive":21,"neural_motivator":24,"light_wave_deflector":12,"carrier_ii":18,"plasma_scoring":3,"antimass_deflectors":8,"super_dreadnought_ii":-3,"graviton_laser_system":-1,"fleet_logistics":15,"fighter_ii":24,"dreadnought_ii":5,"space_dock_ii":6,"hyper_metabolism":7,"infantry_ii":2,"dacxive_animators":-18,"assault_cannon":6,"duranium_armor":7,"cruiser_ii":2,"integrated_economy":4,"x89_bacterial_weapon":6,"destroyer_ii":8,"magen_defense_grid":9,"inheritance_systems":-7,"transit_diodes":1,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1.4,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1.4,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "nekro": {
       gamesCount: 3556,
@@ -151,7 +149,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":27,"diplomacy":26,"politics":25,"construction":22,"trade":21,"warfare":28,"technology":20,"imperial":30},
       techBonuses: {"sarween_tools":20,"gravity_drive":25,"neural_motivator":16,"light_wave_deflector":24,"carrier_ii":20,"plasma_scoring":24,"antimass_deflectors":22,"super_dreadnought_ii":11,"graviton_laser_system":20,"fleet_logistics":20,"fighter_ii":16,"dreadnought_ii":18,"space_dock_ii":15,"hyper_metabolism":11,"infantry_ii":9,"dacxive_animators":23,"assault_cannon":17,"duranium_armor":17,"cruiser_ii":14,"integrated_economy":13,"x89_bacterial_weapon":13,"destroyer_ii":16,"magen_defense_grid":15,"inheritance_systems":-7,"transit_diodes":18,"non_euclidean_shielding":11,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "sardakk": {
       gamesCount: 3142,
@@ -159,7 +157,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":27,"diplomacy":26,"politics":26,"construction":24,"trade":21,"warfare":27,"technology":24,"imperial":27},
       techBonuses: {"sarween_tools":5,"gravity_drive":21,"neural_motivator":9,"light_wave_deflector":14,"carrier_ii":20,"plasma_scoring":10,"antimass_deflectors":7,"super_dreadnought_ii":-3,"graviton_laser_system":17,"fleet_logistics":16,"fighter_ii":15,"dreadnought_ii":18,"space_dock_ii":16,"hyper_metabolism":13,"infantry_ii":14,"dacxive_animators":1,"assault_cannon":6,"duranium_armor":4,"cruiser_ii":17,"integrated_economy":7,"x89_bacterial_weapon":14,"destroyer_ii":14,"magen_defense_grid":9,"inheritance_systems":-7,"transit_diodes":10,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "winnu": {
       gamesCount: 2386,
@@ -167,7 +165,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":27,"diplomacy":26,"politics":26,"construction":21,"trade":24,"warfare":26,"technology":24,"imperial":26},
       techBonuses: {"sarween_tools":5,"gravity_drive":20,"neural_motivator":-9,"light_wave_deflector":10,"carrier_ii":16,"plasma_scoring":13,"antimass_deflectors":10,"super_dreadnought_ii":-3,"graviton_laser_system":1,"fleet_logistics":22,"fighter_ii":5,"dreadnought_ii":7,"space_dock_ii":7,"hyper_metabolism":5,"infantry_ii":3,"dacxive_animators":-6,"assault_cannon":8,"duranium_armor":-1,"cruiser_ii":2,"integrated_economy":-2,"x89_bacterial_weapon":14,"destroyer_ii":9,"magen_defense_grid":17,"inheritance_systems":-7,"transit_diodes":-8,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "yin": {
       gamesCount: 2892,
@@ -175,7 +173,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 4,
       strategyCardWeights: {"leadership":28,"diplomacy":25,"politics":27,"construction":22,"trade":22,"warfare":23,"technology":25,"imperial":29},
       techBonuses: {"sarween_tools":24,"gravity_drive":18,"neural_motivator":3,"light_wave_deflector":6,"carrier_ii":9,"plasma_scoring":9,"antimass_deflectors":5,"super_dreadnought_ii":-3,"graviton_laser_system":0,"fleet_logistics":22,"fighter_ii":16,"dreadnought_ii":8,"space_dock_ii":4,"hyper_metabolism":11,"infantry_ii":11,"dacxive_animators":-8,"assault_cannon":4,"duranium_armor":12,"cruiser_ii":-1,"integrated_economy":13,"x89_bacterial_weapon":17,"destroyer_ii":13,"magen_defense_grid":0,"inheritance_systems":-7,"transit_diodes":6,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "yssaril": {
       gamesCount: 3382,
@@ -183,7 +181,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":29,"diplomacy":26,"politics":28,"construction":20,"trade":21,"warfare":22,"technology":22,"imperial":32},
       techBonuses: {"sarween_tools":0,"gravity_drive":22,"neural_motivator":22,"light_wave_deflector":17,"carrier_ii":21,"plasma_scoring":12,"antimass_deflectors":10,"super_dreadnought_ii":-3,"graviton_laser_system":-3,"fleet_logistics":20,"fighter_ii":13,"dreadnought_ii":9,"space_dock_ii":6,"hyper_metabolism":7,"infantry_ii":1,"dacxive_animators":-15,"assault_cannon":11,"duranium_armor":13,"cruiser_ii":6,"integrated_economy":-3,"x89_bacterial_weapon":12,"destroyer_ii":18,"magen_defense_grid":12,"inheritance_systems":-7,"transit_diodes":3,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
     "arborec": {
       gamesCount: 3075,
@@ -191,7 +189,7 @@ export const CALIBRATION_DATA: Readonly<CalibrationData> = {
       targetFleetTokens: 5,
       strategyCardWeights: {"leadership":27,"diplomacy":25,"politics":27,"construction":21,"trade":24,"warfare":26,"technology":24,"imperial":28},
       techBonuses: {"sarween_tools":19,"gravity_drive":15,"neural_motivator":-3,"light_wave_deflector":8,"carrier_ii":13,"plasma_scoring":4,"antimass_deflectors":5,"super_dreadnought_ii":-3,"graviton_laser_system":-5,"fleet_logistics":12,"fighter_ii":8,"dreadnought_ii":5,"space_dock_ii":-4,"hyper_metabolism":4,"infantry_ii":7,"dacxive_animators":-10,"assault_cannon":9,"duranium_armor":5,"cruiser_ii":0,"integrated_economy":-3,"x89_bacterial_weapon":13,"destroyer_ii":15,"magen_defense_grid":24,"inheritance_systems":-7,"transit_diodes":5,"non_euclidean_shielding":-5,"l4_disruptors":-9},
-      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1},
+      unitAffinities: {"dreadnought":1,"carrier":1,"fighter":1,"infantry":1.4,"cruiser":0.9,"destroyer":0.8,"pds":0.8,"spacedock":1,"warsun":0.5,"flagship":1,"floating_factory":1},
     },
   },
 } as const
