@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "ai:match": "tsx scripts/ai-match.ts",
     "ai:stress": "tsx scripts/ai-stress.ts",
-    "ai:calibrate": "tsx scripts/calibrate-asyncti4.ts"
+    "ai:calibrate": "tsx scripts/calibrate-asyncti4.ts",
+    "dataset:extract": "tsx tools/ti4dataset/run.ts",
+    "test:dataset": "vitest run --config tools/ti4dataset/vitest.config.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
