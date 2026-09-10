@@ -19,529 +19,217 @@ export interface TempoData {
 }
 
 export const TEMPORAL_DATA: Readonly<TempoData> = {
-  "letnev": {
-    "gamesCount": 228,
-    "gamesWon": 35,
-    "techOrder": {
-      "first": [
-        "dn2",
-        "gd",
-        "nes",
-        "dd2",
-        "x89c4"
-      ],
-      "second": [
-        "fl",
-        "lwd",
-        "nes",
-        "cv2",
-        "asc"
-      ],
-      "third": [
-        "dn2",
-        "fl",
-        "td",
-        "asc"
-      ]
+  letnev: {
+    gamesCount: 228,
+    gamesWon: 35,
+    techOrder: {
+      first: ["dreadnought_ii", "gravity_drive", "non_euclidean_shielding", "destroyer_ii", "light_wave_deflector"],
+      second: ["fleet_logistics", "non_euclidean_shielding", "cruiser_ii", "sarween_tools", "destroyer_ii"],
+      third: ["dreadnought_ii", "fleet_logistics", "transit_diodes"],
     },
-    "round1ScTop": [
-      "imperial",
-      "leadership"
-    ],
-    "expansionRatio": 0.581,
-    "aggression": 0.419,
-    "avgResearchRound": 0.0
+    round1ScTop: ["imperial", "leadership"],
+    expansionRatio: 0.581,
+    aggression: 0.419,
+    avgResearchRound: 0.0
   },
-  "winnu": {
-    "gamesCount": 145,
-    "gamesWon": 34,
-    "techOrder": {
-      "first": [
-        "amd",
-        "det",
-        "ps",
-        "pds2",
-        "pa"
-      ],
-      "second": [
-        "pds2",
-        "ps",
-        "fl",
-        "lwd",
-        "asc"
-      ],
-      "third": [
-        "cv2",
-        "pds2",
-        "ps",
-        "aida"
-      ]
+  winnu: {
+    gamesCount: 145,
+    gamesWon: 34,
+    techOrder: {
+      first: ["antimass_deflectors", "plasma_scoring", "space_dock_ii", "gravity_drive", "sarween_tools"],
+      second: ["space_dock_ii", "cruiser_ii", "fleet_logistics", "light_wave_deflector", "plasma_scoring"],
+      third: ["space_dock_ii", "plasma_scoring", "cruiser_ii"],
     },
-    "round1ScTop": [
-      "construction",
-      "imperial"
-    ],
-    "expansionRatio": 0.63,
-    "aggression": 0.37,
-    "avgResearchRound": 0.0
+    round1ScTop: ["construction", "imperial"],
+    expansionRatio: 0.63,
+    aggression: 0.37,
+    avgResearchRound: 0.0
   },
-  "nekro": {
-    "gamesCount": 196,
-    "gamesWon": 37,
-    "techOrder": {
-      "first": [
-        "gd",
-        "cv2",
-        "amd",
-        "st",
-        "lwd"
-      ],
-      "second": [
-        "gd",
-        "amd",
-        "x89c4",
-        "sr",
-        "dn2"
-      ],
-      "third": [
-        "gd",
-        "lwd",
-        "x89c4",
-        "cv2",
-        "amd"
-      ]
+  nekro: {
+    gamesCount: 196,
+    gamesWon: 37,
+    techOrder: {
+      first: ["gravity_drive", "cruiser_ii", "antimass_deflectors", "sarween_tools", "light_wave_deflector"],
+      second: ["gravity_drive", "antimass_deflectors", "x89_bacterial_weapon", "dreadnought_ii", "sarween_tools"],
+      third: ["cruiser_ii", "x89_bacterial_weapon", "gravity_drive", "plasma_scoring", "dreadnought_ii"],
     },
-    "round1ScTop": [
-      "diplomacy"
-    ],
-    "expansionRatio": 0.667,
-    "aggression": 0.333,
-    "avgResearchRound": 0.0
+    round1ScTop: ["diplomacy"],
+    expansionRatio: 0.667,
+    aggression: 0.333,
+    avgResearchRound: 0.0
   },
-  "sardakk": {
-    "gamesCount": 209,
-    "gamesWon": 26,
-    "techOrder": {
-      "first": [
-        "cv2",
-        "exo2",
-        "inf2",
-        "dd2",
-        "ws"
-      ],
-      "second": [
-        "cv2",
-        "dd2",
-        "exo2",
-        "inf2",
-        "ff2"
-      ],
-      "third": [
-        "inf2",
-        "ff2",
-        "exo2",
-        "dd2",
-        "pds2"
-      ]
+  sardakk: {
+    gamesCount: 209,
+    gamesWon: 26,
+    techOrder: {
+      first: ["cruiser_ii", "destroyer_ii", "infantry_ii", "fighter_ii", "gravity_drive"],
+      second: ["destroyer_ii", "infantry_ii", "fighter_ii", "cruiser_ii", "space_dock_ii"],
+      third: ["fighter_ii", "infantry_ii", "space_dock_ii", "destroyer_ii", "cruiser_ii"],
     },
-    "round1ScTop": [
-      "leadership"
-    ],
-    "expansionRatio": 0.571,
-    "aggression": 0.429,
-    "avgResearchRound": 0.0
+    round1ScTop: ["leadership"],
+    expansionRatio: 0.571,
+    aggression: 0.429,
+    avgResearchRound: 0.0
   },
-  "yssaril": {
-    "gamesCount": 203,
-    "gamesWon": 52,
-    "techOrder": {
-      "first": [
-        "sd2",
-        "bs",
-        "inf2",
-        "mi",
-        "ff2"
-      ],
-      "second": [
-        "ps",
-        "sd2",
-        "gd",
-        "ff2",
-        "mi"
-      ],
-      "third": [
-        "ff2",
-        "x89c4",
-        "dn2",
-        "pds2",
-        "cr2"
-      ]
+  yssaril: {
+    gamesCount: 203,
+    gamesWon: 52,
+    techOrder: {
+      first: ["fighter_ii", "infantry_ii", "plasma_scoring", "gravity_drive", "x89_bacterial_weapon"],
+      second: ["plasma_scoring", "fighter_ii", "space_dock_ii", "cruiser_ii", "gravity_drive"],
+      third: ["fighter_ii", "x89_bacterial_weapon"],
     },
-    "round1ScTop": [],
-    "expansionRatio": 0.617,
-    "aggression": 0.383,
-    "avgResearchRound": 0.0
+    round1ScTop: [],
+    expansionRatio: 0.617,
+    aggression: 0.383,
+    avgResearchRound: 0.0
   },
-  "mentak": {
-    "gamesCount": 158,
-    "gamesWon": 20,
-    "techOrder": {
-      "first": [
-        "pds2",
-        "cr2",
-        "sd2",
-        "x89c4",
-        "da"
-      ],
-      "second": [
-        "sd2",
-        "ws",
-        "mc",
-        "inf2",
-        "dn2"
-      ],
-      "third": [
-        "x89c4",
-        "cr2",
-        "lwd",
-        "ff2",
-        "ws"
-      ]
+  mentak: {
+    gamesCount: 158,
+    gamesWon: 20,
+    techOrder: {
+      first: ["space_dock_ii", "x89_bacterial_weapon", "infantry_ii", "fighter_ii", "dacxive_animators"],
+      second: ["dreadnought_ii", "x89_bacterial_weapon", "cruiser_ii", "space_dock_ii", "fighter_ii"],
+      third: ["antimass_deflectors", "x89_bacterial_weapon"],
     },
-    "round1ScTop": [],
-    "expansionRatio": 0.659,
-    "aggression": 0.341,
-    "avgResearchRound": 0.0
+    round1ScTop: [],
+    expansionRatio: 0.659,
+    aggression: 0.341,
+    avgResearchRound: 0.0
   },
-  "arborec": {
-    "gamesCount": 217,
-    "gamesWon": 41,
-    "techOrder": {
-      "first": [
-        "lw2",
-        "pds2",
-        "st",
-        "gd",
-        "x89c4"
-      ],
-      "second": [
-        "lw2",
-        "ps",
-        "x89c4",
-        "gd",
-        "pds2"
-      ],
-      "third": [
-        "pds2",
-        "amd",
-        "nm",
-        "dd2",
-        "cv2"
-      ]
+  arborec: {
+    gamesCount: 217,
+    gamesWon: 41,
+    techOrder: {
+      first: ["space_dock_ii", "sarween_tools", "x89_bacterial_weapon", "gravity_drive", "plasma_scoring"],
+      second: ["plasma_scoring", "space_dock_ii", "cruiser_ii", "destroyer_ii", "antimass_deflectors"],
+      third: ["destroyer_ii", "space_dock_ii"],
     },
-    "round1ScTop": [
-      "imperial"
-    ],
-    "expansionRatio": 0.597,
-    "aggression": 0.403,
-    "avgResearchRound": 0.0
+    round1ScTop: ["imperial"],
+    expansionRatio: 0.597,
+    aggression: 0.403,
+    avgResearchRound: 0.0
   },
-  "muaat": {
-    "gamesCount": 209,
-    "gamesWon": 40,
-    "techOrder": {
-      "first": [
-        "mr",
-        "pds2",
-        "gd",
-        "pws2",
-        "sd2"
-      ],
-      "second": [
-        "x89c4",
-        "gd",
-        "pds2",
-        "sd2",
-        "mr"
-      ],
-      "third": [
-        "mr",
-        "pws2",
-        "st",
-        "det"
-      ]
+  muaat: {
+    gamesCount: 209,
+    gamesWon: 40,
+    techOrder: {
+      first: ["space_dock_ii", "gravity_drive", "destroyer_ii", "x89_bacterial_weapon", "light_wave_deflector"],
+      second: ["x89_bacterial_weapon", "dacxive_animators", "antimass_deflectors", "dreadnought_ii", "sarween_tools"],
+      third: ["fighter_ii"],
     },
-    "round1ScTop": [
-      "technology",
-      "warfare"
-    ],
-    "expansionRatio": 0.549,
-    "aggression": 0.451,
-    "avgResearchRound": 0.0
+    round1ScTop: ["technology", "warfare"],
+    expansionRatio: 0.549,
+    aggression: 0.451,
+    avgResearchRound: 0.0
   },
-  "xxcha": {
-    "gamesCount": 177,
-    "gamesWon": 26,
-    "techOrder": {
-      "first": [
-        "ps",
-        "pds2",
-        "det",
-        "sd2",
-        "nf"
-      ],
-      "second": [
-        "pds2",
-        "ps",
-        "nf",
-        "ws",
-        "dn2"
-      ],
-      "third": [
-        "pds2",
-        "sd2",
-        "ps",
-        "x89c4",
-        "inf2"
-      ]
+  xxcha: {
+    gamesCount: 177,
+    gamesWon: 26,
+    techOrder: {
+      first: ["plasma_scoring", "space_dock_ii", "fleet_logistics", "dreadnought_ii", "hyper_metabolism"],
+      second: ["space_dock_ii", "plasma_scoring", "dreadnought_ii", "x89_bacterial_weapon", "antimass_deflectors"],
+      third: ["space_dock_ii", "infantry_ii", "plasma_scoring", "x89_bacterial_weapon", "gravity_drive"],
     },
-    "round1ScTop": [
-      "warfare",
-      "leadership"
-    ],
-    "expansionRatio": 0.713,
-    "aggression": 0.287,
-    "avgResearchRound": 0.0
+    round1ScTop: ["warfare", "leadership"],
+    expansionRatio: 0.713,
+    aggression: 0.287,
+    avgResearchRound: 0.0
   },
-  "sol": {
-    "gamesCount": 234,
-    "gamesWon": 48,
-    "techOrder": {
-      "first": [
-        "ac2",
-        "gd",
-        "ff2",
-        "sd2",
-        "x89c4"
-      ],
-      "second": [
-        "ac2",
-        "ff2",
-        "x89c4",
-        "so2",
-        "sd2"
-      ],
-      "third": [
-        "x89c4",
-        "ff2"
-      ]
+  sol: {
+    gamesCount: 234,
+    gamesWon: 48,
+    techOrder: {
+      first: ["gravity_drive", "fighter_ii", "x89_bacterial_weapon", "light_wave_deflector", "dreadnought_ii"],
+      second: ["x89_bacterial_weapon", "fighter_ii", "fleet_logistics", "gravity_drive", "space_dock_ii"],
+      third: ["x89_bacterial_weapon"],
     },
-    "round1ScTop": [],
-    "expansionRatio": 0.6,
-    "aggression": 0.4,
-    "avgResearchRound": 0.0
+    round1ScTop: [],
+    expansionRatio: 0.6,
+    aggression: 0.4,
+    avgResearchRound: 0.0
   },
-  "l1z1x": {
-    "gamesCount": 198,
-    "gamesWon": 38,
-    "techOrder": {
-      "first": [
-        "sdn2",
-        "gd",
-        "x89c4",
-        "sdn",
-        "amd"
-      ],
-      "second": [
-        "pds2",
-        "asc",
-        "fl",
-        "aida",
-        "inf2"
-      ],
-      "third": [
-        "pds2",
-        "md",
-        "sdn2",
-        "ff2",
-        "asc"
-      ]
+  l1z1x: {
+    gamesCount: 198,
+    gamesWon: 38,
+    techOrder: {
+      first: ["super_dreadnought_ii", "gravity_drive", "x89_bacterial_weapon", "antimass_deflectors", "fleet_logistics"],
+      second: ["infantry_ii", "space_dock_ii", "fleet_logistics", "antimass_deflectors", "x89_bacterial_weapon"],
+      third: ["space_dock_ii", "fighter_ii"],
     },
-    "round1ScTop": [
-      "construction",
-      "imperial"
-    ],
-    "expansionRatio": 0.59,
-    "aggression": 0.41,
-    "avgResearchRound": 0.0
+    round1ScTop: ["construction", "imperial"],
+    expansionRatio: 0.59,
+    aggression: 0.41,
+    avgResearchRound: 0.0
   },
-  "yin": {
-    "gamesCount": 202,
-    "gamesWon": 38,
-    "techOrder": {
-      "first": [
-        "x89c4",
-        "cv2",
-        "yso",
-        "sd2",
-        "det"
-      ],
-      "second": [
-        "x89c4",
-        "ff2",
-        "sd2",
-        "sr",
-        "asc"
-      ],
-      "third": [
-        "lwd",
-        "dn2",
-        "dd2",
-        "da",
-        "cv2"
-      ]
+  yin: {
+    gamesCount: 202,
+    gamesWon: 38,
+    techOrder: {
+      first: ["x89_bacterial_weapon", "cruiser_ii", "integrated_economy", "gravity_drive", "infantry_ii"],
+      second: ["cruiser_ii", "destroyer_ii", "fighter_ii", "dacxive_animators", "space_dock_ii"],
+      third: ["light_wave_deflector"],
     },
-    "round1ScTop": [],
-    "expansionRatio": 0.623,
-    "aggression": 0.377,
-    "avgResearchRound": 0.0
+    round1ScTop: [],
+    expansionRatio: 0.623,
+    aggression: 0.377,
+    avgResearchRound: 0.0
   },
-  "saar": {
-    "gamesCount": 238,
-    "gamesWon": 38,
-    "techOrder": {
-      "first": [
-        "ffac2",
-        "gd",
-        "cm",
-        "st",
-        "cv2"
-      ],
-      "second": [
-        "ffac2",
-        "lwd",
-        "dn2",
-        "fl",
-        "ff2"
-      ],
-      "third": [
-        "asc",
-        "cv2",
-        "ie",
-        "x89c4",
-        "ffac2"
-      ]
+  saar: {
+    gamesCount: 238,
+    gamesWon: 38,
+    techOrder: {
+      first: ["gravity_drive", "light_wave_deflector", "cruiser_ii", "sarween_tools", "fleet_logistics"],
+      second: ["fighter_ii", "cruiser_ii", "light_wave_deflector", "integrated_economy", "destroyer_ii"],
+      third: ["light_wave_deflector"],
     },
-    "round1ScTop": [
-      "diplomacy",
-      "imperial"
-    ],
-    "expansionRatio": 0.492,
-    "aggression": 0.508,
-    "avgResearchRound": 0.0
+    round1ScTop: ["diplomacy", "imperial"],
+    expansionRatio: 0.492,
+    aggression: 0.508,
+    avgResearchRound: 0.0
   },
-  "jolnar": {
-    "gamesCount": 196,
-    "gamesWon": 35,
-    "techOrder": {
-      "first": [
-        "pds2",
-        "sd2",
-        "gd",
-        "dn2",
-        "ers"
-      ],
-      "second": [
-        "pds2",
-        "sd2",
-        "dn2",
-        "asc",
-        "lwd"
-      ],
-      "third": [
-        "cv2",
-        "dn2",
-        "sd2",
-        "pds2",
-        "ff2"
-      ]
+  jolnar: {
+    gamesCount: 196,
+    gamesWon: 35,
+    techOrder: {
+      first: ["space_dock_ii", "gravity_drive", "dreadnought_ii", "cruiser_ii", "dacxive_animators"],
+      second: ["space_dock_ii", "dreadnought_ii", "cruiser_ii", "light_wave_deflector", "fighter_ii"],
+      third: ["space_dock_ii", "destroyer_ii", "fleet_logistics", "dacxive_animators"],
     },
-    "round1ScTop": [
-      "technology",
-      "warfare"
-    ],
-    "expansionRatio": 0.632,
-    "aggression": 0.368,
-    "avgResearchRound": 0.0
+    round1ScTop: ["technology", "warfare"],
+    expansionRatio: 0.632,
+    aggression: 0.368,
+    avgResearchRound: 0.0
   },
-  "hacan": {
-    "gamesCount": 211,
-    "gamesWon": 34,
-    "techOrder": {
-      "first": [
-        "sd2",
-        "ws",
-        "aida",
-        "x89c4",
-        "dn2"
-      ],
-      "second": [
-        "sd2",
-        "asc",
-        "da",
-        "dn2",
-        "lwd"
-      ],
-      "third": [
-        "dn2",
-        "absol_pds2",
-        "sd2",
-        "qdn",
-        "dd2"
-      ]
+  hacan: {
+    gamesCount: 211,
+    gamesWon: 34,
+    techOrder: {
+      first: ["dreadnought_ii", "x89_bacterial_weapon", "cruiser_ii", "gravity_drive", "destroyer_ii"],
+      second: ["neural_motivator", "dreadnought_ii", "light_wave_deflector", "x89_bacterial_weapon", "space_dock_ii"],
+      third: ["integrated_economy", "x89_bacterial_weapon"],
     },
-    "round1ScTop": [
-      "imperial"
-    ],
-    "expansionRatio": 0.648,
-    "aggression": 0.352,
-    "avgResearchRound": 0.0
+    round1ScTop: ["imperial"],
+    expansionRatio: 0.648,
+    aggression: 0.352,
+    avgResearchRound: 0.0
   },
-  "naalu": {
-    "gamesCount": 196,
-    "gamesWon": 31,
-    "techOrder": {
-      "first": [
-        "hcf2",
-        "sd2",
-        "fl",
-        "cv2",
-        "x89c4"
-      ],
-      "second": [
-        "pds2",
-        "sd2",
-        "x89c4",
-        "gd",
-        "ps"
-      ],
-      "third": [
-        "dd2",
-        "ps",
-        "inf2",
-        "ws",
-        "aida"
-      ]
+  naalu: {
+    gamesCount: 196,
+    gamesWon: 31,
+    techOrder: {
+      first: ["space_dock_ii", "fleet_logistics", "cruiser_ii", "gravity_drive", "x89_bacterial_weapon"],
+      second: ["x89_bacterial_weapon", "plasma_scoring", "destroyer_ii", "space_dock_ii", "light_wave_deflector"],
+      third: ["destroyer_ii", "infantry_ii", "fleet_logistics"],
     },
-    "round1ScTop": [
-      "construction"
-    ],
-    "expansionRatio": 0.664,
-    "aggression": 0.336,
-    "avgResearchRound": 0.0
+    round1ScTop: ["construction"],
+    expansionRatio: 0.664,
+    aggression: 0.336,
+    avgResearchRound: 0.0
   }
 } as const
 
+/** Tech order preference for faction (top N picks for position). */
 export function getTechOrderPreference(faction: FactionId, position: 1 | 2 | 3, n: number = 3): string[] {
   const t = TEMPORAL_DATA[faction]?.techOrder
   if (!t) return []
@@ -550,14 +238,17 @@ export function getTechOrderPreference(faction: FactionId, position: 1 | 2 | 3, 
   return t.third.slice(0, n)
 }
 
+/** Round 1 strategy card top picks for faction. */
 export function getRound1ScTop(faction: FactionId, n: number = 3): string[] {
   return TEMPORAL_DATA[faction]?.round1ScTop?.slice(0, n) ?? []
 }
 
+/** Expansion vs conflict ratio (0=aggressive, 1=expansive). */
 export function getExpansionRatio(faction: FactionId): number {
   return TEMPORAL_DATA[faction]?.expansionRatio ?? 0.5
 }
 
+/** Aggression ratio (fraction of tactical actions that are combat). */
 export function getAggression(faction: FactionId): number {
   return TEMPORAL_DATA[faction]?.aggression ?? 0.5
 }
