@@ -3,6 +3,7 @@ import { findTech } from '../data/techs'
 import { isShip } from '../data/units'
 import type { Move, PlanetTrait, Seat, StrategyCardId, TechColor } from '../engine/types'
 import { getCalibratedStrategyCardAffinity, getCalibratedTechBonus } from './calibrationData'
+import { getRound1ScTop, getTechOrderPreference, getExpansionRatio, getAggression } from './tempoData'
 import type { GameStateView } from './fog'
 
 /** Tuneable weights per concern; a difficulty dial can scale these later. */
@@ -13,6 +14,11 @@ export interface ScoreWeights {
   tempo: number         // initiative and turn efficiency
   denial: number        // denying the opponent their objectives and territory
   priority: number      // immediate scoring or card value in the current phase
+}
+
+/** Whether this faction has tempo data distilled from AsyncTI4. */
+export function hasTempoData(faction: string): boolean {
+  return getRound1ScTop(faction as any, 1).length > 0 || getTechOrderPreference(faction as any, 1, 1).length > 0
 }
 
 export const DEFAULT_WEIGHTS: Readonly<ScoreWeights> = {
@@ -154,6 +160,14 @@ function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w:
   // Calibrated strategy card affinities from AsyncTI4 competitive play
   s += getCalibratedStrategyCardAffinity(me.faction, card, view.round)
 
+  // Round 1 opening strategy from tempo data (empirical opening preferences)
+  if (view.round === 1) {
+    const topOpenings = getRound1ScTop(me.faction, 3)
+    if (topOpenings.includes(card)) {
+      s += w.tempo * 0.5 // Round 1 SC is critical for tempo
+    }
+  }
+
   // Imperial pays a VP now when we control Mecatol or can score an open objective.
   if (card === 'imperial') {
     if (controlsMecatol(view, seat)) {
@@ -203,6 +217,7 @@ function scorePickCard(view: GameStateView, card: StrategyCardId, seat: Seat, w:
 function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w: ScoreWeights): number {
   const sys = view.systems[systemId]
   if (!sys) return -w.priority
+  const me = view.players[seat]
   const isMecatol = systemId === 'mecatol'
   const hostilePlanets = sys.planets.filter(p => p.owner !== null && p.owner !== seat).length
   const neutralPlanets = sys.planets.filter(p => p.owner === null).length
@@ -259,12 +274,27 @@ function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w
       // Vital early expansion in rounds 1 & 2
       s += w.priority
     }
+    // Expansion vs combat bias from tempo data (high ratio = expand more)
+    if (hasTempoData(me.faction)) {
+      const expansionRatio = getExpansionRatio(me.faction)
+      // If the faction prefers expansion, boost neutral colonisation
+      if (expansionRatio > 0.55 && neutralPlanets > 0) {
+        s += w.economy * 0.3
+      }
+      // If the faction is aggressive, slightly reduce neutral bonus and boost combat
+    }
   }
 
   // building at your own dock spends otherwise-idle resources; only worth a token if we can actually field it
   if (build > 0) s += build * w.economy
   // a contested fleet is a risk: only worth it at favourable odds; a lonely escort is a token wasted
-  if (hostileShips.length > 0) s -= w.military * Math.min(3, hostileShips.length)
+  if (hostileShips.length > 0) {
+    // Aggression from tempo data adjusts combat risk tolerance
+    const combatWeight = hasTempoData(me.faction) 
+      ? w.military * getAggression(me.faction) 
+      : w.military
+    s -= combatWeight * Math.min(3, hostileShips.length)
+  }
 
   // command tokens are finite; count the spend, so a nothing-action loses to a strategy card or an end of turn
   s -= w.tempo * (1 + tokensSpentRatio(view, seat))
@@ -529,6 +559,13 @@ function scoreSecondary(view: GameStateView, move: Move, seat: Seat, w: ScoreWei
   return s
 }
 
+export function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {
+  if (move.type === 'research' && move.techId) {
+    return scoreTech(view, seat, move.techId, w)
+  }
+  return w.economy
+}
+
 export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Readonly<ScoreWeights>): number {
   const me = view.players[seat]
   let s = w.economy
@@ -537,10 +574,25 @@ export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Re
   const calibratedBonus = getCalibratedTechBonus(me.faction, techId)
   s += calibratedBonus * (w.priority / 40)
 
+  // 2. Tech order preference from tempo data (position 1, 2, or 3 tech)
+  if (hasTempoData(me.faction)) {
+    const techOrderFirst = getTechOrderPreference(me.faction, 1, 10)
+    const techOrderSecond = getTechOrderPreference(me.faction, 2, 10)
+    const techOrderThird = getTechOrderPreference(me.faction, 3, 10)
+    
+    if (techOrderFirst.includes(techId)) {
+      s += w.economy * 1.5 // First tech is very important
+    } else if (techOrderSecond.includes(techId)) {
+      s += w.economy * 0.8 // Second tech is still good
+    } else if (techOrderThird.includes(techId)) {
+      s += w.economy * 0.4 // Third tech is less prioritized
+    }
+  }
+
   const tech = findTech(techId)
   if (!tech) return Math.round(s)
 
-  // 2. Active Public Objective Synergies:
+  // 3. Active Public Objective Synergies:
   const isUpgrade = tech.kind === 'upgrade' || tech.unit !== undefined
 
   // Objective: develop_weaponry (2 unit upgrades) or revolutionize_warfare (3 unit upgrades)
@@ -566,11 +618,3 @@ export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Re
 
   return Math.round(s)
 }
-
-function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: ScoreWeights): number {
-  if (move.type === 'research' && move.techId) {
-    return scoreTech(view, seat, move.techId, w)
-  }
-  return w.economy
-}
-
