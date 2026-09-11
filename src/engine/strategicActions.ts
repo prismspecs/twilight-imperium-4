@@ -3,12 +3,15 @@ import { FACTIONS } from '../data/factions'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { ACTION_SPENT } from './actionPhase'
-import { checkFleet, homeSystemOf } from './board'
-import { cheapestPayment, distributeTokens, exhaustPlanets, payCost } from './economy'
+import { checkFleet, homeSystemOf, returnToReinforcements, shipsOf } from './board'
+import { cheapestPayment, distributeTokens, exhaustPlanets, fleetPoolLimit, nonFighterShips, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch } from './research'
-import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
+import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor, UnitType } from './types'
+
+/** The cost order for non-fighter ships, matching the combat module's logic. */
+const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
 
 /** The seat holding the card, used or not. */
 export function cardOwner(state: GameState, card: StrategyCardId): Seat | null {
@@ -252,16 +255,27 @@ function warfarePrimary(state: GameState, seat: Seat, params: StrategicParams): 
 
 /**
  * R4.4/R6: Warfare is the only card that may shrink the fleet pool, so the resulting sheet has to still carry
- * every fleet already on the board. There is no rule that destroys ships here, so a sheet that would leave a
- * system over its fleet pool is simply not a legal redistribution.
+ * every fleet already on the board. If a system would exceed the fleet pool, the cheapest excess non-fighter
+ * ships are destroyed automatically (matching the R3.2 retreat logic).
  */
 function withFleetPoolIntact(result: Result<GameState>, seat: Seat): Result<GameState> {
   if (!result.ok) return result
-  for (const sys of Object.values(result.value.systems)) {
+  let next = result.value
+  for (const sys of Object.values(next.systems)) {
     if (!sys.space.some(u => u.owner === seat)) continue
-    if (!checkFleet(result.value, seat, sys.id).ok) return { ok: false, error: 'R4.4: redistribution would exceed the fleet pool' }
+    const excess = nonFighterShips(sys.space, seat) - fleetPoolLimit(next.players[seat])
+    if (excess > 0) {
+      // Destroy the cheapest excess non-fighter ships
+      const victims = NON_FIGHTER_ORDER.flatMap(t => shipsOf(sys, seat).filter(u => u.type === t)).slice(0, excess)
+      if (victims.length) {
+        next = { ...next, systems: { ...next.systems, [sys.id]: { ...sys, space: sys.space.filter(u => !victims.find(v => v.id === u.id)) } } }
+        next = returnToReinforcements(next, victims)
+        next = { ...next, log: [...next.log, { t: 'info', text: `${victims.length} ships beyond the fleet pool are destroyed in ${sys.id}` }] }
+      }
+    }
+    if (!checkFleet(next, seat, sys.id).ok) return { ok: false, error: `R4.4: redistribution would exceed the fleet pool in ${sys.id}` }
   }
-  return result
+  return { ok: true, value: next }
 }
 
 /** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
