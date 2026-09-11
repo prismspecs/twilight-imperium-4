@@ -44,6 +44,12 @@ export const PERSONALITIES: Readonly<Record<string, Readonly<ScoreWeights>>> = {
   economist: { objective: 100, military: 6, economy: 20, tempo: 2, denial: 6, priority: 40 },
   // spoiler: denies the opponent first, scores second
   disruptive: { objective: 100, military: 10, economy: 6, tempo: 4, denial: 26, priority: 40 },
+  // adaptive: uses tempo data to weight round-1 SC and tech choices, flexible combat/expansion
+  adaptive: { objective: 100, military: 12, economy: 8, tempo: 12, denial: 10, priority: 45 },
+  // expansionist: uses tempo data's expansion ratio, prioritizes growth over combat
+  expansionist: { objective: 120, military: 6, economy: 10, tempo: 8, denial: 6, priority: 30 },
+  // combat: uses tempo data's aggression ratio, prioritizes fighting over growth
+  combat: { objective: 80, military: 22, economy: 4, tempo: 14, denial: 12, priority: 40 },
 }
 
 /** The win condition is 7 VP; a VP is the single most valuable thing on the table. */
@@ -568,6 +574,20 @@ export function scoreResearch(view: GameStateView, move: Move, seat: Seat, w: Sc
 
 export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Readonly<ScoreWeights>): number {
   const me = view.players[seat]
+  
+  // Check if this tech is actually legal for this faction before any scoring
+  const tech = findTech(techId)
+  if (!tech) {
+    // Tech doesn't exist in our database - return very negative score to avoid choosing it
+    return -w.priority * 5
+  }
+  
+  // Check faction-specific tech restrictions
+  if (tech.faction && tech.faction !== me.faction) {
+    // This is a faction tech for a different faction - cannot research it
+    return -w.priority * 5
+  }
+  
   let s = w.economy
 
   // 1. Empirical faction tech bonus from AsyncTI4 data
@@ -588,9 +608,6 @@ export function scoreTech(view: GameStateView, seat: Seat, techId: string, w: Re
       s += w.economy * 0.4 // Third tech is less prioritized
     }
   }
-
-  const tech = findTech(techId)
-  if (!tech) return Math.round(s)
 
   // 3. Active Public Objective Synergies:
   const isUpgrade = tech.kind === 'upgrade' || tech.unit !== undefined
