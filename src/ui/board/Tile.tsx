@@ -58,6 +58,9 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
             <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
           </span>
           <span className="nm">{planet.name}<i className="em" /></span>
+          {planet.attachments && planet.attachments.length > 0 && (
+            <span className="mod-icon" data-testid={`mod-icon-${planet.id}`}>★</span>
+          )}
         </span>
       )}
       <span className="row-ground" style={{ left: centre.left, top: centre.top }} data-testid={`ground-row-${planet.id}`}>

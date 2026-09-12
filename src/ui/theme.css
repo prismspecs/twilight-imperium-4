@@ -2352,6 +2352,18 @@ button { font-family: inherit; }
 .plate.modified {
   box-shadow: 0 0 0 2px rgba(255,215,0,0.6), 0 0 8px rgba(255,215,0,0.4);
 }
+.plate .mod-icon {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  line-height: 18px;
+  color: #ffd700;
+  text-shadow: 0 0 3px rgba(0,0,0,0.8), 0 0 6px rgba(255,215,0,0.6);
+  z-index: 3;
+}
 .plate .vals {
   position: relative;
   width: 36px; height: 30px;
