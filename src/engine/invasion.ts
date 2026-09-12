@@ -1,5 +1,6 @@
 import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
+import { transferCrownRoyalLaws } from './agendas'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
 import { cheapestInfluencePlanets, hasOwnDock, payInfluence } from './economy'
 import { moraleBoost } from './effects'
@@ -164,6 +165,7 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
   const planet = planetOf(state, systemId, planetId)
   if (!planet || planet.owner === seat) return state
   if (!planet.ground.some(u => u.owner === seat) || planet.ground.some(u => u.owner !== seat)) return state
+  const prevOwner = planet.owner
   const assimilate = state.players[seat].faction === 'l1z1x'
   const players = [...state.players] as GameState['players']
   const replacements: Unit[] = []
@@ -221,7 +223,7 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
     systems: finalSystems,
     log: [...state.log, { t: 'info', text: `seat ${seat} takes control of ${planetId}`, ...scavenge && { next: 'scavenge' }, ...scavenge && { text: `seat ${seat} gains 1 trade good from Scavenge` }, ...guildShipsCanPlace && { text: `seat ${seat} places 1 infantry on ${planetId} via Guild Ships` } }],
   }
-  return result
+  return prevOwner !== null ? transferCrownRoyalLaws(result, planetId, seat, prevOwner) : result
 }
 
 export function bombard(state: GameState, planetId: string, seed: number): Result<GameState> {

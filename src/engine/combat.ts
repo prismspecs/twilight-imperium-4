@@ -10,53 +10,6 @@ import type { CombatState, DieRoll, GameState, HitGroup, HitMode, Owner, Pending
 const DESTROY_ORDER: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun']
 const NON_FIGHTER_ORDER: readonly UnitType[] = DESTROY_ORDER.filter(t => t !== 'fighter')
 
-/** Transfers Shard of the Throne if held by winner or defender. */
-function handleShardOfTheThrone(state: GameState, winner: Seat, loser: Seat): GameState {
-  let next = state
-  for (const [sysId, sys] of Object.entries(next.systems)) {
-    for (const planet of sys.planets) {
-      if (planet.attachments?.includes('shard_of_the_throne')) {
-        // Check if the planet's owner has the Shard
-        if (planet.owner === winner) {
-          // Winner already has it - nothing happens
-          return next
-        } else if (planet.owner === loser) {
-          // Transfer to winner
-          next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planet.id ? { ...p, owner: winner } : p) } } }
-          // VP swing: loser loses 1 VP, winner gains 1 VP
-          const players = [...next.players] as GameState['players']
-          players[loser] = { ...players[loser], vp: players[loser].vp - 1 }
-          players[winner] = { ...players[winner], vp: players[winner].vp + 1 }
-          next = { ...next, players, log: [...next.log, { t: 'info', text: `Shard of the Throne transferred to seat ${winner} after combat in ${sysId}` }] }
-          return next
-        }
-      }
-    }
-  }
-  return next
-}
-
-/** Transfers The Crown of Emphidia if held and a home system is conquered. */
-function handleCrownOfEmphidia(state: GameState, winner: Seat, loser: Seat): GameState {
-  let next = state
-  for (const [sysId, sys] of Object.entries(next.systems)) {
-    if (sys.home !== loser) continue  // not the loser's home system
-    for (const planet of sys.planets) {
-      if (planet.attachments?.includes('the_crown_of_emphidia')) {
-        // The loser's home system has the Crown - transfer it
-        next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planet.id ? { ...p, owner: winner } : p) } } }
-        // VP swing: loser loses 1 VP, winner gains 1 VP
-        const players = [...next.players] as GameState['players']
-        players[loser] = { ...players[loser], vp: players[loser].vp - 1 }
-        players[winner] = { ...players[winner], vp: players[winner].vp + 1 }
-        next = { ...next, players, log: [...next.log, { t: 'info', text: `The Crown of Emphidia transferred to seat ${winner} after conquering ${sysId}` }] }
-        return next
-      }
-    }
-  }
-  return next
-}
-
 export type { HitGroup, HitMode }
 const MODE_RANK: Record<HitMode, number> = { noFighters: 0, preferNonFighters: 1, any: 2 }
 
@@ -658,21 +611,16 @@ function antiFighterBarrage(state: GameState, ctx: Ctx, seed: number): GameState
  */
 function markCombatWin(state: GameState, ctx: Ctx, winner: Seat): GameState {
   if (ctx.defender === 'guardian') return state   // seat against seat, so the winner beat the opponent
-  let next = state
-  const loser = ctx.defender
-  next = handleShardOfTheThrone(next, winner, loser)
-  const players = [...next.players] as GameState['players']
+  const players = [...state.players] as GameState['players']
   players[winner] = { ...players[winner], spaceCombatWins: players[winner].spaceCombatWins + 1 }
-  return { ...next, players }
+  return { ...state, players }
 }
 
 /** The winner's log line; a guardian victory earns and logs neither. */
 function wonBy(state: GameState, ctx: Ctx, winner: Owner): GameState {
   if (winner === 'guardian') return state
-  let next = markCombatWin(state, ctx, winner as Seat)
-  // Check for The Crown of Emphidia - transfer if loser's home system was conquered
-  next = handleCrownOfEmphidia(next, winner as Seat, ctx.defender as Seat)
-  return { ...next, log: [...next.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${winner}` }] }
+  const marked = markCombatWin(state, ctx, winner)
+  return { ...marked, log: [...marked.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${winner}` }] }
 }
 
 /** Cargo above the remaining capacity is destroyed when the combat is over. */

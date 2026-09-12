@@ -1,6 +1,6 @@
 // src/engine/agendas.test.ts
 import { describe, expect, it } from 'vitest'
-import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets } from './agendas'
+import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets, transferCrownRoyalLaws } from './agendas'
 import { applyMove, legalMoves } from './index'
 import { startNextRound } from './statusPhase'
 import { createGame } from './setup'
@@ -290,5 +290,85 @@ describe('R10 resolvers', () => {
     s = value(vote(s, 'abstain', []))
     expect(s.agenda).toBeNull()
     expect(s.log.some(e => e.t === 'info' && e.text.includes('no engine effect yet'))).toBe(true)
+  })
+
+  it('Shard of the Throne: the elected player gains 1 VP and becomes the owner', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'shard_of_the_throne'), agendaDeck: [] as string[] })
+    s = value(vote(s, '1', []))
+    s = value(vote(s, '1', []))
+    expect(s.players[1].vp).toBe(1)
+    expect(s.lawOwners?.shard_of_the_throne).toBe(1)
+    expect(s.activeAgendas).toContain('shard_of_the_throne')
+  })
+
+  it('The Crown of Emphidia: the elected player gains 1 VP and becomes the owner', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'the_crown_of_emphidia'), agendaDeck: [] as string[] })
+    s = value(vote(s, '0', []))
+    s = value(vote(s, '0', []))
+    expect(s.players[0].vp).toBe(1)
+    expect(s.lawOwners?.the_crown_of_emphidia).toBe(0)
+    expect(s.activeAgendas).toContain('the_crown_of_emphidia')
+  })
+
+  it('Shard of the Throne: control of the owner\'s home planet transfers the card and swings 1 VP', () => {
+    // seat 0 owns the Shard; seat 1 seizes a planet in seat 0's home system and gets the card +1 VP
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'shard_of_the_throne'), agendaDeck: [] as string[] })
+    s = value(vote(s, '0', []))
+    s = value(vote(s, '0', []))
+    expect(s.lawOwners?.shard_of_the_throne).toBe(0)
+    const homeId = homeSystemOf(s, 0)
+    const planetId = s.systems[homeId].planets[0].id
+    s = withPlanetOwner(s, homeId, planetId, 1)
+    s = transferCrownRoyalLaws(s, planetId, 1, 0)
+    expect(s.lawOwners?.shard_of_the_throne).toBe(1)
+    expect(s.players[1].vp).toBe(1)     // +1 from the swing (seat 1 had 0)
+    expect(s.players[0].vp).toBe(0)    // 1 from election - 1 from the loss
+  })
+
+  it('Fleet Regulations For: the fleet pool limit drops to 4 for every player', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'fleet_regulations'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    for (const p of s.players) expect(p.tokens.fleetPoolOverride).toBe(4)
+    expect(s.activeAgendas).toContain('fleet_regulations')
+  })
+
+  it('Fleet Regulations Against: no fleet pool limit is applied', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'fleet_regulations'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    for (const p of s.players) expect(p.tokens.fleetPoolOverride).toBeUndefined()
+    expect(s.activeAgendas).not.toContain('fleet_regulations')
+  })
+
+  it('Executive Sanctions For: every player hand is trimmed to 3 action cards', () => {
+    let base = toActionPhase()
+    const players = [...base.players] as GameState['players']
+    players[0] = { ...players[0], actionCards: ['plague', 'shields_holding', 'distant_suns', 'confusing_legal_text', 'emergency_reparations'] }
+    players[1] = { ...players[1], actionCards: ['plague', 'flank_speed'] }
+    base = deepFreeze({ ...base, players })
+    let s = deepFreeze({ ...toAgendaPhase(base, 'executive_sanctions'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.players[0].actionCards).toHaveLength(3)
+    expect(s.players[1].actionCards).toHaveLength(2)   // already under the cap, untouched
+  })
+
+  it('Arms Reduction For: each player keeps only 2 dreadnoughts and 4 cruisers', () => {
+    const base = toActionPhase()
+    const systems = { ...base.systems }
+    const sys0 = systems[homeSystemOf(base, 0)]
+    systems[homeSystemOf(base, 0)] = {
+      ...sys0, space: [
+        ...sys0.space,
+        ...([0, 1, 2, 3, 4] as const).map(i => ({ id: base.nextUnitId + i, type: 'dreadnought' as const, owner: 0 as const, damaged: false })),
+      ],
+    }
+    let s = deepFreeze({ ...base, systems })
+    s = deepFreeze({ ...toAgendaPhase(s, 'arms_reduction'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    const dds = Object.values(s.systems).flatMap(sys => sys.space).filter(u => u.type === 'dreadnought' && u.owner === 0)
+    expect(dds).toHaveLength(2)
   })
 })

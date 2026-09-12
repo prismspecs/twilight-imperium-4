@@ -14,6 +14,47 @@ import type { AgendaRound, GameState, Move, Planet, Result, Seat, UnitType } fro
 const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
 
 /**
+ * Shard of the Throne / The Crown of Emphidia: these Elect Player laws move to the player who gains control
+ * of the relevant planet, swinging 1 victory point with them. Called whenever control of a planet changes.
+ * Both transfer when their owner loses control of a planet in their home system (LRR: "immediately give it
+ * to the player who gained control of that planet"). The engine has no legendary-planet trait, so the
+ * legendary trigger is not represented; the home-system trigger is fully enforced. VP swing: new owner +1,
+ * previous owner -1.
+ */
+export function transferCrownRoyalLaws(state: GameState, planetId: string, newOwner: Seat, prevOwner: Seat): GameState {
+  let next = state
+  const sys = Object.values(next.systems).find(s => s.planets.some(p => p.id === planetId))
+  const inHomeSystem = sys !== undefined && sys.home === prevOwner
+  const newOwnsHome = (): boolean => {
+    return Object.values(next.systems).some(s => s.home !== null && s.home === newOwner &&
+      s.planets.some(p => p.owner === newOwner))
+  }
+  if (inHomeSystem) {
+    const shardOwner = next.lawOwners?.shard_of_the_throne
+    if (shardOwner !== undefined && shardOwner === prevOwner && newOwnsHome()) {
+      const players = [...next.players] as GameState['players']
+      players[prevOwner] = { ...players[prevOwner], vp: players[prevOwner].vp - 1 }
+      players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
+      next = {
+        ...next, players, lawOwners: { ...(next.lawOwners ?? {}), shard_of_the_throne: newOwner },
+        log: [...next.log, { t: 'info', text: `Shard of the Throne transfers to seat ${newOwner} (+1 VP)` }],
+      }
+    }
+    const crownOwner = next.lawOwners?.the_crown_of_emphidia
+    if (crownOwner !== undefined && crownOwner === prevOwner && newOwnsHome()) {
+      const players = [...next.players] as GameState['players']
+      players[prevOwner] = { ...players[prevOwner], vp: players[prevOwner].vp - 1 }
+      players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
+      next = {
+        ...next, players, lawOwners: { ...(next.lawOwners ?? {}), the_crown_of_emphidia: newOwner },
+        log: [...next.log, { t: 'info', text: `The Crown of Emphidia transfers to seat ${newOwner} (+1 VP)` }],
+      }
+    }
+  }
+  return next
+}
+
+/**
  * R10: the agenda phase.
  *
  * `AgendaDef.text` (src/data/agendas.ts) is the printed For/Against prose, kept verbatim for display — it is
@@ -191,6 +232,22 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
       }
     }
     return { ...next, players }
+  },
+  shard_of_the_throne: (state, _agenda, outcome) => {
+    // Elect Player: the elected player gains this card and 1 victory point.
+    const seat = Number(outcome)
+    if (Number.isNaN(seat) || !state.players[seat]) return state
+    let next = addVp(state, seat, 1, 'Shard of the Throne')
+    next = { ...next, lawOwners: { ...(next.lawOwners ?? {}), shard_of_the_throne: seat } }
+    return { ...next, activeAgendas: [...(next.activeAgendas ?? []), 'shard_of_the_throne'] }
+  },
+  the_crown_of_emphidia: (state, _agenda, outcome) => {
+    // Elect Player: the elected player gains this card and 1 victory point.
+    const seat = Number(outcome)
+    if (Number.isNaN(seat) || !state.players[seat]) return state
+    let next = addVp(state, seat, 1, 'The Crown of Emphidia')
+    next = { ...next, lawOwners: { ...(next.lawOwners ?? {}), the_crown_of_emphidia: seat } }
+    return { ...next, activeAgendas: [...(next.activeAgendas ?? []), 'the_crown_of_emphidia'] }
   },
   core_mining: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)

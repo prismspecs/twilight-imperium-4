@@ -131,6 +131,7 @@ export interface GameState {
   // in, not a special case.
   agenda: AgendaRound | null
   activeAgendas: string[]  // agenda IDs of laws currently in effect (Senate Sanctuary, Research Teams, etc.)
+  lawOwners: Partial<Record<string, Seat>>  // Elect-Player law owner per agenda id (Shard of the Throne, Crown of Emphidia, ministers)
   winner: Seat | null
   log: LogEntry[]
 }

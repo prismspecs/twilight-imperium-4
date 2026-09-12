@@ -134,6 +134,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     pendingReactions: [], effects: [],
     nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, agenda: null, winner: null,
+    activeAgendas: [], lawOwners: {},
     log: [
       { t: 'info', text: 'Game started with Custodians token on Mecatol Rex' },
     ],
