@@ -132,9 +132,65 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     const planet = planetById(state, outcome)
     return planet ? attachLaw(state, 'senate_sanctuary', outcome, { influence: planet.influence + 2 }) : state
   },
-  terraforming_initiative: (state, _agenda, outcome) => {
-    const planet = planetById(state, outcome)
-    return planet ? attachLaw(state, 'terraforming_initiative', outcome, { resources: planet.resources + 1, influence: planet.influence + 1 }) : state
+  fleet_regulations: (state, _agenda, outcome) => {
+    const limit = outcome === 'For' ? 4 : undefined
+    const players = state.players.map(p => ({
+      ...p, tokens: { ...p.tokens, fleetPoolOverride: limit }
+    })) as GameState['players']
+    // Also track active agendas for other effects
+    const activeAgendas = outcome === 'For' ? [...(state.activeAgendas ?? []), 'fleet_regulations'] : state.activeAgendas?.filter(a => a !== 'fleet_regulations')
+    return { ...state, players, activeAgendas }
+  },
+  executive_sanctions: (state, _agenda, outcome) => {
+    let next = state
+    const players = state.players.map(p => {
+      if (outcome === 'For') {
+        const maxHand = 3
+        const newHand = p.actionCards.length > maxHand ? p.actionCards.slice(0, maxHand) : p.actionCards
+        const discarded = p.actionCards.length > maxHand ? p.actionCards.slice(maxHand) : []
+        if (discarded.length > 0) {
+          next = { ...next, actionCardDiscard: [...next.actionCardDiscard, ...discarded] }
+        }
+        return { ...p, actionCards: newHand }
+      }
+      return p
+    }) as GameState['players']
+    return { ...next, players }
+  },
+  arms_reduction: (state, _agenda, outcome) => {
+    let next = state
+    const players = [...state.players] as GameState['players']
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      if (outcome === 'For') {
+        // For: destroy all but 2 dreadnoughts and all but 4 cruisers
+        for (const [sysId, sys] of Object.entries(next.systems)) {
+          const sysObj = { ...sys, space: [...sys.space] }
+          let ddsLeft = 2
+          let cruisersLeft = 4
+          sysObj.space = sys.space.filter(u => {
+            if (u.owner !== seat) return true
+            if (u.type === 'dreadnought') {
+              if (ddsLeft > 0) { ddsLeft--; return true }
+              return false
+            }
+            if (u.type === 'cruiser') {
+              if (cruisersLeft > 0) { cruisersLeft--; return true }
+              return false
+            }
+            return true
+          })
+          next = { ...next, systems: { ...next.systems, [sysId]: sysObj } }
+        }
+      } else {
+        // Against: exhaust planets with tech specialties
+        for (const [sysId, sys] of Object.entries(next.systems)) {
+          const sysObj = { ...sys, planets: [...sys.planets] }
+          sysObj.planets = sysObj.planets.map(p => p.techSkip ? { ...p, exhausted: true } : p)
+          next = { ...next, systems: { ...next.systems, [sysId]: sysObj } }
+        }
+      }
+    }
+    return { ...next, players }
   },
   core_mining: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)

@@ -49,7 +49,7 @@ export interface System {
 export interface Player {
   seat: Seat; faction: FactionId; color: Color; name: string
   vp: number
-  tokens: { tactic: number; fleet: number; strategy: number }
+  tokens: { tactic: number; fleet: number; strategy: number; fleetPoolOverride?: number }   // fleetPoolOverride caps the fleet pool (Fleet Regulations)
   tradeGoods: number; commodities: number
   techs: string[]                  // tech ids from data/techs.ts
   actionCards: string[]            // R9: the hand, card ids from data/actionCards.ts; hidden from other seats
@@ -130,6 +130,7 @@ export interface GameState {
   // clockwise from the speaker's left, speaker last, so the speaker's tie-break vote is simply the last one
   // in, not a special case.
   agenda: AgendaRound | null
+  activeAgendas: string[]  // agenda IDs of laws currently in effect (Senate Sanctuary, Research Teams, etc.)
   winner: Seat | null
   log: LogEntry[]
 }

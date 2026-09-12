@@ -159,7 +159,11 @@ export function productionLimit(state: GameState, seat: Seat, systemId: string):
 }
 
 export function fleetPoolLimit(player: Player): number {
-  return player.tokens.fleet + (player.faction === 'letnev' ? 2 : 0)
+  let limit = player.tokens.fleet + (player.faction === 'letnev' ? 2 : 0)
+  if (player.tokens.fleetPoolOverride !== undefined) {
+    limit = Math.min(limit, player.tokens.fleetPoolOverride)
+  }
+  return limit
 }
 
 export function nonFighterShips(units: Unit[], owner: Owner): number {
