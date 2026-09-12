@@ -50,8 +50,9 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
        * would only duplicate static art. The fixed duel map still renders a plain background
        * (00_blue.png, see tileUrl) with the planet composed on top, so it still needs its own nameplate. */}
       {isGalaxy ? null : (
-        <span className={`plate ${planetTrait(planet.id, planet.trait)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}`}
-          data-testid={`plate-${planet.id}`} style={plateStyle}>
+        <span className={`plate ${planetTrait(planet.id, planet.trait)}${spot.plate.flip ? ' flip' : ''}${planet.exhausted ? ' exh' : ''}${planet.attachments && planet.attachments.length > 0 ? ' modified' : ''}`}
+          data-testid={`plate-${planet.id}`} style={plateStyle}
+          title={`${planet.name} — ${planet.attachments?.join(', ') || 'no modifications'} | Resources: ${planet.resources}, Influence: ${planet.influence}`}>
           <span className="vals">
             <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
             <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>

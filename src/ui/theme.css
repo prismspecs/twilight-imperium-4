@@ -2349,6 +2349,9 @@ button { font-family: inherit; }
 .plate.hazardous { --trait: #e0705a; --fill: rgba(84,20,24,0.86); }
 .plate.cultural { --trait: #5aa8e8; --fill: rgba(14,42,78,0.86); }
 .plate.industrial { --trait: #5ab070; --fill: rgba(16,56,32,0.86); }
+.plate.modified {
+  box-shadow: 0 0 0 2px rgba(255,215,0,0.6), 0 0 8px rgba(255,215,0,0.4);
+}
 .plate .vals {
   position: relative;
   width: 36px; height: 30px;
