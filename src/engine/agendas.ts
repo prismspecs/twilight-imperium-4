@@ -1,12 +1,17 @@
 import { agendaDef } from '../data/agendas'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
-import { destroyUnits, readyAllPlanets } from './board'
+import { destroyUnits, readyAllPlanets, returnToReinforcements } from './board'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { voteOrder } from './strategyPhase'
 import { victoryCheck } from './statusPhase'
-import type { AgendaRound, GameState, Move, Planet, Result, Seat } from './types'
+import { isShip } from '../data/units'
+import { neighbours } from './adjacency'
+import type { AgendaRound, GameState, Move, Planet, Result, Seat, UnitType } from './types'
+
+/** The cost order for non-fighter ships, matching the combat module's logic. */
+const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
 
 /**
  * R10: the agenda phase.
@@ -188,6 +193,43 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     let next = attachLaw(state, 'holy_planet_of_ixth', outcome)
     if (planet && planet.owner !== null) next = addVp(next, planet.owner, 1, 'Holy Planet of Ixth')
     return notEnforced(next, 'Holy Planet of Ixth', 'the control-change VP swings and the PRODUCTION ban')
+  },
+  ixthian_artifact: (state, _agenda) => {
+    // Ixthian Artifact: destroy units adjacent to Mecatol Rex
+    const mecatol = Object.entries(state.systems).find(([id]) => id === 'mecatol' || id === 'mecatolrex')
+    if (!mecatol) return state
+    const [mecatolId] = mecatol
+    const adjacentSysIds = neighbours(state.systems, mecatolId)
+    
+    let next = state
+    // Destroy units in adjacent systems
+    const systems = { ...next.systems }
+    for (const sysId of adjacentSysIds) {
+      const sys = systems[sysId]
+      if (!sys) continue
+      for (const seat of state.players.map((_, i) => i as Seat)) {
+        const myUnits = sys.space.filter(u => u.owner === seat && isShip(u.type))
+        if (myUnits.length <= 3) {
+          // Destroy all units if 3 or fewer
+          if (myUnits.length > 0) {
+            systems[sysId] = { ...sys, space: sys.space.filter(u => u.owner !== seat || !isShip(u.type)) }
+            next = { ...next, systems }
+            next = returnToReinforcements(next, myUnits)
+            next = { ...next, log: [...next.log, { t: 'info', text: `Ixthian Artifact: ${myUnits.length} units of seat ${seat + 1} are destroyed in ${sysId} (adjacent to Mecatol)` }] }
+          }
+        } else {
+          // Otherwise, destroy 3 cheapest units
+          const toDestroy = NON_FIGHTER_ORDER.flatMap(t => myUnits.filter(u => u.type === t)).slice(0, 3)
+          if (toDestroy.length > 0) {
+            systems[sysId] = { ...sys, space: sys.space.filter(u => !toDestroy.find(v => v.id === u.id)) }
+            next = { ...next, systems }
+            next = returnToReinforcements(next, toDestroy)
+            next = { ...next, log: [...next.log, { t: 'info', text: `Ixthian Artifact: 3 units of seat ${seat + 1} are destroyed in ${sysId}` }] }
+          }
+        }
+      }
+    }
+    return next
   },
   research_team_biotic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_biotic', outcome), 'Research Team: Biotic', 'the prerequisite ignore'),
   research_team_cybernetic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_cybernetic', outcome), 'Research Team: Cybernetic', 'the prerequisite ignore'),
