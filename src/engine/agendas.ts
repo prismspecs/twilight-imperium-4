@@ -231,10 +231,10 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return next
   },
-  research_team_biotic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_biotic', outcome), 'Research Team: Biotic', 'the prerequisite ignore'),
-  research_team_cybernetic: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_cybernetic', outcome), 'Research Team: Cybernetic', 'the prerequisite ignore'),
-  research_team_propulsion: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_propulsion', outcome), 'Research Team: Propulsion', 'the prerequisite ignore'),
-  research_team_warfare: (state, _agenda, outcome) => notEnforced(attachLaw(state, 'research_team_warfare', outcome), 'Research Team: Warfare', 'the prerequisite ignore'),
+  research_team_biotic: (state, _agenda, outcome) => attachLaw(state, 'research_team_biotic', outcome),
+  research_team_cybernetic: (state, _agenda, outcome) => attachLaw(state, 'research_team_cybernetic', outcome),
+  research_team_propulsion: (state, _agenda, outcome) => attachLaw(state, 'research_team_propulsion', outcome),
+  research_team_warfare: (state, _agenda, outcome) => attachLaw(state, 'research_team_warfare', outcome),
   economic_equality: (state, _agenda, outcome) => {
     const players = state.players.map(p => ({
       ...p, tradeGoods: outcome === 'For' ? 5 : 0,

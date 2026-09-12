@@ -13,6 +13,14 @@ import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColo
 /** The cost order for non-fighter ships, matching the combat module's logic. */
 const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
 
+/** Maps research team IDs to the tech color they ignore. */
+const RESEARCH_TEAM_COLORS: Readonly<Record<string, TechColor>> = {
+  research_team_biotic: 'green',
+  research_team_cybernetic: 'yellow',
+  research_team_propulsion: 'blue',
+  research_team_warfare: 'red',
+}
+
 /** The seat holding the card, used or not. */
 export function cardOwner(state: GameState, card: StrategyCardId): Seat | null {
   for (let seat = 0; seat < state.players.length; seat++) {
@@ -153,6 +161,8 @@ function exhaustTechSkipPlanets(state: GameState, seat: Seat, planetIds: string[
  * `techSkipPlanets` names planets exhausted for their technology specialty, each ignoring one matching
  * prerequisite symbol (LRR "Technology Specialties" 12) — irrelevant, but harmless to pass, when
  * `ignorePrereqs` already waives every prerequisite.
+ * Research Teams (attached laws) are also checked: if a planet with a research team is attached to a
+ * controlled planet, it can be exhausted to skip the corresponding color prerequisite.
  */
 export function grantTech(state: GameState, seat: Seat, techId: string, ignorePrereqs: boolean, techSkipPlanets: string[] = []): Result<GameState> {
   const player = state.players[seat]
@@ -164,13 +174,32 @@ export function grantTech(state: GameState, seat: Seat, techId: string, ignorePr
   }
   const exhausted = exhaustTechSkipPlanets(state, seat, techSkipPlanets)
   if (!exhausted.ok) return exhausted
-  if (!canResearch(player, techId, ignorePrereqs, exhausted.value.skips)) return { ok: false, error: `R5: ${techId} cannot be researched` }
-  const players = [...exhausted.value.state.players] as GameState['players']
+  
+  // Check for research team attachments on controlled planets
+  let next = exhausted.value.state
+  const skips = [...exhausted.value.skips]
+  for (const [sysId, sys] of Object.entries(next.systems)) {
+    for (const planet of sys.planets) {
+      if (planet.owner !== seat) continue
+      for (const attachment of planet.attachments ?? []) {
+        const skipColor = RESEARCH_TEAM_COLORS[attachment]
+        if (skipColor && !skips.includes(skipColor)) {
+          // Found a research team - exhaust the planet and add the skip
+          next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planet.id ? { ...p, exhausted: true } : p) } } }
+          skips.push(skipColor)
+          next = { ...next, log: [...next.log, { t: 'info', text: `seat ${seat} exhausts ${planet.name} (${attachment}) to skip ${skipColor} prerequisite for ${techId}` }] }
+        }
+      }
+    }
+  }
+  
+  if (!canResearch(player, techId, ignorePrereqs, skips)) return { ok: false, error: `R5: ${techId} cannot be researched` }
+  const players = [...next.players] as GameState['players']
   players[seat] = { ...player, techs: [...player.techs, techId] }
-  const skipNote = exhausted.value.skips.length ? ` (${String(exhausted.value.skips.length)} prerequisite${exhausted.value.skips.length > 1 ? 's' : ''} skipped with a technology specialty)` : ''
+  const skipNote = skips.length ? ` (${skips.length} prerequisite${skips.length > 1 ? 's' : ''} skipped)` : ''
   return {
     ok: true,
-    value: { ...exhausted.value.state, players, log: [...exhausted.value.state.log, { t: 'info', text: `seat ${seat} researches ${techId}${skipNote}` }] },
+    value: { ...next, players, log: [...next.log, { t: 'info', text: `seat ${seat} researches ${techId}${skipNote}` }] },
   }
 }
 
