@@ -468,8 +468,13 @@ function combatRolls(state: GameState, ctx: Ctx, owner: Owner, bonus: number, re
  * that case, skipping the rest of space combat).
  */
 export function spaceCannonOffense(state: GameState, systemId: string, attacker: Owner, seed: number): GameState {
+  // Deep Space Cannon (PDS II): a PDS II unit may fire its Space Cannon at ships in a system adjacent to
+  // its own during Space Cannon Offense. So besides the PDS in the active system, we also collect PDS II
+  // units in every system adjacent to it (hex or wormhole adjacency, with Enforced Travel Ban respected).
+  const attackerFaction = attacker === 'guardian' ? undefined : state.players[attacker].faction
+  const adjacentIds = neighbours(state.systems, systemId, attackerFaction, false, state)
   const shooters: Owner[] = []
-  for (const p of state.systems[systemId].planets) for (const u of p.structures) {
+  for (const sysId of [systemId, ...adjacentIds]) for (const p of state.systems[sysId].planets) for (const u of p.structures) {
     if (u.owner !== attacker && !shooters.includes(u.owner)) shooters.push(u.owner)
   }
   let next = state
@@ -480,7 +485,12 @@ export function spaceCannonOffense(state: GameState, systemId: string, attacker:
   const allRolls: DieRoll[] = []
   for (const owner of shooters) {
     const sOwner = statsOwner(next, owner)
-    const pds = next.systems[systemId].planets.flatMap(p => p.structures.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon))
+    // PDS in the active system, plus PDS II units in adjacent systems (Deep Space Cannon).
+    const activePds = next.systems[systemId].planets.flatMap(p => p.structures.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon))
+    const deepPds = adjacentIds.flatMap(sysId =>
+      next.systems[sysId].planets.flatMap(p => p.structures.filter(u =>
+        u.owner === owner && u.type === 'pds' && hasTech(next, owner, 'pds_ii') && unitStats(u.type, sOwner).spaceCannon)))
+    const pds = [...activePds, ...deepPds]
     if (!pds.length) continue
     const rng = mulberry32(deriveSeed(seed, salt++))
     const rolls: DieRoll[] = []

@@ -252,6 +252,22 @@ describe('R4.1 space combat', () => {
     expect(owned(after, 'bereg', 0).filter(u => u.type === 'fighter')).toHaveLength(2)
     expect(pendingFor(after)).toBeNull()   // nothing could take those hits, so there is nothing to assign
   })
+  it('R4.1 step 1: Deep Space Cannon — a PDS II in an adjacent system fires at the active system', () => {
+    // tile-25 (quann) is adjacent to mecatol; the combat is in mecatol, so the only possible shooter is the
+    // PDS II sitting in the adjacent system.
+    const base = combat('mecatol', ['fighter', 'fighter'], ['cruiser'], 0)
+    const s = withTechs(withUnits(base, 'tile-25', 1, ['pds'], 'quann'), 1, ['pds_ii'])
+    const after = fight(s)
+    const entries = after.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
+    expect(entries).toHaveLength(1)
+    expect(entries[0].owner).toBe(1)
+  })
+  it('R4.1 step 1: a plain PDS in an adjacent system does NOT fire (no Deep Space Cannon without PDS II)', () => {
+    const base = combat('mecatol', ['fighter', 'fighter'], ['cruiser'], 0)
+    const s = withUnits(base, 'tile-25', 1, ['pds'], 'quann')
+    const after = fight(s)
+    expect(after.log.some(e => e.t === 'roll' && e.context === 'space cannon offense')).toBe(false)
+  })
   it('R4.1 step 2: anti-fighter barrage only destroys fighters', () => {
     const s = combat('bereg', ['fighter', 'fighter', 'cruiser'], ['destroyer'], 0)
     const after = fight(s)

@@ -72,6 +72,7 @@ The gate was dead for a long stretch; three classes of rot shipped while it was 
   resolver logs "prompt required" and only destroys the ships in alpha/beta wormhole systems.
 - `wormhole_research` "Against": token type returned to reinforcements is unspecified by the card; the
   resolver takes a tactic token (default pool), flooring at 0.
-- PDS II: the unit upgrade now appears in the menu, upgrades Space Cannon 6→5, but its Deep Space Cannon
-  ability (fire Space Cannon against ships in an ADJACENT system during Space Cannon Offense) is not yet
-  wired into combat.ts `spaceCannonOffense`, which only scans the active system.
+- PDS II Deep Space Cannon now fires from systems adjacent to the active system (combat.ts
+  `spaceCannonOffense`, hex + wormhole adjacency with Enforced Travel Ban respected), but Creuss's Quantum
+  Entanglement (special wormhole adjacency for PDS II) is not special-cased per shooting owner; adjacency
+  is computed once for the attacker's faction rather than per PDS owner.
