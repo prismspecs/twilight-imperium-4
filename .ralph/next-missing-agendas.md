@@ -58,17 +58,15 @@
    - minister_of_sciences (free research with Tech SC) ✓
    - minister_of_policy / other ministries (cards granted to owner) ✓
 
-### Reflection (iteration 7-8):
-- Iterations 3-8 produced 8 commits implementing 5 directives (homeland_defense_act, new_constitution,
-  regulated_conscription For, representative_government, shared_research) and partial publicize_weapon_schematics.
+### Reflection (iteration 9):
+- Iterations 3-9 produced 9 commits implementing 6 directives (homeland_defense_act, new_constitution,
+  regulated_conscription For, representative_government, shared_research, enforced_travel_ban) and
+  partial publicize_weapon_schematics.
 - All commits passed tsc/lint; suite remains 256 failed / 496 passed (752 total), same as committed baseline.
-- The Ralph loop was stuck with pending messages after iteration 5. I manually advanced the loop to iteration 8
-  and marked it as completed to document the progress.
-- `shared_research` For: passable() now allows nebulae as waypoints when activeAgendas includes shared_research.
-  Per spec, ships starting in nebulae treat their move value as one — this is handled implicitly by the
-  movement code (shortestPath uses the ship's move value against path length).
-- Commits: ae6856d pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
-  4283114, 05b8953, 751c370, 7a2618e, 7ba2058, 9a3cb82, 6301c38, c6b49ac, 7ba2058, 9a3cb82, 6301c38, ae6856d.
-- Remaining: `enforced_travel_ban` (wormhole movement ban), `wormhole_reconstruction` (wormhole adjacency),
-  `wormhole_research` (???), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`,
-  `colonial_redistribution`, `committee_formation`, `classified_document_leaks`, `proposal_of_ixth`.
+- `enforced_travel_ban` For: neighbours() now accepts optional GameState and skips wormhole links when
+  active. Per spec, Creuss faction tech Quantum Entanglement handles Creuss-specific wormhole adjacency.
+- Commits: bb0ee3f pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
+  4283114, 05b8953, 751c370, 7a2618e, 7ba2058, 9a3cb82, 6301c38, c6b49ac, bb0ee3f.
+- Remaining: `wormhole_reconstruction` (For: all alpha/beta wormholes adjacent), `wormhole_research`
+  (???), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`,
+  `committee_formation`, `classified_document_leaks`, `prophecy_of_ixth`.
