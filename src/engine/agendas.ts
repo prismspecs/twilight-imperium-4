@@ -1,4 +1,5 @@
 import { agendaDef } from '../data/agendas'
+import { findTech } from '../data/techs'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { destroyUnits, readyAllPlanets, returnToReinforcements } from './board'
@@ -348,6 +349,57 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   // elected owners in lawOwners, and every law attachment on planets. The resource/influence value patches
   // baked into the planet (Senate Sanctuary +2 influence, Core Mining +2 resources) are not reverted here —
   // they are not stored reversibly, so they persist as a (noted) residue until the planet is freed.
+  regulated_conscription: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'regulated_conscription'],
+        log: [...state.log, { t: 'info', text: 'Regulated Conscription: fighters and infantry now cost 1 resource per unit' }],
+      }
+    }
+    return state
+  },
+  // Publicize Weapon Schematics — For: if any player owns a war sun tech, all players may ignore prereqs
+  // on war sun techs, and all war suns lose SUSTAIN DAMAGE. Against: each war-sun-tech owner discards
+  // all their action cards. We define "owns a war sun technology" as having any tech with unit==='warsun'.
+  publicize_weapon_schematics: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      const anyHasWarsunTech = state.players.some(p =>
+        p.techs.some(tid => {
+          const t = findTech(tid)
+          return t?.unit === 'warsun'
+        })
+      )
+      if (!anyHasWarsunTech) {
+        // No one has a war sun tech, so the law has no effect
+        return { ...state, log: [...state.log, { t: 'info', text: 'Publicize Weapon Schematics: no player owns a war sun technology' }] }
+      }
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'publicize_weapon_schematics'],
+        log: [...state.log, { t: 'info', text: 'Publicize Weapon Schematics: war sun prereqs ignored, all war suns lose SUSTAIN DAMAGE' }],
+      }
+    }
+    // Against: each player that owns a war sun tech discards all their action cards
+    let next = state
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      const hasWarsunTech = state.players[seat].techs.some(tid => {
+        const t = findTech(tid)
+        return t?.unit === 'warsun'
+      })
+      if (hasWarsunTech) {
+        const discarded = next.players[seat].actionCards
+        next = {
+          ...next,
+          actionCardDiscard: [...next.actionCardDiscard, ...discarded],
+          players: [...next.players] as GameState['players'],
+        }
+        next.players[seat] = { ...next.players[seat], actionCards: [] }
+        next = { ...next, log: [...next.log, { t: 'info', text: `Publicize Weapon Schematics: seat ${seat} discards ${discarded.length} action cards (owns war sun technology)` }] }
+      }
+    }
+    return next
+  },
   new_constitution: (state, _agenda, outcome) => {
     if (outcome !== 'For') return state
     const withAgendas: GameState = { ...state, activeAgendas: [], lawOwners: {} }

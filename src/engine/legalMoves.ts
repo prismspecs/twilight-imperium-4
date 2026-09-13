@@ -282,7 +282,7 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
       for (const type of PRODUCIBLE) {
         if (player.reinforcements[type] < 1) continue
         if (type === 'fighter' && maxFightersAllowed(state, seat, home.id) < 1) continue
-        const cost = productionCost({ [type]: 1 }, stats, player.techs.includes('sarween_tools'))
+        const cost = productionCost({ [type]: 1 }, stats, player.techs.includes('sarween_tools'), state)
         const planets = cheapestPlanets(state, seat, cost)
         if (planets) return [{ type: 'secondary', card, accept: true, params: { units: { [type]: 1 }, planets, tradeGoods: 0 } }]
       }

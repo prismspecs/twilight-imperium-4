@@ -66,7 +66,7 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
   const limit = productionLimit(state, seat, tac.systemId)
   if (total > limit) return { ok: false, error: `R4.4: production limit ${limit} exceeded by ${total} units` }
   const stats: StatsOwner = { faction: player.faction, techs: player.techs }
-  const cost = productionCost(order, stats, player.techs.includes('sarween_tools'))
+  const cost = productionCost(order, stats, player.techs.includes('sarween_tools'), state)
   const paid = payCost(state, seat, cost, planets, tradeGoods)
   if (!paid.ok) return paid
   let nextId = paid.value.nextUnitId

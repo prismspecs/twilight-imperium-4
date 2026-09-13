@@ -130,12 +130,15 @@ export function distributeTokens(state: GameState, seat: Seat, wanted: Player['t
   return { ok: true, value: { ...state, players } }
 }
 
-export function productionCost(units: Partial<Record<UnitType, number>>, owner: StatsOwner, sarween: boolean): number {
+export function productionCost(units: Partial<Record<UnitType, number>>, owner: StatsOwner, sarween: boolean, state?: GameState): number {
   let cost = 0
+  const regulated = state?.activeAgendas?.includes('regulated_conscription')
   for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
     if (!n) continue
     const s = unitStats(type, owner)
-    cost += Math.ceil(n / s.producedPerCost) * s.cost
+    // R6 Regulated Conscription: For outcome, fighters and infantry cost 1 resource for 1 unit instead of 2.
+    const perCost = regulated && (type === 'fighter' || type === 'infantry') ? 1 : s.producedPerCost
+    cost += Math.ceil(n / perCost) * s.cost
   }
   return sarween ? Math.max(0, cost - 1) : cost
 }

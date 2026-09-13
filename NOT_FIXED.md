@@ -54,3 +54,16 @@ The gate was dead for a long stretch; three classes of rot shipped while it was 
 ## Notes
 - 2 factions have `startingTechs: []` (Sardakk, Winnu); correct count, not 8.
 - Creuss starts with gravity_drive, which masks Slipstream (+1) at range ≤ 2; test at range 3.
+## Agenda residue (2026-09-10)
+- New Constitution "For" discards all laws (activeAgendas, lawOwners, planet attachments) but the
+  resource/influence value patches baked into planets by Senate Sanctuary (+2 influence) and Core Mining
+  (+2 resources) are not stored reversibly, so they persist after the law is discarded until the planet
+  is otherwise reread. A reversible value stack on Planet would let this be exact.
+
+## Agenda gaps (2026-09-10)
+- `publicize_weapon_schematics` "For": prereq ignore on war sun techs and war sun SUSTAIN DAMAGE loss
+  require deeper refactoring: `canResearch` and `canSustain` need GameState to check `activeAgendas`,
+  which requires updating all callers in `research.ts`, `combat.ts`, and movement/adjacency.
+- `regulated_conscription` "For" production cap is enforced via `productionCost` but doesn't yet affect
+  `productionLimit` or the UI's production picker display — a player might still be offered to produce
+  2 fighters for 1 resource (if the system has resources for it) despite the law.
