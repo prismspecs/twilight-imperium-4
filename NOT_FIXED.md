@@ -67,3 +67,11 @@ The gate was dead for a long stretch; three classes of rot shipped while it was 
 - `regulated_conscription` "For" production cap is enforced via `productionCost` but doesn't yet affect
   `productionLimit` or the UI's production picker display — a player might still be offered to produce
   2 fighters for 1 resource (if the system has resources for it) despite the law.
+- `wormhole_research` "For": each player with ships in a wormhole system may research 1 technology;
+  that per-player research prompt is not machine-drivable inside the synchronous resolver, so the
+  resolver logs "prompt required" and only destroys the ships in alpha/beta wormhole systems.
+- `wormhole_research` "Against": token type returned to reinforcements is unspecified by the card; the
+  resolver takes a tactic token (default pool), flooring at 0.
+- PDS II: the unit upgrade now appears in the menu, upgrades Space Cannon 6→5, but its Deep Space Cannon
+  ability (fire Space Cannon against ships in an ADJACENT system during Space Cannon Offense) is not yet
+  wired into combat.ts `spaceCannonOffense`, which only scans the active system.

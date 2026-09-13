@@ -446,6 +446,31 @@ describe('R10 resolvers', () => {
     expect(s.activeAgendas).not.toContain('wormhole_reconstruction')
   })
 
+  it('Wormhole Research Against: each Against voter returns one command token', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'wormhole_research'), agendaDeck: [] as string[] })
+    const before0 = s.players[0].tokens.tactic
+    const before1 = s.players[1].tokens.tactic
+    // both seats vote Against so the Against outcome wins.
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    expect(s.players[0].tokens.tactic).toBe(before0 - 1)
+    expect(s.players[1].tokens.tactic).toBe(before1 - 1)
+  })
+
+  it('Wormhole Research For: destroys ships in alpha/beta wormhole systems', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'wormhole_research'), agendaDeck: [] as string[] })
+    // tile-26 = alpha wormhole, tile-25 = beta; tile-40 = beta (no planet).
+    s = withUnits(s, 'tile-26', 0, ['destroyer', 'fighter', 'fighter'])
+    s = withUnits(s, 'tile-25', 1, ['cruiser'])
+    const spaceBefore = (id: string) => s.systems[id].space.length
+    expect(spaceBefore('tile-26')).toBe(3)
+    expect(spaceBefore('tile-25')).toBe(1)
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.systems['tile-26'].space).toHaveLength(0)
+    expect(s.systems['tile-25'].space).toHaveLength(0)
+  })
+
   it('Executive Sanctions For: every player hand is trimmed to 3 action cards', () => {
     let base = toActionPhase()
     const players = [...base.players] as GameState['players']

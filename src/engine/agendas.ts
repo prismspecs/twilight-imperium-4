@@ -472,6 +472,44 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     next = { ...next, players: tokens }
     return next
   },
+  wormhole_research: (state, _agenda, outcome) => {
+    if (outcome === 'Against') {
+      // Each player that voted Against removes 1 command token from their command sheet and returns
+      // it to their reinforcements. The token type is unspecified; we take a tactic token (the default
+      // pool drawn from), flooring at 0.
+      let next = state
+      const players = state.players.map(p => ({ ...p, tokens: { ...p.tokens } })) as GameState['players']
+      for (const seat of state.players.map((_, i) => i as Seat)) {
+        const votes = state.agenda?.votes ?? {}
+        const votedAgainst = votes[seat]?.outcome === 'Against'
+        if (!votedAgainst) continue
+        const tactic = Math.max(0, players[seat].tokens.tactic - 1)
+        players[seat] = { ...players[seat], tokens: { ...players[seat].tokens, tactic } }
+        next = { ...next, players, log: [...next.log, { t: 'info', text: `Wormhole Research: seat ${seat} returns a command token` }] }
+      }
+      return next
+    }
+    // For: each player with ships in a wormhole system may research 1 technology (interaction prompt —
+    // recorded, not machine-drivable here), then destroy all ships in systems containing an alpha or
+    // beta wormhole. Ships in delta/gamma-only systems survive.
+    let next = state
+    let destroyed = 0
+    let log: GameState['log'] = state.log
+    for (const [sysId, sys] of Object.entries(state.systems)) {
+      const wh = sys.wormhole
+      if (wh !== 'alpha' && wh !== 'beta') continue
+      const ships = sys.space.filter(u => isShip(u.type))
+      if (ships.length > 0) {
+        next = destroyUnits(next, sysId, ships)
+        destroyed += ships.length
+      }
+    }
+    if (destroyed > 0) {
+      log = [...log, { t: 'info', text: `Wormhole Research: destroyed ${destroyed} ships in alpha/beta wormhole systems` }]
+    }
+    log = [...log, { t: 'info', text: 'Wormhole Research: qualifying players may research 1 technology (prompt required)' }]
+    return { ...next, log }
+  },
   representative_government_base_game: (state, _agenda, outcome) => {
     if (outcome === 'For') {
       return {
