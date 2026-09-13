@@ -485,6 +485,8 @@ function constructionSecondary(state: GameState, seat: Seat, params: StrategicPa
 /** R5: one technology, then optionally a second one for 6 resources; the first may be the prerequisite. */
 function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   let next = state
+  // Minister of Sciences: the owner pays no resources to research via the Technology card.
+  const freeResearch = state.lawOwners?.minister_of_sciences === seat
   if (params.techId !== undefined) {
     const first = grantTech(next, seat, params.techId, false, params.techSkipPlanets ?? [])
     if (!first.ok) return first
@@ -492,12 +494,15 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
   }
   if (params.secondTechId !== undefined) {
     if (params.techId === undefined) return { ok: false, error: 'R5: the second technology needs the first' }
-    const payment = cheapestPayment(next, seat, 6)
-    const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
-    const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
-    const paid = payCost(next, seat, 6, planets, tradeGoods)
-    if (!paid.ok) return paid
-    const second = grantTech(paid.value, seat, params.secondTechId, false, params.secondTechSkipPlanets ?? [])
+    if (!freeResearch) {
+      const payment = cheapestPayment(next, seat, 6)
+      const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
+      const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
+      const paid = payCost(next, seat, 6, planets, tradeGoods)
+      if (!paid.ok) return paid
+      next = paid.value
+    }
+    const second = grantTech(next, seat, params.secondTechId, false, params.secondTechSkipPlanets ?? [])
     if (!second.ok) return second
     next = second.value
   }
@@ -506,12 +511,16 @@ function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams
 
 function technologySecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   if (params.techId === undefined) return { ok: false, error: 'R5: name the technology to research' }
-  const payment = cheapestPayment(state, seat, 4)
-  const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
-  const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
-  const paid = payCost(state, seat, 4, planets, tradeGoods)
-  if (!paid.ok) return paid
-  return grantTech(paid.value, seat, params.techId, false, params.techSkipPlanets ?? [])
+  // Minister of Sciences: the owner pays no resources to research via the Technology card's secondary.
+  const freeResearch = state.lawOwners?.minister_of_sciences === seat
+  if (!freeResearch) {
+    const payment = cheapestPayment(state, seat, 4)
+    const planets = params.planets !== undefined ? params.planets : (payment?.planets ?? [])
+    const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
+    const paid = payCost(state, seat, 4, planets, tradeGoods)
+    if (!paid.ok) return paid
+  }
+  return grantTech(state, seat, params.techId, false, params.techSkipPlanets ?? [])
 }
 
 /** R6/R7 Imperial: score one fulfilled public objective, then 1 VP for Mecatol Rex or draw 1 secret objective. */

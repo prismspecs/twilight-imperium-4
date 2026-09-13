@@ -371,4 +371,19 @@ describe('R10 resolvers', () => {
     const dds = Object.values(s.systems).flatMap(sys => sys.space).filter(u => u.type === 'dreadnought' && u.owner === 0)
     expect(dds).toHaveLength(2)
   })
+
+  it('Elect-Player law cards (Imperial Arbiter, ministries) record their owner and activate the law', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'imperial_arbiter'), agendaDeck: [] as string[] })
+    s = value(vote(s, '1', []))
+    s = value(vote(s, '1', []))
+    expect(s.lawOwners?.imperial_arbiter).toBe(1)
+    expect(s.activeAgendas).toContain('imperial_arbiter')
+    expect(s.players[1].vp).toBe(0)   // no VP for Imperial Arbiter
+
+    let t = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'minister_of_sciences'), agendaDeck: [] as string[] })
+    t = value(vote(t, '0', []))
+    t = value(vote(t, '0', []))
+    expect(t.lawOwners?.minister_of_sciences).toBe(0)
+    expect(t.activeAgendas).toContain('minister_of_sciences')
+  })
 })

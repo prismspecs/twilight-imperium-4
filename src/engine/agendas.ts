@@ -168,6 +168,19 @@ function notEnforced(state: GameState, name: string, what: string): GameState {
   return { ...state, log: [...state.log, { t: 'info', text: `${name}: the law is attached, but ${what} is not enforced by the engine yet` }] }
 }
 
+/** Grants an Elect-Player law card to the elected seat: records ownership and marks the law active. */
+function grantLawTo(state: GameState, outcome: string, lawId: string): GameState {
+  const seat = Number(outcome)
+  if (Number.isNaN(seat) || !state.players[seat]) return state
+  const activeAgendas = (state.activeAgendas ?? []).includes(lawId) ? state.activeAgendas : [...(state.activeAgendas ?? []), lawId]
+  return {
+    ...state,
+    activeAgendas,
+    lawOwners: { ...(state.lawOwners ?? {}), [lawId]: seat },
+    log: [...state.log, { t: 'info', text: `${lawId}: granted to seat ${seat}` }],
+  }
+}
+
 const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   senate_sanctuary: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)
@@ -289,6 +302,18 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return next
   },
+  // Elect-Player law cards granted to a seat. The elected seat becomes the card's owner, recorded in
+  // `lawOwners` and the law is marked active in `activeAgendas`. `imperial_arbiter` and the ministries
+  // grant no VP; `prophecy_of_ixth` grants no VP either (its effect, a +1 fighter die and a discard on
+  // production, is a combat/status effect this increment does not yet enforce, so it is logged as
+  // notEnforced rather than silently dropped).
+  imperial_arbiter: (state, _agenda, outcome) => grantLawTo(state, outcome, 'imperial_arbiter'),
+  minister_of_commerce: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_commerce'),
+  minister_of_exploration: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_exploration'),
+  minister_of_industry: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_industry'),
+  minister_of_peace: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_peace'),
+  minister_of_policy: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_policy'),
+  minister_of_sciences: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_sciences'),
   // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
   // the law is at least visible in the state (Elect Law needs it too), and the resolution says so.
   // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
