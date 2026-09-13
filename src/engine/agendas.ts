@@ -340,9 +340,9 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   },
   // Elect-Player law cards granted to a seat. The elected seat becomes the card's owner, recorded in
   // `lawOwners` and the law is marked active in `activeAgendas`. `imperial_arbiter` and the ministries
-  // grant no VP; `prophecy_of_ixth` grants no VP either (its effect, a +1 fighter die and a discard on
-  // production, is a combat/status effect this increment does not yet enforce, so it is logged as
-  // notEnforced rather than silently dropped).
+  // grant no VP. `committee_formation`, `the_crown_of_thalnos`, and `prophecy_of_ixth` also grant no VP;
+  // their effects (vote skipping, combat rerolls, +1 fighter rolls) are not yet wired and remain in
+  // NOT_FIXED.md. All four law cards are now granted via `grantLawTo` and marked active.
   imperial_arbiter: (state, _agenda, outcome) => grantLawTo(state, outcome, 'imperial_arbiter'),
   minister_of_commerce: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_commerce'),
   minister_of_exploration: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_exploration'),
@@ -350,6 +350,11 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   minister_of_peace: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_peace'),
   minister_of_policy: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_policy'),
   minister_of_sciences: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_sciences'),
+  // Remaining Elect-Player law cards (Codices / PoK). Ongoing effects are not yet wired; the
+  // resolver grants the card and marks the law active so the owner can be queried elsewhere.
+  committee_formation: (state, _agenda, outcome) => grantLawTo(state, outcome, 'committee_formation'),
+  the_crown_of_thalnos: (state, _agenda, outcome) => grantLawTo(state, outcome, 'the_crown_of_thalnos'),
+  prophecy_of_ixth: (state, _agenda, outcome) => grantLawTo(state, outcome, 'prophecy_of_ixth'),
   // Homeland Defense Act — For: lift the two-PDS-per-planet cap (construction checks activeAgendas for
   // `homeland_defense_act`). Against: each player destroys 1 of their PDS (any one they control anywhere).
   homeland_defense_act: (state, _agenda, outcome) => {
