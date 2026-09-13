@@ -358,9 +358,11 @@ function politicsPrimary(state: GameState, seat: Seat, params: StrategicParams, 
   return reorderAgendaDeck(drawActionCards(spoken, seat, 2, seed), params)
 }
 
-/** R6 Construction: how many of that structure the planet may still take (1 space dock, 2 PDS per planet). */
-function structureRoom(planet: { structures: { type: string }[] }, type: 'pds' | 'spacedock'): number {
-  const limit = type === 'spacedock' ? 1 : 2
+/** R6 Construction: how many of that structure the planet may still take (1 space dock, 2 PDS per planet).
+ * The "For" outcome of the *Homeland Defense Act* lifts the PDS cap ("any number of PDS on planets they
+ * control"), so with that law active the planet always has room for another PDS. */
+function structureRoom(state: GameState, planet: { structures: { type: string }[] }, type: 'pds' | 'spacedock'): number {
+  const limit = type === 'spacedock' ? 1 : (state.activeAgendas?.includes('homeland_defense_act') ? Infinity : 2)
   return limit - planet.structures.filter(u => u.type === type).length
 }
 
@@ -386,7 +388,7 @@ export function constructionPlanets(state: GameState, seat: Seat, type: 'pds' | 
       continue
     }
     for (const planet of sys.planets) {
-      if (planet.owner === seat && structureRoom(planet, type) > 0) out.push(planet.id)
+      if (planet.owner === seat && structureRoom(state, planet, type) > 0) out.push(planet.id)
     }
   }
   return out
@@ -428,7 +430,7 @@ function placeStructure(state: GameState, seat: Seat, planetId: string, type: 'p
   const sys = state.systems[systemId]
   const planet = sys.planets.find(p => p.id === planetId)
   if (!planet || planet.owner !== seat) return { ok: false, error: `R6: you do not control ${planetId}` }
-  if (structureRoom(planet, type) < 1) {
+  if (structureRoom(state, planet, type) < 1) {
     return { ok: false, error: type === 'spacedock' ? `R6: ${planetId} already has a space dock` : `R6: ${planetId} already has two PDS` }
   }
   const player = state.players[seat]

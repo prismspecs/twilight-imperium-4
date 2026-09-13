@@ -4,9 +4,10 @@ import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlane
 import { applyMove, legalMoves } from './index'
 import { startNextRound } from './statusPhase'
 import { createGame } from './setup'
-import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer } from './testUtils'
+import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
+import { constructionPlanets } from './strategicActions'
 import { homeSystemOf } from './board'
-import type { GameConfig, GameState, Result, Seat } from './types'
+import type { GameConfig, GameState, Planet, Result, Seat } from './types'
 
 const value = (r: Result<GameState>): GameState => {
   if (!r.ok) throw new Error(r.error)
@@ -21,6 +22,25 @@ function withoutGroundForces(state: GameState): GameState {
     ...sys, planets: sys.planets.map(p => ({ ...p, ground: [] })),
   }]))
   return deepFreeze({ ...state, systems })
+}
+
+/** The systems that contain at least one unit or planet owned by `seat`. */
+function systemsOfPlayer(state: GameState, seat: Seat): typeof state.systems[string][] {
+  return Object.values(state.systems).filter(sys =>
+    sys.planets.some(p => p.owner === seat) || sys.space.some(u => u.owner === seat))
+}
+
+/** Attaches an agenda law id to a planet, mimicking an Elect-Planet resolution. */
+function withPlanetAttachment(state: GameState, planetId: string, lawId: string): GameState {
+  const systems = Object.fromEntries(Object.entries(state.systems).map(([id, sys]) => [id, {
+    ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, attachments: [...(p.attachments ?? []), lawId] } : p),
+  }]))
+  return deepFreeze({ ...state, systems })
+}
+
+/** Looks a planet up by id across every system. */
+function planetByIdOf(state: GameState, planetId: string): Planet | undefined {
+  return Object.values(state.systems).flatMap(sys => sys.planets).find(p => p.id === planetId)
 }
 
 describe('R10 agenda phase: entry and vote order', () => {
@@ -339,6 +359,59 @@ describe('R10 resolvers', () => {
     s = value(vote(s, 'Against', []))
     for (const p of s.players) expect(p.tokens.fleetPoolOverride).toBeUndefined()
     expect(s.activeAgendas).not.toContain('fleet_regulations')
+  })
+
+  it('Homeland Defense Act For: the two-PDS-per-planet cap is lifted', () => {
+    // Give seat 0 a second PDS on a controlled planet so only the lifted cap can allow a third.
+    const base = toActionPhase()
+    const homeId = homeSystemOf(base, 0)
+    const homePlanet = base.systems[homeId].planets[0].id
+    const twoPds = withUnits(deepFreeze({ ...base, activeAgendas: [] }), homeId, 0, ['pds', 'pds'], homePlanet)
+    // Without the law the planet is already full (2 PDS) and cannot take a third.
+    expect(constructionPlanets(twoPds, 0, 'pds')).not.toContain(homePlanet)
+    // Resolve the law's For outcome.
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'homeland_defense_act'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.activeAgendas).toContain('homeland_defense_act')
+    // With the cap lifted the same fully-PDS planet is now offered again.
+    const lifted = withUnits(deepFreeze({ ...s, activeAgendas: [...(s.activeAgendas ?? [])] }), homeId, 0, ['pds', 'pds'], homePlanet)
+    expect(constructionPlanets(lifted, 0, 'pds')).toContain(homePlanet)
+  })
+
+  it('Homeland Defense Act Against: each player destroys one PDS', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'homeland_defense_act'), agendaDeck: [] as string[] })
+    const homeId = homeSystemOf(s, 0)
+    const homePlanet = s.systems[homeId].planets[0].id
+    s = withUnits(s, homeId, 0, ['pds', 'pds'], homePlanet)
+    const before = systemsOfPlayer(s, 0).flatMap(sys => sys.planets).flatMap(p => p.structures).filter(u => u.type === 'pds' && u.owner === 0).length
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    // seat 0 loses exactly one PDS (whatever it started with)
+    const after = systemsOfPlayer(s, 0).flatMap(sys => sys.planets).flatMap(p => p.structures).filter(u => u.type === 'pds' && u.owner === 0).length
+    expect(after).toBe(before - 1)
+  })
+
+  it('New Constitution For: all laws are discarded and cleared from planets', () => {
+    // seat 0 owns the Shard (a law); we also attach a law to one of seat 1's planets to prove stripping.
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'new_constitution'), agendaDeck: [] as string[] })
+    s = { ...s, activeAgendas: ['shard_of_the_throne', 'homeland_defense_act'], lawOwners: { shard_of_the_throne: 0 } }
+    const homeId = homeSystemOf(s, 1)
+    const p1 = s.systems[homeId].planets[0].id
+    s = withPlanetAttachment(s, p1, 'senate_sanctuary')
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.activeAgendas ?? []).toHaveLength(0)
+    expect(s.lawOwners ?? {}).toEqual({})
+    expect(planetByIdOf(s, p1)?.attachments ?? []).toHaveLength(0)
+  })
+
+  it('New Constitution Against: no laws are discarded', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'new_constitution'), agendaDeck: [] as string[] })
+    s = { ...s, activeAgendas: ['fleet_regulations'], lawOwners: {} }
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    expect(s.activeAgendas).toContain('fleet_regulations')
   })
 
   it('Executive Sanctions For: every player hand is trimmed to 3 action cards', () => {

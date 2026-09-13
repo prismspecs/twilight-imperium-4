@@ -314,6 +314,58 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   minister_of_peace: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_peace'),
   minister_of_policy: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_policy'),
   minister_of_sciences: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_sciences'),
+  // Homeland Defense Act — For: lift the two-PDS-per-planet cap (construction checks activeAgendas for
+  // `homeland_defense_act`). Against: each player destroys 1 of their PDS (any one they control anywhere).
+  homeland_defense_act: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'homeland_defense_act'],
+        log: [...state.log, { t: 'info', text: 'Homeland Defense Act: the PDS cap is lifted' }],
+      }
+    }
+    // Against: each player that controls at least one PDS destroys one of them (LRR 65: "each player
+    // destroys 1 of their PDS units"). We remove the lowest-numbered (first-found) PDS for each seat.
+    let next = state
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      let found: { sysId: string; unit: { id: number } } | undefined
+      for (const [sysId, sys] of Object.entries(state.systems)) {
+        for (const planet of sys.planets) {
+          const pds = planet.structures.find(u => u.type === 'pds' && u.owner === seat)
+          if (pds) { found = { sysId, unit: pds }; break }
+        }
+        if (found) break
+      }
+      if (found) {
+        next = destroyUnits(next, found.sysId, [{ id: found.unit.id, type: 'pds' as const, owner: seat, damaged: false }])
+        next = { ...next, log: [...next.log, { t: 'info', text: `Homeland Defense Act: seat ${seat} destroys a PDS` }] }
+      }
+    }
+    return next
+  },
+  // New Constitution — (When revealed with no laws in play, discard this and reveal another.) For: discard
+  // all laws from play. Against: no effect. Discarding clears every active law: the activeAgendas list, the
+  // elected owners in lawOwners, and every law attachment on planets. The resource/influence value patches
+  // baked into the planet (Senate Sanctuary +2 influence, Core Mining +2 resources) are not reverted here —
+  // they are not stored reversibly, so they persist as a (noted) residue until the planet is freed.
+  new_constitution: (state, _agenda, outcome) => {
+    if (outcome !== 'For') return state
+    const withAgendas: GameState = { ...state, activeAgendas: [], lawOwners: {} }
+    let next = withAgendas
+    let stripped = 0
+    for (const [, sys] of Object.entries(state.systems)) {
+      for (const planet of sys.planets) {
+        if (planet.attachments && planet.attachments.length > 0) {
+          stripped += planet.attachments.length
+          next = withPlanet(next, planet.id, p => ({ ...p, attachments: [] }))
+        }
+      }
+    }
+    return {
+      ...next,
+      log: [...state.log, { t: 'info', text: `New Constitution: all laws are discarded${stripped > 0 ? `, ${stripped} law attachments removed from planets` : ''}` }],
+    }
+  },
   // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
   // the law is at least visible in the state (Elect Law needs it too), and the resolution says so.
   // Attached laws whose ongoing effect this engine does not enforce yet; the attachment is recorded so
