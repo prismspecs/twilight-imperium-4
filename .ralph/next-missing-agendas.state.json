@@ -1,7 +1,7 @@
 {
   "name": "next-missing-agendas",
   "taskFile": ".ralph/next-missing-agendas.md",
-  "iteration": 5,
+  "iteration": 7,
   "maxIterations": 15,
   "itemsPerIteration": 2,
   "reflectEvery": 1,
