@@ -1,10 +1,11 @@
-import type { FactionId, System } from './types'
+import type { FactionId, GameState, System } from './types'
 
 /**
  * Adjacency is state-driven: it reads the systems that were placed in the game (each carries its hex
  * `neighbours`), not a static map module, so a generated galaxy works the same as the fixed duel map.
  * Wormholes link every pair of systems that share a wormhole type, on top of hex adjacency.
  * Ghosts of Creuss (Quantum Entanglement) treat all alpha and beta wormholes as adjacent.
+ * With Enforced Travel Ban, wormhole adjacency is disabled.
  */
 type Systems = Readonly<Record<string, System>>
 
@@ -13,10 +14,14 @@ type Systems = Readonly<Record<string, System>>
  * Chart's "systems that contain alpha and beta wormholes are adjacent to each other" for the tactical
  * action it was played into.
  */
-export function neighbours(systems: Systems, id: string, faction?: FactionId, linkAlphaBeta = false): string[] {
+export function neighbours(systems: Systems, id: string, faction?: FactionId, linkAlphaBeta = false, state?: GameState): string[] {
   const sys = systems[id]
   if (!sys) throw new Error(`unknown system ${id}`)
   const out = new Set(sys.neighbours)
+  // R10 Enforced Travel Ban For: wormhole adjacency is disabled
+  if (state?.activeAgendas?.includes('enforced_travel_ban')) {
+    return [...out]   // only hex adjacency, no wormhole links
+  }
   if (sys.wormhole) {
     const isCreuss = faction === 'creuss'
     for (const s of Object.values(systems)) {

@@ -212,6 +212,16 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }) as GameState['players']
     return { ...next, players }
   },
+  enforced_travel_ban: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'enforced_travel_ban'],
+        log: [...state.log, { t: 'info', text: 'Enforced Travel Ban: wormhole adjacency disabled' }],
+      }
+    }
+    return state
+  },
   arms_reduction: (state, _agenda, outcome) => {
     let next = state
     const players = [...state.players] as GameState['players']

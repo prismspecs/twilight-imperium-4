@@ -99,7 +99,7 @@ export function shortestPath(state: GameState, seat: Seat, from: string, to: str
       const du = dist.get(u) ?? Infinity
       if (!Number.isFinite(du)) continue
       const edgeWeight = hasGravityRift(state, u) ? 0 : 1
-      for (const n of withSpatialConduit(state, seat, u, neighbours(state.systems, u, state.players[seat]?.faction, linkAlphaBeta))) {
+      for (const n of withSpatialConduit(state, seat, u, neighbours(state.systems, u, state.players[seat]?.faction, linkAlphaBeta, state))) {
         if (!passable(state, seat, n, n === to, effectiveIgnoreFleets)) continue
         const nd = du + edgeWeight
         if (nd < (dist.get(n) ?? Infinity)) {
