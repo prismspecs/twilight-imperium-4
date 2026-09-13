@@ -3,12 +3,12 @@
 ### Agendas NOT implemented yet:
 
 **Directive agendas (For/Against or Elect outcomes):**
-1. `enforced_travel_ban` - For: disable alpha/beta wormholes ✓; Against: destroy PDS in/wormhole systems
+1. `enforced_travel_ban` - For: disable alpha/beta wormholes ✓; Against: destroy PDS in/wormhole systems ✓
 2. `publicize_weapon_schematics` - For: ignore war sun prereqs ✓ (partial, prereq/sustain needs deeper refactoring); Against: war sun owners discard action cards ✓
 3. `regulated_conscription` - For: 1 fighter+infantry per cost ✓; Against: no effect
 4. `representative_government_base_game` - For: limit votes ✓; Against: exhaust cultural planets ✓
 5. `shared_research` - For: move through nebulae ✓; Against: place token in home system
-6. `wormhole_reconstruction` - For: all alpha/beta wormholes adjacent ✓; Against: place tokens in wormhole systems
+6. `wormhole_reconstruction` - For: all alpha/beta wormholes adjacent ✓; Against: place tokens in wormhole systems ✓
 7. `wormhole_research` - ??? (need to check spec)
 
 **Law agendas (Elect player/planet):**
@@ -70,3 +70,15 @@
 - Remaining: `wormhole_research` (???), `enforced_travel_ban` Against (PDS destruction), or Elect-Law
   `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`, `committee_formation`,
   `classified_document_leaks`, `prophecy_of_ixth`.
+
+### Reflection (iteration 12):
+- Iterations 3-12 produced commits implementing both For and Against outcomes of `enforced_travel_ban`
+  and `wormhole_reconstruction`. The Against of enforced_travel_ban destroys each PDS in or adjacent to
+  a wormhole system; the Against of wormhole_reconstruction places a command token in each wormhole system
+  containing the voter's ships (and subtracts one tactic token from their reinforcements).
+- Added tests for both Against effects (agendas.test.ts now 38 passing). Full suite 256 failed / 498 passed
+  (754 total) — the +2 are the new tests, same pre-existing failure baseline. tsc clean, lint clean.
+- Commits this round: 19c4dc4 (feat: enforce both Against effects), 56f67ba (test: cover them).
+- Remaining: `wormhole_research` (???), Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`,
+  `colonial_redistribution`, `committee_formation`, `classified_document_leaks`, `prophecy_of_ixth`,
+  plus deeper refactoring for publicize For (prereq/sustain state threading).
