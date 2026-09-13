@@ -87,7 +87,16 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
-  return { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
+  let result: GameState = { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
+  // Minister of Policy: at the end of the status phase, the owner draws 1 action card.
+  const policyOwner = result.lawOwners?.minister_of_policy
+  if (policyOwner !== undefined) {
+    result = {
+      ...drawActionCards(result, policyOwner, 1, deriveSeed(seed, 9000 + policyOwner)),
+      log: [...result.log, { t: 'info', text: `Minister of Policy: seat ${policyOwner} draws 1 action card` }],
+    }
+  }
+  return result
 }
 
 /** R3.1/R10: the round+1/phase:strategy tail, run either right after the status phase (no agenda this round)

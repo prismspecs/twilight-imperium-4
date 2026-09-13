@@ -7,7 +7,8 @@ import { checkFleet, homeSystemOf, returnToReinforcements, shipsOf } from './boa
 import { cheapestPayment, distributeTokens, exhaustPlanets, fleetPoolLimit, nonFighterShips, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
-import { canResearch } from './research'
+import { canResearch, colourCounts } from './research'
+import { techDef } from '../data/techs'
 import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor, UnitType } from './types'
 
 /** The cost order for non-fighter ships, matching the combat module's logic. */
@@ -175,16 +176,23 @@ export function grantTech(state: GameState, seat: Seat, techId: string, ignorePr
   const exhausted = exhaustTechSkipPlanets(state, seat, techSkipPlanets)
   if (!exhausted.ok) return exhausted
   
-  // Check for research team attachments on controlled planets
+  // Check for research team attachments on controlled planets. The attachment exhausts a planet to skip
+  // one prerequisite of its colour — only a colour the card actually needs and the player does not already
+  // cover counts. A redundant team (colour already satisfied by the player's techs, or by an earlier team
+  // in this same research) is left unexhausted, so the planet stays available for resource payments.
   let next = exhausted.value.state
   const skips = [...exhausted.value.skips]
+  // Per-colour shortfall after the player's owned techs and the explicit techSkipPlanets already committed:
+  // how many more prerequisites of each colour the researched card still needs.
+  const owned = colourCounts(player.techs)
+  const need = { ...techDef(techId).prereq }
+  for (const c of skips) if ((need[c] ?? 0) > 0) need[c] = (need[c] ?? 0) - 1
   for (const [sysId, sys] of Object.entries(next.systems)) {
     for (const planet of sys.planets) {
       if (planet.owner !== seat) continue
       for (const attachment of planet.attachments ?? []) {
         const skipColor = RESEARCH_TEAM_COLORS[attachment]
-        if (skipColor && !skips.includes(skipColor)) {
-          // Found a research team - exhaust the planet and add the skip
+        if (skipColor && !skips.includes(skipColor) && (need[skipColor] ?? 0) - owned[skipColor] > 0) {
           next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planet.id ? { ...p, exhausted: true } : p) } } }
           skips.push(skipColor)
           next = { ...next, log: [...next.log, { t: 'info', text: `seat ${seat} exhausts ${planet.name} (${attachment}) to skip ${skipColor} prerequisite for ${techId}` }] }
@@ -519,6 +527,7 @@ function technologySecondary(state: GameState, seat: Seat, params: StrategicPara
     const tradeGoods = params.tradeGoods !== undefined ? params.tradeGoods : (payment?.tradeGoods ?? 0)
     const paid = payCost(state, seat, 4, planets, tradeGoods)
     if (!paid.ok) return paid
+    return grantTech(paid.value, seat, params.techId, false, params.techSkipPlanets ?? [])
   }
   return grantTech(state, seat, params.techId, false, params.techSkipPlanets ?? [])
 }
