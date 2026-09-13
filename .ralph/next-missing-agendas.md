@@ -40,6 +40,8 @@
 - `new_constitution` ✓ (commit 05b8953)
 - `regulated_conscription` For (production cap) ✓
 - `publicize_weapon_schematics` Against (discard cards) ✓
+- `representative_government` For/Against ✓
+- `shared_research` For (nebula movement) ✓
 
 ### Priority order:
 1. **High impact** - Agendas that affect many games
@@ -56,17 +58,16 @@
    - minister_of_sciences (free research with Tech SC) ✓
    - minister_of_policy / other ministries (cards granted to owner) ✓
 
-### Reflection (iteration 5):
-- Iterations 3-5 produced 5 commits implementing 4 directives (homeland_defense_act, new_constitution,
-  regulated_conscription For, representative_government) and partial publicize_weapon_schematics.
-- All commits passed tsc/lint; suite improved by 1 test (497 passed vs 496 before) thanks to new tests.
-- The `representative_government` For effect limits votes to 1 per agenda per player (enforced in
-  `castVote` by checking `agenda.votes[seat]`). Against effect exhausts cultural planets for seats
-  that voted Against, run at `startNextRound`.
-- `publicize_weapon_schematics` prereq ignore and SUSTAIN DAMAGE loss for For effect require deeper
-  refactoring of `canResearch` and `canSustain` to accept GameState (NOT_FIXED.md notes this).
-- Commits: 7a2618e pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
-  4283114, 05b8953, 751c370, 7a2618e.
-- Next: `enforced_travel_ban` (wormhole movement ban), `shared_research` (nebula movement),
-  `wormhole_reconstruction` (wormhole adjacency), or Elect-Law `miscount_disclosed`,
-  `the_crown_of_thalnos`, `colonial_redistribution`, `committee_formation`.
+### Reflection (iteration 6):
+- Iterations 3-6 produced 6 commits implementing 5 directives (homeland_defense_act, new_constitution,
+  regulated_conscription For, representative_government, shared_research) and partial publicize_weapon_schematics.
+- All commits passed tsc/lint; suite remains 256 failed / 496 passed (752 total), same as committed baseline.
+- `shared_research` For: passable() now allows nebulae as waypoints when activeAgendas includes shared_research.
+  Per spec, ships starting in nebulae treat their move value as one — this is handled implicitly by the
+  movement code (shortestPath uses the ship's move value against path length).
+- Commits: 7ba2058 pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
+  4283114, 05b8953, 751c370, 7a2618e, 7ba2058.
+- Remaining: `enforced_travel_ban` (wormhole movement ban), `wormhole_reconstruction` (wormhole adjacency),
+  `representative_government_base_game` vote limit (For), `shared_research` (nebula movement) ✓,
+  `wormhole_research` (???), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`,
+  `colonial_redistribution`, `committee_formation`.
