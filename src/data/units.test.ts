@@ -17,7 +17,7 @@ describe('unit stats (R1 components)', () => {
     expect(unitStats('spacedock', letnev)).toMatchObject({ production: 2 })
   })
   it('level II upgrades change the stats', () => {
-    const t = { faction: 'letnev' as const, techs: ['fighter_ii', 'destroyer_ii', 'cruiser_ii', 'carrier_ii', 'dreadnought_ii', 'infantry_ii', 'space_dock_ii'] }
+    const t = { faction: 'letnev' as const, techs: ['fighter_ii', 'destroyer_ii', 'cruiser_ii', 'carrier_ii', 'dreadnought_ii', 'infantry_ii', 'space_dock_ii', 'pds_ii'] }
     expect(unitStats('fighter', t)).toMatchObject({ combat: 8, move: 2 })
     expect(unitStats('destroyer', t)).toMatchObject({ combat: 8, afb: { value: 6, dice: 3 } })
     expect(unitStats('cruiser', t)).toMatchObject({ combat: 6, move: 3, capacity: 1 })
@@ -25,6 +25,7 @@ describe('unit stats (R1 components)', () => {
     expect(unitStats('dreadnought', t)).toMatchObject({ move: 2 })
     expect(unitStats('infantry', t)).toMatchObject({ combat: 7 })
     expect(unitStats('spacedock', t)).toMatchObject({ production: 4 })
+    expect(unitStats('pds', t)).toMatchObject({ spaceCannon: { value: 5, dice: 1 } })
   })
   it('L1Z1X dreadnoughts are super-dreadnoughts', () => {
     expect(unitStats('dreadnought', l1z1x)).toMatchObject({ cost: 4, combat: 5, move: 1, capacity: 2, bombardment: { value: 5, dice: 1 } })

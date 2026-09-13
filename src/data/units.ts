@@ -29,11 +29,14 @@ const LEVEL_II: Partial<Record<UnitType, Partial<UnitStats>>> = {
   carrier: { move: 2, capacity: 6 },
   dreadnought: { move: 2 },
   spacedock: { production: 4 },
+  // PDS II: Space Cannon 6 → 5 (and gains the Deep Space Cannon adjacent-system ability). The stat change
+  // is the value 5; the adjacent-system firing is handled in combat.ts' spaceCannonOffense separately.
+  pds: { spaceCannon: { value: 5, dice: 1 } },
 }
 
 export const UPGRADE_TECH: Partial<Record<UnitType, string>> = {
   infantry: 'infantry_ii', fighter: 'fighter_ii', destroyer: 'destroyer_ii', cruiser: 'cruiser_ii',
-  carrier: 'carrier_ii', dreadnought: 'dreadnought_ii', spacedock: 'space_dock_ii',
+  carrier: 'carrier_ii', dreadnought: 'dreadnought_ii', spacedock: 'space_dock_ii', pds: 'pds_ii',
 }
 
 /**

@@ -27,6 +27,7 @@ export const TECHS: TechDef[] = [
   { id: 'carrier_ii', name: 'Carrier II', colour: null, prereq: { blue: 2 }, kind: 'upgrade', unit: 'carrier' },
   { id: 'dreadnought_ii', name: 'Dreadnought II', colour: null, prereq: { blue: 2, yellow: 1 }, kind: 'upgrade', unit: 'dreadnought' },
   { id: 'space_dock_ii', name: 'Space Dock II', colour: null, prereq: { yellow: 2 }, kind: 'upgrade', unit: 'spacedock' },
+  { id: 'pds_ii', name: 'PDS II', colour: null, prereq: { yellow: 1 }, kind: 'upgrade', unit: 'pds' },
   { id: 'inheritance_systems', name: 'Inheritance Systems', colour: 'yellow', prereq: { yellow: 2 }, kind: 'faction', faction: 'l1z1x' },
   { id: 'super_dreadnought_ii', name: 'Super-Dreadnought II', colour: null, prereq: { blue: 2, yellow: 1 }, kind: 'faction', faction: 'l1z1x', unit: 'dreadnought' },
   { id: 'l4_disruptors', name: 'L4 Disruptors', colour: 'yellow', prereq: { yellow: 1 }, kind: 'faction', faction: 'letnev' },
