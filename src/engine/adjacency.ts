@@ -18,8 +18,8 @@ export function neighbours(systems: Systems, id: string, faction?: FactionId, li
   const sys = systems[id]
   if (!sys) throw new Error(`unknown system ${id}`)
   const out = new Set(sys.neighbours)
-  // R10 Enforced Travel Ban For: wormhole adjacency is disabled
-  if (state?.activeAgendas?.includes('enforced_travel_ban')) {
+  // R10 Enforced Travel Ban For: wormhole adjacency is disabled (unless Wormhole Reconstruction is active)
+  if (state?.activeAgendas?.includes('enforced_travel_ban') && !state.activeAgendas.includes('wormhole_reconstruction')) {
     return [...out]   // only hex adjacency, no wormhole links
   }
   if (sys.wormhole) {

@@ -420,6 +420,16 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return state
   },
+  wormhole_reconstruction: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'wormhole_reconstruction'],
+        log: [...state.log, { t: 'info', text: 'Wormhole Reconstruction: Enforced Travel Ban has no effect' }],
+      }
+    }
+    return state
+  },
   representative_government_base_game: (state, _agenda, outcome) => {
     if (outcome === 'For') {
       return {
