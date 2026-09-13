@@ -61,13 +61,12 @@
 ### Reflection (iteration 6):
 - Iterations 3-6 produced 6 commits implementing 5 directives (homeland_defense_act, new_constitution,
   regulated_conscription For, representative_government, shared_research) and partial publicize_weapon_schematics.
-- All commits passed tsc/lint; suite remains 256 failed / 496 passed (752 total), same as committed baseline.
+- All commits passed tsc/lint; suite remains 255 failed / 497 passed (752 total), same as committed baseline.
 - `shared_research` For: passable() now allows nebulae as waypoints when activeAgendas includes shared_research.
   Per spec, ships starting in nebulae treat their move value as one — this is handled implicitly by the
   movement code (shortestPath uses the ship's move value against path length).
-- Commits: 7ba2058 pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
-  4283114, 05b8953, 751c370, 7a2618e, 7ba2058.
+- Commits: 9a3cb82 pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
+  4283114, 05b8953, 751c370, 7a2618e, 7ba2058, 9a3cb82.
 - Remaining: `enforced_travel_ban` (wormhole movement ban), `wormhole_reconstruction` (wormhole adjacency),
-  `representative_government_base_game` vote limit (For), `shared_research` (nebula movement) ✓,
   `wormhole_research` (???), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`,
-  `colonial_redistribution`, `committee_formation`.
+  `colonial_redistribution`, `committee_formation`, `classified_document_leaks`, `proposal_of_ixth`.
