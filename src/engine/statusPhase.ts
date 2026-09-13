@@ -104,12 +104,27 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
  * starts with the seat the setup names and only the Politics primary hands it on, which is exactly what
  * makes Politics worth picking. */
 export function startNextRound(state: GameState): GameState {
-  const speaker = state.speaker
-  const round = state.round + 1
-  const draft = snakeOrder({ ...state, speaker })
-  return {
-    ...state, round, phase: 'strategy', speaker, active: speaker, draft,
+  let next = { ...state, round: state.round + 1, phase: 'strategy' as const, active: state.speaker, draft: snakeOrder(state) }
+  // R10 Representative Government Against: each player that voted 'Against' exhausts all of their cultural planets
+  if (state.agenda && state.activeAgendas?.includes('representative_government_base_game')) {
+    const againstVoters = Object.entries(state.agenda.votes)
+      .filter(([, vote]) => vote && vote.outcome === 'Against')
+      .map(([seat]) => Number(seat))
+    if (againstVoters.length > 0) {
+      const systems = { ...next.systems }
+      for (const seat of againstVoters) {
+        for (const [sysId, sys] of Object.entries(systems)) {
+          const planets = sys.planets.map(p => {
+            if (p.owner !== seat || p.trait !== 'cultural') return p
+            return { ...p, exhausted: true }
+          })
+          systems[sysId] = { ...sys, planets }
+        }
+      }
+      next = { ...next, systems, log: [...next.log, { t: 'info', text: `Representative Government: seats ${againstVoters.map(s => s + 1).join(', ')} exhaust all cultural planets` }] }
+    }
   }
+  return next
 }
 
 /** R3.3 steps 2 and 4 to 6, run once both players have submitted their status move. */

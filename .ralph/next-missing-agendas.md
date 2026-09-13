@@ -56,22 +56,15 @@
    - minister_of_sciences (free research with Tech SC) ✓
    - minister_of_policy / other ministries (cards granted to owner) ✓
 
-### Reflection (iteration 4):
-- Homeland Defense Act fully enforced: For lifts the two-PDS-per-planet cap (Construction's
-  `structureRoom` now gates on `activeAgendas` containing `homeland_defense_act`); Against destroys one
-  PDS per player.
-- New Constitution fully enforced: For discards all laws (clears `activeAgendas`, `lawOwners` and every
-  planet law attachment); Against no effect. The resource/influence value patches baked into planets are
-  not stored reversibly, so they persist as a noted residue — this is recorded as a gap.
-- Debugging: an "HDA-against" probe revealed the resolver WAS running and destroying exactly one PDS; the
-  failing test expectation was wrong (it ignored the setup PDS in each home system). Fixed the test to be
-  robust (before/after count).
-- Verified no regressions: the full-suite failure set is byte-identical to the committed baseline
-  (comm stdin comparison of `git stash`-ed baseline FAIL greps vs current), while agendas.test.ts grew
-  32 → 36 passing.
-- Fully green: `npm test -- --run src/engine/agendas.test.ts` 36 passed; tsc/lint clean on changed files.
-- Commits pened: 05b8953 pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
-  4283114, 05b8953.
-- Next (highest remaining value): `enforced_travel_ban` (wormhole ban — deep, affects movement/adjacency),
-  `publicize_weapon_schematics` (war sun prereq + sustain loss), `regulated_conscription` (production cap),
-  or Elect-Law `miscount_disclosed` / `the_crown_of_thalnos`.
+### Reflection (iteration 5):
+- Iterations 3-4 produced 4 commits implementing 3 directives (homeland_defense_act, new_constitution,
+  regulated_conscription For) and partial publicize_weapon_schematics (Against works, For prereq/sustain
+  needs state-threading in research.ts/combat.ts).
+- All commits passed tsc/lint and no new test failures were introduced (full suite: 256 failed / 496
+  passed, identical to committed baseline).
+- The `publicize_weapon_schematics` prereq ignore and SUSTAIN DAMAGE loss for For effect require
+  updating `canResearch` and `canSustain` to accept GameState and check `activeAgendas`. This is a
+  larger refactor affecting movement, tactical actions, and combat.
+- Next (highest remaining value): `enforced_travel_ban` (wormhole movement ban - deep adjacency
+  refactoring), `representative_government_base_game` (vote limit), `shared_research` (nebula
+  movement), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`.

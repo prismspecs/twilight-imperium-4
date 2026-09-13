@@ -400,6 +400,16 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return next
   },
+  representative_government_base_game: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'representative_government_base_game'],
+        log: [...state.log, { t: 'info', text: 'Representative Government: players cast only 1 vote per agenda' }],
+      }
+    }
+    return state
+  },
   new_constitution: (state, _agenda, outcome) => {
     if (outcome !== 'For') return state
     const withAgendas: GameState = { ...state, activeAgendas: [], lawOwners: {} }
@@ -634,6 +644,10 @@ export function castVote(state: GameState, outcome: string, planets: string[], s
   if (seat === undefined || seat !== state.active) return { ok: false, error: 'R10: not this seat\'s vote' }
   if (state.players[seat].faction === 'nekro') return { ok: false, error: 'R10: the Nekro Virus cannot vote (Galactic Threat)' }
   if (!legalOutcomes(state, agenda.revealed).includes(outcome)) return { ok: false, error: `R10: ${outcome} is not a legal outcome` }
+  // R10 Representative Government For: each player may cast 1 vote on each agenda instead of exhausting planets
+  if (state.activeAgendas?.includes('representative_government_base_game')) {
+    if (agenda.votes[seat]) return { ok: false, error: 'R10: you have already cast a vote on this agenda' }
+  }
   const paid = exhaustPlanets(state, seat, planets)
   if (!paid.ok) return paid
   const votes = { ...agenda.votes, [seat]: { outcome, influence: paid.value.influence } }
