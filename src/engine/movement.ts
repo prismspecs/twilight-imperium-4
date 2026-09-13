@@ -29,6 +29,7 @@ export function anomaliesOf(sys: System): Anomaly[] {
  * - Asteroid fields require Antimass Deflectors to enter or pass through.
  * - Supernovas cannot be entered or passed through.
  * - Nebulae can be entered as destinations, but cannot be passed through as waypoints.
+ *   With Shared Research, ships can pass through nebulae as waypoints.
  * - Enemy or guardian ships block movement through waypoints.
  */
 function passable(state: GameState, seat: Seat, id: string, destination: boolean, ignoreFleets: boolean): boolean {
@@ -37,7 +38,8 @@ function passable(state: GameState, seat: Seat, id: string, destination: boolean
   const anoms = anomaliesOf(sys)
   if (anoms.includes('supernova') && state.players[seat].faction !== 'muaat') return false
   if (anoms.includes('asteroid_field') && !state.players[seat].techs.includes('antimass_deflectors')) return false
-  if (!destination && anoms.includes('nebula')) return false
+  // R10 Shared Research For: ships in nebulae can move (can pass through as waypoints)
+  if (!destination && anoms.includes('nebula') && !state.activeAgendas?.includes('shared_research')) return false
   if (destination || ignoreFleets) return true
   return !sys.space.some(u => u.owner !== seat && isShip(u.type))   // R3.2: no moving through enemy or guardian ships
 }

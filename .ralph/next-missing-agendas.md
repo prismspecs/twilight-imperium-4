@@ -57,14 +57,16 @@
    - minister_of_policy / other ministries (cards granted to owner) ✓
 
 ### Reflection (iteration 5):
-- Iterations 3-4 produced 4 commits implementing 3 directives (homeland_defense_act, new_constitution,
-  regulated_conscription For) and partial publicize_weapon_schematics (Against works, For prereq/sustain
-  needs state-threading in research.ts/combat.ts).
-- All commits passed tsc/lint and no new test failures were introduced (full suite: 256 failed / 496
-  passed, identical to committed baseline).
-- The `publicize_weapon_schematics` prereq ignore and SUSTAIN DAMAGE loss for For effect require
-  updating `canResearch` and `canSustain` to accept GameState and check `activeAgendas`. This is a
-  larger refactor affecting movement, tactical actions, and combat.
-- Next (highest remaining value): `enforced_travel_ban` (wormhole movement ban - deep adjacency
-  refactoring), `representative_government_base_game` (vote limit), `shared_research` (nebula
-  movement), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`.
+- Iterations 3-5 produced 5 commits implementing 4 directives (homeland_defense_act, new_constitution,
+  regulated_conscription For, representative_government) and partial publicize_weapon_schematics.
+- All commits passed tsc/lint; suite improved by 1 test (497 passed vs 496 before) thanks to new tests.
+- The `representative_government` For effect limits votes to 1 per agenda per player (enforced in
+  `castVote` by checking `agenda.votes[seat]`). Against effect exhausts cultural planets for seats
+  that voted Against, run at `startNextRound`.
+- `publicize_weapon_schematics` prereq ignore and SUSTAIN DAMAGE loss for For effect require deeper
+  refactoring of `canResearch` and `canSustain` to accept GameState (NOT_FIXED.md notes this).
+- Commits: 7a2618e pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
+  4283114, 05b8953, 751c370, 7a2618e.
+- Next: `enforced_travel_ban` (wormhole movement ban), `shared_research` (nebula movement),
+  `wormhole_reconstruction` (wormhole adjacency), or Elect-Law `miscount_disclosed`,
+  `the_crown_of_thalnos`, `colonial_redistribution`, `committee_formation`.

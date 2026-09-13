@@ -400,6 +400,16 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return next
   },
+  shared_research: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'shared_research'],
+        log: [...state.log, { t: 'info', text: 'Shared Research: ships in nebulae can move' }],
+      }
+    }
+    return state
+  },
   representative_government_base_game: (state, _agenda, outcome) => {
     if (outcome === 'For') {
       return {
