@@ -220,7 +220,32 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
         log: [...state.log, { t: 'info', text: 'Enforced Travel Ban: wormhole adjacency disabled' }],
       }
     }
-    return state
+    // Against: destroy each PDS in or adjacent to a system that contains a wormhole
+    // (alpha, beta or delta). Build the set of wormhole systems and their hex neighbours.
+    const wormholeSystems = new Set<string>()
+    for (const [sysId, sys] of Object.entries(state.systems)) {
+      if (sys.wormhole) wormholeSystems.add(sysId)
+    }
+    const targetSystems = new Set(wormholeSystems)
+    for (const sysId of wormholeSystems) {
+      for (const n of neighbours(state.systems, sysId)) targetSystems.add(n)
+    }
+    let next = state
+    let destroyed = 0
+    for (const [sysId, sys] of Object.entries(state.systems)) {
+      if (!targetSystems.has(sysId)) continue
+      for (const planet of sys.planets) {
+        const pds = planet.structures.filter(u => u.type === 'pds')
+        if (pds.length > 0) {
+          next = destroyUnits(next, sysId, pds)
+          destroyed += pds.length
+        }
+      }
+    }
+    if (destroyed > 0) {
+      next = { ...next, log: [...next.log, { t: 'info', text: `Enforced Travel Ban: destroyed ${destroyed} PDS in or adjacent to wormhole systems` }] }
+    }
+    return next
   },
   arms_reduction: (state, _agenda, outcome) => {
     let next = state
@@ -428,7 +453,24 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
         log: [...state.log, { t: 'info', text: 'Wormhole Reconstruction: Enforced Travel Ban has no effect' }],
       }
     }
-    return state
+    // Against: each player places a command token from their reinforcements in each system that
+    // contains a wormhole and 1 or more of that player's ships. The token is placed as it would be
+    // by activation (recorded in the system's activatedBy and removed from the player's tactic pool).
+    let next = state
+    const tokens = state.players.map(p => ({ ...p, tokens: { ...p.tokens } })) as GameState['players']
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      for (const [sysId, sys] of Object.entries(state.systems)) {
+        if (!sys.wormhole) continue
+        if (!sys.space.some(u => u.owner === seat && isShip(u.type))) continue
+        if (sys.activatedBy.includes(seat)) continue   // already activated by this seat
+        const systems = { ...next.systems, [sysId]: { ...sys, activatedBy: [...sys.activatedBy, seat] } }
+        const player = { ...tokens[seat], tokens: { ...tokens[seat].tokens, tactic: Math.max(0, tokens[seat].tokens.tactic - 1) } }
+        tokens[seat] = player
+        next = { ...next, systems, log: [...next.log, { t: 'info', text: `Wormhole Reconstruction: seat ${seat} places a token in ${sysId}` }] }
+      }
+    }
+    next = { ...next, players: tokens }
+    return next
   },
   representative_government_base_game: (state, _agenda, outcome) => {
     if (outcome === 'For') {
