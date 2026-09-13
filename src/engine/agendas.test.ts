@@ -414,6 +414,38 @@ describe('R10 resolvers', () => {
     expect(s.activeAgendas).toContain('fleet_regulations')
   })
 
+  it('Enforced Travel Ban Against: destroys PDS in or adjacent to a wormhole system', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'enforced_travel_ban'), agendaDeck: [] as string[] })
+    // tile-26 (alpha wormhole) has the planet `lodor`; tile-25 (beta) has `quann`.
+    const whPlanet = s.systems['tile-26'].planets[0].id
+    // A home system with no wormhole must survive.
+    const homeId = homeSystemOf(s, 0)
+    const homePlanet = s.systems[homeId].planets[0].id
+    s = withUnits(s, 'tile-26', 0, ['pds', 'pds'], whPlanet)   // PDS on the wormhole planet
+    s = withUnits(s, homeId, 0, ['pds'], homePlanet)            // PDS in a non-wormhole home system
+    const homePdsBefore = planetByIdOf(s, homePlanet)?.structures.filter(u => u.type === 'pds').length ?? 0
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    // Two PDS on the wormhole planet are destroyed; the home PDS survives (count unchanged).
+    expect(planetByIdOf(s, whPlanet)?.structures.filter(u => u.type === 'pds')).toHaveLength(0)
+    expect(planetByIdOf(s, homePlanet)?.structures.filter(u => u.type === 'pds')).toHaveLength(homePdsBefore)
+    expect(s.activeAgendas).not.toContain('enforced_travel_ban')
+  })
+
+  it('Wormhole Reconstruction Against: place a token in each wormhole system containing own ships', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'wormhole_reconstruction'), agendaDeck: [] as string[] })
+    const initialTactic = s.players[0].tokens.tactic
+    // Put two seat-0 ships in the alpha wormhole system (tile-26).
+    s = withUnits(s, 'tile-26', 0, ['destroyer', 'cruiser'])
+    expect(s.systems['tile-26'].activatedBy).not.toContain(0)
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    // Seat 0 has ships in tile-26 (alpha), so a token lands there.
+    expect(s.systems['tile-26'].activatedBy).toContain(0)
+    expect(s.players[0].tokens.tactic).toBe(initialTactic - 1)
+    expect(s.activeAgendas).not.toContain('wormhole_reconstruction')
+  })
+
   it('Executive Sanctions For: every player hand is trimmed to 3 action cards', () => {
     let base = toActionPhase()
     const players = [...base.players] as GameState['players']
