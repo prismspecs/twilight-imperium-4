@@ -58,15 +58,16 @@
    - minister_of_sciences (free research with Tech SC) ✓
    - minister_of_policy / other ministries (cards granted to owner) ✓
 
-### Reflection (iteration 9):
-- Iterations 3-9 produced 9 commits implementing 6 directives (homeland_defense_act, new_constitution,
-  regulated_conscription For, representative_government, shared_research, enforced_travel_ban) and
-  partial publicize_weapon_schematics.
+### Reflection (iteration 10):
+- Iterations 3-10 produced 10 commits implementing 7 directives (homeland_defense_act, new_constitution,
+  regulated_conscription For, representative_government, shared_research, enforced_travel_ban, wormhole_reconstruction)
+  and partial publicize_weapon_schematics.
 - All commits passed tsc/lint; suite remains 256 failed / 496 passed (752 total), same as committed baseline.
-- `enforced_travel_ban` For: neighbours() now accepts optional GameState and skips wormhole links when
-  active. Per spec, Creuss faction tech Quantum Entanglement handles Creuss-specific wormhole adjacency.
-- Commits: bb0ee3f pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
-  4283114, 05b8953, 751c370, 7a2618e, 7ba2058, 9a3cb82, 6301c38, c6b49ac, bb0ee3f.
-- Remaining: `wormhole_reconstruction` (For: all alpha/beta wormholes adjacent), `wormhole_research`
-  (???), or Elect-Law `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`,
-  `committee_formation`, `classified_document_leaks`, `prophecy_of_ixth`.
+- `wormhole_reconstruction` For: When active, disables Enforced Travel Ban's effect on wormhole adjacency.
+  The neighbours() function checks both laws and only disables wormhole adjacency when enforced_travel_ban
+  is active and wormhole_reconstruction is NOT.
+- Commits: 0503ff0 pushed. Cumulative agenda commits: 3a503ac, 3c8b9d9, 4b4ac5b, 54f9690, a9694cb,
+  4283114, 05b8953, 751c370, 7a2618e, 7ba2058, 9a3cb82, 6301c38, c6b49ac, bb0ee3f, 0503ff0.
+- Remaining: `wormhole_research` (???), `enforced_travel_ban` Against (PDS destruction), or Elect-Law
+  `miscount_disclosed`, `the_crown_of_thalnos`, `colonial_redistribution`, `committee_formation`,
+  `classified_document_leaks`, `prophecy_of_ixth`.
