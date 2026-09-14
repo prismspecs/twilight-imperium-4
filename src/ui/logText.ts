@@ -1,4 +1,4 @@
-import { actionCardName } from '../engine'
+import { actionCardName, formatOutcome } from '../engine'
 import { CARD_NAME, planetLabel, systemLabel, techLabel, unitLabel } from './format'
 import type { GameState, LogEntry, Move, Owner, Seat, UnitType } from '../engine/types'
 
@@ -46,7 +46,17 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
     case 'removeCustodians': return `${name} spends 6 influence to remove the Custodians token from Mecatol Rex (+1 VP)`
     case 'pass': return `${name} passes`
     case 'status': return `${name} distributes command tokens`
-    case 'castVote': return `${name} votes ${move.outcome}`
+    case 'castVote': {
+      const formatted = formatOutcome(state, state.agenda?.revealed ?? '', move.outcome)
+      const totalInf = move.planets.reduce((sum, pId) => {
+        const planet = Object.values(state.systems).flatMap(s => s.planets).find(p => p.id === pId)
+        return sum + (planet?.influence ?? 0)
+      }, 0)
+      if (totalInf === 0 || move.outcome === 'abstain') {
+        return `${name} abstains`
+      }
+      return `${name} casts ${totalInf} vote${totalInf === 1 ? '' : 's'} for ${formatted}`
+    }
     case 'declineReaction': return `${name} declines the reaction window`
   }
 }

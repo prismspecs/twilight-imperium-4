@@ -64,6 +64,65 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-card-infantry_ii')).toBeTruthy()
   })
 
+  it('R5: Technology secondary includes tech specialty skip and displays indicator when researching tech with skip', () => {
+    // Set up seat 1 with 2 yellow techs, 0 red techs, 4 trade goods, and Meer (red skip)
+    let s = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
+    const p1 = s.players[1]
+    s = {
+      ...s,
+      players: [
+        s.players[0],
+        {
+          ...p1,
+          techs: ['sarween_tools', 'graviton_laser_system'],
+          tradeGoods: 4,
+        },
+      ],
+    }
+    const homeSys = Object.keys(s.systems)[0]
+    s = {
+      ...s,
+      systems: {
+        ...s.systems,
+        [homeSys]: {
+          ...s.systems[homeSys],
+          planets: [
+            ...s.systems[homeSys].planets,
+            {
+              id: 'meer',
+              name: 'Meer',
+              resources: 0,
+              influence: 4,
+              trait: 'cultural' as const,
+              techSkip: 'red' as const,
+              owner: 1 as const,
+              exhausted: false,
+              ground: [],
+              structures: [],
+            },
+          ],
+        },
+      },
+    }
+
+    renderWithSession(s, <BoardScreen />)
+    playCard('technology')
+    fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+
+    // Now secondary panel is shown for seat 1
+    expect(screen.getByTestId('secondary-panel')).toBeTruthy()
+    // Select PDS II (which needs red skip from Meer)
+    fireEvent.click(screen.getByTestId('tech-card-pds_ii'))
+    // Verify tech skip note is rendered
+    expect(screen.getByTestId('secondary-tech-skip-note').textContent).toContain('Meer')
+    // Click "Use the secondary"
+    fireEvent.click(screen.getByTestId('btn-secondary-accept'))
+    // Seat 1 should now have PDS II researched!
+    fireEvent.click(screen.getByTestId('tab-side-1'))
+    expect(screen.getByTestId('tech-1-pds_ii')).toBeTruthy()
+  })
+
   it('TechDrawer: filters tech cards by category tab and restores all view', () => {
     const s = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
     renderWithSession(s, <BoardScreen />)

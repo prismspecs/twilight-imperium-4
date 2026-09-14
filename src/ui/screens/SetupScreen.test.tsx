@@ -70,7 +70,7 @@ describe('the setup screen', () => {
     fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
     fireEvent.click(screen.getByTestId('btn-start'))
     expect(screen.getByTestId('board-screen')).toBeTruthy()
-    expect(screen.getByTestId('round').textContent).toBe('Round 1 of 8, strategy phase')
+    expect(screen.getByTestId('round').textContent).toBe('Round 1, strategy phase')
   })
 
   it('offers hot-seat play now and disables the two online panels until they ship', () => {

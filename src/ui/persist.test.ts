@@ -32,6 +32,34 @@ describe('the saved games of one browser', () => {
     expect(hasGame('CCC444')).toBe(false)
   })
 
+  it('relocates stranded Saar infantry from space to Meer in tile-37 on load', () => {
+    const base = session('SAAR37')
+    const s: Session = {
+      ...base,
+      state: {
+        ...base.state,
+        players: base.state.players.map((p, i) => i === 0 ? { ...p, faction: 'saar' } : p),
+        systems: {
+          ...base.state.systems,
+          'tile-37': {
+            id: 'tile-37',
+            name: 'Meer System',
+            neighbours: [],
+            wormhole: null,
+            home: null,
+            space: [{ id: 67, type: 'infantry', owner: 0, damaged: false }],
+            activatedBy: [],
+            planets: [{ id: 'meer', name: 'Meer', resources: 0, influence: 4, trait: null, techSkip: null, owner: 0, exhausted: false, ground: [], structures: [] }],
+          },
+        },
+      },
+    }
+    saveGame(s)
+    const loaded = loadGame('SAAR37')
+    expect(loaded?.state.systems['tile-37'].space.some(u => u.type === 'infantry')).toBe(false)
+    expect(loaded?.state.systems['tile-37'].planets.find(p => p.id === 'meer')?.ground.some(u => u.id === 67)).toBe(true)
+  })
+
   it('indexes the games newest first, with the names and the round', () => {
     saveGame(session('AAA222'))
     saveGame(session('BBB333'))

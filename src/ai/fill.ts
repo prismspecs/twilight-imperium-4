@@ -9,7 +9,7 @@ import type { GameState, Player, Seat, Unit, UnitType } from '../engine/types'
 import { getFactionUnitAffinity, getTargetFleetTokens } from './calibrationData'
 
 export type MoveShipSpec = { unitId: number; from: string; carrying: number[] }
-export type ProducePlan = { units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number }
+export type ProducePlan = { units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number; groundTo?: string }
 
 /**
  * Fill the `moveShips` template (legalMoves offers it with an empty `moves` array) with a concrete plan:
@@ -76,9 +76,14 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
         // Prioritize ground forces first so the AI can colonize/invade planets
         for (const p of src.planets) {
           if (carrying.length >= room) break
-          for (const g of p.ground) {
+          const isMecatol = p.id === 'mr' || p.id === 'mecatol-rex' || p.id === 'mecatolrex' || p.name === 'Mecatol Rex'
+          const isHome = src.home === seat
+          const garrison = (isMecatol || isHome) ? 1 : 0
+          const planetInfantry = p.ground.filter(g => g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id))
+          const available = planetInfantry.slice(0, Math.max(0, planetInfantry.length - garrison))
+          for (const g of available) {
             if (carrying.length >= room) break
-            if (g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id)) carrying.push(g.id)
+            carrying.push(g.id)
           }
         }
         for (const f of src.space) {
@@ -93,9 +98,14 @@ export function fillMoveShips(state: GameState, seat: Seat): MoveShipSpec[] {
         }
         for (const p of src.planets) {
           if (carrying.length >= room) break
-          for (const g of p.ground) {
+          const isMecatol = p.id === 'mr' || p.id === 'mecatol-rex' || p.id === 'mecatolrex' || p.name === 'Mecatol Rex'
+          const isHome = src.home === seat
+          const garrison = (isMecatol || isHome) ? 1 : 0
+          const planetInfantry = p.ground.filter(g => g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id))
+          const available = planetInfantry.slice(0, Math.max(0, planetInfantry.length - garrison))
+          for (const g of available) {
             if (carrying.length >= room) break
-            if (g.owner === seat && g.type === 'infantry' && !movedIds.has(g.id)) carrying.push(g.id)
+            carrying.push(g.id)
           }
         }
       }
@@ -175,7 +185,7 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
   const canAffordWith = (candidate: Partial<Record<UnitType, number>>): boolean => {
     const totalCount = Object.values(candidate).reduce((sum, n) => (sum ?? 0) + (n ?? 0), 0) ?? 0
     if (totalCount > maxLimit) return false
-    const cost = productionCost(candidate, stats, hasSarween)
+    const cost = productionCost(candidate, stats, hasSarween, state)
     if (cost > budget) return false
 
     // Check fighter capacity using engine's maxFightersAllowed
@@ -284,10 +294,12 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     return { units: {}, planets: [], tradeGoods: 0 }
   }
 
-  const cost = productionCost(units, stats, hasSarween)
+  const cost = productionCost(units, stats, hasSarween, state)
   const payment = findCheapestPayment(state, seat, cost)
   if (!payment) return { units: {}, planets: [], tradeGoods: 0 }
-  return { units, planets: payment.planets, tradeGoods: payment.tradeGoods }
+  const hasFloatingFactory = dest?.space.some(u => u.type === 'floating_factory' && u.owner === seat)
+  const controlledPlanet = hasFloatingFactory ? dest?.planets.find(p => p.owner === seat)?.id : undefined
+  return { units, planets: payment.planets, tradeGoods: payment.tradeGoods, ...(controlledPlanet ? { groundTo: controlledPlanet } : {}) }
 }
 
 /** The cheapest set of ready planets and trade goods that legally covers `cost`. */

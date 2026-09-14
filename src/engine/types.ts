@@ -132,6 +132,8 @@ export interface GameState {
   agenda: AgendaRound | null
   activeAgendas: string[]  // agenda IDs of laws currently in effect (Senate Sanctuary, Research Teams, etc.)
   lawOwners: Partial<Record<string, Seat>>  // Elect-Player law owner per agenda id (Shard of the Throne, Crown of Emphidia, ministers)
+  pendingActionCardDiscards?: Seat[] // R9/LRR 112 & 140: seats that exceed hand limit of 7 and must discard
+  pendingSchemingDiscards?: Seat[] // Yssaril Scheming: seats that must choose and discard 1 action card after drawing
   winner: Seat | null
   log: LogEntry[]
 }
@@ -161,6 +163,8 @@ export type Move =
   // R9: an "ACTION:" card played as your whole action, or — while a reaction window is open — the card you
   // interrupt with. Which of the two it is follows from the state, never from the move.
   | { type: 'playActionCard'; cardId: string; params?: ActionCardParams }
+  | { type: 'discardActionCard'; cardId: string }
+  | { type: 'stallTactics'; cardId: string }
   | { type: 'declineReaction' }                          // R9: play nothing into the open reaction window
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   // Jol-Nar faction tech Spatial Conduit Cylinder: exhaust the card so the activated system counts as
@@ -193,6 +197,7 @@ export interface StrategicParams {
   // Construction: the structures to place. The primary places up to two (the second must be a PDS), the
   // secondary up to one, always on a planet you control.
   structures?: { planetId: string; type: 'pds' | 'spacedock' }[]
+  groundTo?: string                 // Warfare secondary: where produced ground forces land with Floating Factory
 }
 export interface StatusParams {
   tokens: { tactic: number; fleet: number; strategy: number }

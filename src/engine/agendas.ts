@@ -1,18 +1,32 @@
-import { agendaDef } from '../data/agendas'
-import { findTech } from '../data/techs'
+import { agendaDef, findAgenda } from '../data/agendas'
+import { objectiveDef } from '../data/objectives'
+import { findTech, techDef } from '../data/techs'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
-import { destroyUnits, readyAllPlanets, returnToReinforcements } from './board'
+import { destroyUnits, readyAllPlanets, returnToReinforcements, trimCargo } from './board'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
+import { researchable } from './research'
+import { deriveSeed, mulberry32 } from './rng'
 import { voteOrder } from './strategyPhase'
 import { victoryCheck } from './statusPhase'
 import { isShip } from '../data/units'
 import { neighbours } from './adjacency'
-import type { AgendaRound, GameState, Move, Planet, Result, Seat, UnitType } from './types'
+import type { AgendaRound, GameState, LogEntry, Move, Planet, Result, Seat, UnitType } from './types'
 
-/** The cost order for non-fighter ships, matching the combat module's logic. */
-const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
+/** Unit destruction order for automated loss choices (cheapest first). */
+const UNIT_DESTRUCTION_ORDER: readonly UnitType[] = [
+  'fighter',
+  'infantry',
+  'destroyer',
+  'cruiser',
+  'carrier',
+  'pds',
+  'dreadnought',
+  'spacedock',
+  'flagship',
+  'warsun',
+]
 
 /**
  * Shard of the Throne / The Crown of Emphidia: these Elect Player laws move to the player who gains control
@@ -38,7 +52,7 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
       players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
       next = {
         ...next, players, lawOwners: { ...(next.lawOwners ?? {}), shard_of_the_throne: newOwner },
-        log: [...next.log, { t: 'info', text: `Shard of the Throne transfers to seat ${newOwner} (+1 VP)` }],
+        log: [...next.log, { t: 'info', text: `Shard of the Throne transfers to ${next.players[newOwner].name} (+1 VP)` }],
       }
     }
     const crownOwner = next.lawOwners?.the_crown_of_emphidia
@@ -48,7 +62,7 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
       players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
       next = {
         ...next, players, lawOwners: { ...(next.lawOwners ?? {}), the_crown_of_emphidia: newOwner },
-        log: [...next.log, { t: 'info', text: `The Crown of Emphidia transfers to seat ${newOwner} (+1 VP)` }],
+        log: [...next.log, { t: 'info', text: `The Crown of Emphidia transfers to ${next.players[newOwner].name} (+1 VP)` }],
       }
     }
   }
@@ -68,6 +82,30 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
  */
 
 /** The outcomes a voter may name for the revealed agenda, from its printed `target`. */
+export function lawsInPlay(state: GameState): string[] {
+  const active = state.activeAgendas ?? []
+  const attached = Object.values(state.systems).flatMap(s => s.planets.flatMap(p => p.attachments ?? []))
+  const owners = Object.keys(state.lawOwners ?? {})
+  const all = Array.from(new Set([...active, ...attached, ...owners]))
+  return all.filter(id => {
+    const def = findAgenda(id)
+    return def !== undefined && def.kind === 'law'
+  })
+}
+
+export function scoredSecretObjectives(state: GameState): string[] {
+  const scored = new Set<string>()
+  for (const player of state.players) {
+    for (const objId of player.scoredObjectives) {
+      const def = objectiveDef(objId)
+      if (def?.stage === 'secret' && !state.publicObjectives.includes(objId)) {
+        scored.add(objId)
+      }
+    }
+  }
+  return Array.from(scored)
+}
+
 export function legalOutcomes(state: GameState, agendaId: string): string[] {
   const def = agendaDef(agendaId)
   if (def.target === 'For/Against') return ['For', 'Against']
@@ -81,9 +119,14 @@ export function legalOutcomes(state: GameState, agendaId: string): string[] {
     const ids = electablePlanets(state, 'non-home')
     return ids.length ? ids : ['abstain']
   }
-  // Elect Law / Elect Scored Secret Objective and friends: this increment does not enumerate real targets
-  // for them, so the only legal outcome is a 0-vote pass — the round still resolves, and
-  // `resolveAgendaRound`'s no-resolver path records that nothing was enacted.
+  if (def.target === 'Elect Law') {
+    const laws = lawsInPlay(state)
+    return laws.length ? laws : ['abstain']
+  }
+  if (def.target === 'Elect Scored Secret Objective') {
+    const secrets = scoredSecretObjectives(state)
+    return secrets.length ? secrets : ['abstain']
+  }
   return ['abstain']
 }
 
@@ -112,7 +155,56 @@ function systemOfPlanet(state: GameState, planetId: string): string | undefined 
 
 /** Attaches a law agenda to its elected planet, applying any value change it prints. */
 function attachLaw(state: GameState, agendaId: string, planetId: string, patch?: Partial<Pick<Planet, 'resources' | 'influence'>>): GameState {
-  return withPlanet(state, planetId, p => ({ ...p, attachments: [...(p.attachments ?? []), agendaId], ...(patch ?? {}) }))
+  const activeAgendas = (state.activeAgendas ?? []).includes(agendaId) ? state.activeAgendas : [...(state.activeAgendas ?? []), agendaId]
+  return {
+    ...withPlanet(state, planetId, p => ({ ...p, attachments: [...(p.attachments ?? []), agendaId], ...(patch ?? {}) })),
+    activeAgendas,
+  }
+}
+
+/** Discards a law from play (activeAgendas, lawOwners, attachments), adjusting any attached VP. */
+export function discardLaw(state: GameState, lawId: string): GameState {
+  let next = state
+  const activeAgendas = (next.activeAgendas ?? []).filter(a => a !== lawId)
+  let lawOwners = next.lawOwners
+  if (lawOwners && lawOwners[lawId] !== undefined) {
+    const ownerSeat = lawOwners[lawId]
+    if (lawId === 'shard_of_the_throne' || lawId === 'the_crown_of_emphidia') {
+      next = addVp(next, ownerSeat, -1, findAgenda(lawId)?.name ?? lawId)
+    }
+    const { [lawId]: _, ...rest } = lawOwners
+    lawOwners = rest
+  }
+  let systems = next.systems
+  for (const [sysId, sys] of Object.entries(next.systems)) {
+    let changed = false
+    const planets = sys.planets.map(p => {
+      if (p.attachments?.includes(lawId)) {
+        changed = true
+        if (lawId === 'holy_planet_of_ixth' && p.owner !== null) {
+          next = addVp(next, p.owner, -1, 'Holy Planet of Ixth')
+        }
+        return { ...p, attachments: p.attachments.filter(a => a !== lawId) }
+      }
+      return p
+    })
+    if (changed) {
+      systems = { ...systems, [sysId]: { ...sys, planets } }
+    }
+  }
+  let publicObjectives = next.publicObjectives
+  if (lawId === 'classified_document_leaks') {
+    publicObjectives = publicObjectives.filter(id => objectiveDef(id)?.stage !== 'secret')
+  }
+  const lawName = findAgenda(lawId)?.name ?? lawId
+  return {
+    ...next,
+    activeAgendas,
+    lawOwners,
+    systems,
+    publicObjectives,
+    log: [...next.log, { t: 'info', text: `Law discarded from play: ${lawName}` }],
+  }
 }
 
 /** The planet with `planetId`, or undefined. */
@@ -149,19 +241,53 @@ function tally(agenda: AgendaRound): Map<string, number> {
   return totals
 }
 
+/** Human-readable representation of an outcome (player name, planet name, or For/Against). */
+export function formatOutcome(state: GameState, agendaId: string, outcome: string): string {
+  if (outcome === 'For' || outcome === 'Against' || outcome === 'abstain') return outcome === 'abstain' ? 'Pass (no legal target)' : outcome
+  const def = agendaId ? findAgenda(agendaId) : undefined
+  if (def?.target === 'Elect Player' || (!def && /^\d+$/.test(outcome) && state.players[Number.parseInt(outcome, 10)])) {
+    const seat = Number.parseInt(outcome, 10)
+    if (Number.isInteger(seat) && state.players[seat]) {
+      return state.players[seat].name
+    }
+  }
+  if (def?.target === 'Elect Law') {
+    const lawDef = findAgenda(outcome)
+    if (lawDef) return lawDef.name
+  }
+  if (def?.target === 'Elect Scored Secret Objective') {
+    const obj = objectiveDef(outcome)
+    if (obj) return obj.name
+  }
+  if (def?.target.includes('Planet') || !def) {
+    const planet = Object.values(state.systems).flatMap(s => s.planets).find(p => p.id === outcome)
+    if (planet) {
+      const ownerDesc = planet.owner !== null ? ` (${state.players[planet.owner].name})` : ''
+      return `${planet.name}${ownerDesc}`
+    }
+  }
+  return outcome
+}
+
+export interface WinningOutcomeResult {
+  outcome: string
+  tieBreak: boolean
+}
+
 /** The winning outcome: most votes, ties broken by the speaker's own vote (TI4 rule) — since the speaker
  * votes last in `voteOrder`, their outcome is simply preferred among the tied leaders. */
-function winningOutcome(state: GameState, agenda: AgendaRound): string | null {
+export function winningOutcome(state: GameState, agenda: AgendaRound): WinningOutcomeResult | null {
   const totals = tally(agenda)
   if (totals.size === 0) return null
   const best = Math.max(...totals.values())
   const leaders = [...totals.entries()].filter(([, v]) => v === best).map(([o]) => o)
-  if (leaders.length === 1) return leaders[0]
+  if (leaders.length === 1 && best > 0) return { outcome: leaders[0], tieBreak: false }
   const speakerVote = agenda.votes[state.speaker]?.outcome
-  return speakerVote && leaders.includes(speakerVote) ? speakerVote : leaders[0]
+  const chosen = speakerVote && leaders.includes(speakerVote) ? speakerVote : leaders[0]
+  return { outcome: chosen, tieBreak: true }
 }
 
-type Resolver = (state: GameState, agenda: AgendaRound, outcome: string) => GameState
+type Resolver = (state: GameState, agenda: AgendaRound, outcome: string, seed?: number) => GameState
 
 /** The law attached and its value change (if any) applied, but the ongoing effect needs engine support
  * that does not exist yet — say so in the log instead of pretending. */
@@ -174,43 +300,71 @@ function grantLawTo(state: GameState, outcome: string, lawId: string): GameState
   const seat = Number(outcome)
   if (Number.isNaN(seat) || !state.players[seat]) return state
   const activeAgendas = (state.activeAgendas ?? []).includes(lawId) ? state.activeAgendas : [...(state.activeAgendas ?? []), lawId]
+  const cardName = findAgenda(lawId)?.name ?? lawId
   return {
     ...state,
     activeAgendas,
     lawOwners: { ...(state.lawOwners ?? {}), [lawId]: seat },
-    log: [...state.log, { t: 'info', text: `${lawId}: granted to seat ${seat}` }],
+    log: [...state.log, { t: 'info', text: `${cardName}: granted to ${state.players[seat].name}` }],
   }
 }
 
-const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
+export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   senate_sanctuary: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)
     return planet ? attachLaw(state, 'senate_sanctuary', outcome, { influence: planet.influence + 2 }) : state
   },
   fleet_regulations: (state, _agenda, outcome) => {
-    const limit = outcome === 'For' ? 4 : undefined
+    if (outcome === 'For') {
+      const limit = 4
+      const players = state.players.map(p => ({
+        ...p, tokens: { ...p.tokens, fleetPoolOverride: limit }
+      })) as GameState['players']
+      const activeAgendas = [...(state.activeAgendas ?? []).filter(a => a !== 'fleet_regulations'), 'fleet_regulations']
+      return { ...state, players, activeAgendas, log: [...state.log, { t: 'info', text: 'Fleet Regulations: fleet pool capped at 4' }] }
+    }
+    // Against: each player places 1 command token from their reinforcements in their fleet pool
     const players = state.players.map(p => ({
-      ...p, tokens: { ...p.tokens, fleetPoolOverride: limit }
+      ...p, tokens: { ...p.tokens, fleet: p.tokens.fleet + 1, fleetPoolOverride: undefined }
     })) as GameState['players']
-    // Also track active agendas for other effects
-    const activeAgendas = outcome === 'For' ? [...(state.activeAgendas ?? []), 'fleet_regulations'] : state.activeAgendas?.filter(a => a !== 'fleet_regulations')
-    return { ...state, players, activeAgendas }
+    return { ...state, players, log: [...state.log, { t: 'info', text: 'Fleet Regulations: each player places 1 command token in their fleet pool' }] }
   },
-  executive_sanctions: (state, _agenda, outcome) => {
-    let next = state
-    const players = state.players.map(p => {
-      if (outcome === 'For') {
-        const maxHand = 3
-        const newHand = p.actionCards.length > maxHand ? p.actionCards.slice(0, maxHand) : p.actionCards
-        const discarded = p.actionCards.length > maxHand ? p.actionCards.slice(maxHand) : []
-        if (discarded.length > 0) {
-          next = { ...next, actionCardDiscard: [...next.actionCardDiscard, ...discarded] }
-        }
-        return { ...p, actionCards: newHand }
+  executive_sanctions: (state, _agenda, outcome, seed) => {
+    if (outcome === 'For') {
+      let next: GameState = {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []).filter(a => a !== 'executive_sanctions'), 'executive_sanctions'],
+        log: [...state.log, { t: 'info' as const, text: 'Executive Sanctions: players can have at most 3 action cards' }],
       }
-      return p
-    }) as GameState['players']
-    return { ...next, players }
+      const maxHand = 3
+      const players = next.players.map(p => {
+        if (p.actionCards.length > maxHand) {
+          const discarded = p.actionCards.slice(maxHand)
+          next = { ...next, actionCardDiscard: [...next.actionCardDiscard, ...discarded] }
+          return { ...p, actionCards: p.actionCards.slice(0, maxHand) }
+        }
+        return p
+      }) as GameState['players']
+      return { ...next, players }
+    }
+    // Against: Each player discards 1 random action card from their hand
+    let next: GameState = state
+    const rng = mulberry32(deriveSeed(seed ?? 42, 331))
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      const hand = next.players[seat].actionCards
+      if (hand.length > 0) {
+        const idx = Math.floor(rng() * hand.length)
+        const discarded = hand[idx]
+        const remaining = hand.filter((_, i) => i !== idx)
+        next = {
+          ...next,
+          actionCardDiscard: [...next.actionCardDiscard, discarded],
+          players: next.players.map((p, i) => i === seat ? { ...p, actionCards: remaining } : p) as GameState['players'],
+          log: [...next.log, { t: 'info' as const, text: `Executive Sanctions: ${next.players[seat].name} discards 1 random action card` }],
+        }
+      }
+    }
+    return next
   },
   enforced_travel_ban: (state, _agenda, outcome) => {
     if (outcome === 'For') {
@@ -317,7 +471,7 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     players[planet.owner] = { ...players[planet.owner], tradeGoods: players[planet.owner].tradeGoods + destroyed }
     return { ...next, players }
   },
-  minister_of_war: (state, _agenda, outcome) => {
+  colonial_redistribution: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)
     const sysId = systemOfPlanet(state, outcome)
     if (!planet || !sysId) return state
@@ -333,8 +487,8 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     players[fewest] = { ...players[fewest], reinforcements: { ...players[fewest].reinforcements, infantry: players[fewest].reinforcements.infantry - 1 } }
     const infantry = { id: next.nextUnitId, type: 'infantry' as const, owner: fewest, damaged: false }
     next = {
-      ...withPlanet({ ...next, players, nextUnitId: next.nextUnitId + 1 }, outcome, p => ({ ...p, ground: [...p.ground, infantry] })),
-      log: [...next.log, { t: 'info', text: `Minister of War: seat ${fewest} (fewest VP) places 1 infantry on ${planet.name}` }],
+      ...withPlanet({ ...next, players, nextUnitId: next.nextUnitId + 1 }, outcome, p => ({ ...p, owner: fewest, ground: [...p.ground, infantry] })),
+      log: [...next.log, { t: 'info', text: `Colonial Redistribution: ${next.players[fewest].name} (fewest VP) places 1 infantry on ${planet.name}` }],
     }
     return next
   },
@@ -350,8 +504,7 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   minister_of_peace: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_peace'),
   minister_of_policy: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_policy'),
   minister_of_sciences: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_sciences'),
-  // Remaining Elect-Player law cards (Codices / PoK). Ongoing effects are not yet wired; the
-  // resolver grants the card and marks the law active so the owner can be queried elsewhere.
+  minister_of_war: (state, _agenda, outcome) => grantLawTo(state, outcome, 'minister_of_war'),
   committee_formation: (state, _agenda, outcome) => grantLawTo(state, outcome, 'committee_formation'),
   the_crown_of_thalnos: (state, _agenda, outcome) => grantLawTo(state, outcome, 'the_crown_of_thalnos'),
   prophecy_of_ixth: (state, _agenda, outcome) => grantLawTo(state, outcome, 'prophecy_of_ixth'),
@@ -561,38 +714,138 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     if (planet && planet.owner !== null) next = addVp(next, planet.owner, 1, 'Holy Planet of Ixth')
     return notEnforced(next, 'Holy Planet of Ixth', 'the control-change VP swings and the PRODUCTION ban')
   },
-  ixthian_artifact: (state, _agenda) => {
-    // Ixthian Artifact: destroy units adjacent to Mecatol Rex
-    const mecatol = Object.entries(state.systems).find(([id]) => id === 'mecatol' || id === 'mecatolrex')
-    if (!mecatol) return state
-    const [mecatolId] = mecatol
-    const adjacentSysIds = neighbours(state.systems, mecatolId)
-    
-    let next = state
-    // Destroy units in adjacent systems
-    const systems = { ...next.systems }
+  ixthian_artifact: (state, _agenda, outcome, seed) => {
+    if (outcome !== 'For') {
+      return {
+        ...state,
+        log: [...state.log, { t: 'info', text: 'Ixthian Artifact: voted Against — no effect' }],
+      }
+    }
+
+    // Roll 1d10
+    const rng = mulberry32(deriveSeed(seed ?? 42, 8472))
+    const roll = 1 + Math.floor(rng() * 10)
+
+    let next: GameState = {
+      ...state,
+      log: [
+        ...state.log,
+        { t: 'info', text: `Ixthian Artifact: Speaker rolls a ${roll} on 1d10` },
+      ],
+    }
+
+    if (roll >= 6) {
+      // 6-10: each player may research 2 technologies in speaker order
+      const n = next.players.length
+      const speakerOrder: Seat[] = Array.from({ length: n }, (_, i) => ((next.speaker + i) % n) as Seat)
+      const players = [...next.players] as GameState['players']
+
+      for (const seat of speakerOrder) {
+        let p = players[seat]
+        const researched: string[] = []
+        for (let step = 0; step < 2; step++) {
+          const options = researchable(p)
+          if (!options.length) break
+          // Pick best tech: faction techs first, then unit upgrades, then most prereqs, then alphabetical
+          const best = [...options].sort((a, b) => {
+            const da = techDef(a)
+            const db = techDef(b)
+            const aFaction = da.faction !== undefined ? 1 : 0
+            const bFaction = db.faction !== undefined ? 1 : 0
+            if (aFaction !== bFaction) return bFaction - aFaction
+            const aUpgrade = da.kind === 'upgrade' ? 1 : 0
+            const bUpgrade = db.kind === 'upgrade' ? 1 : 0
+            if (aUpgrade !== bUpgrade) return bUpgrade - aUpgrade
+            const aPrereq = Object.values(da.prereq ?? {}).reduce((s, c) => s + c, 0)
+            const bPrereq = Object.values(db.prereq ?? {}).reduce((s, c) => s + c, 0)
+            if (aPrereq !== bPrereq) return bPrereq - aPrereq
+            return a.localeCompare(b)
+          })[0]
+          p = { ...p, techs: [...p.techs, best] }
+          researched.push(best)
+        }
+        players[seat] = p
+        if (researched.length > 0) {
+          const names = researched.map(id => techDef(id).name).join(', ')
+          next = {
+            ...next,
+            players,
+            log: [...next.log, { t: 'info', text: `Ixthian Artifact: seat ${seat} researches ${researched.length} technolog${researched.length === 1 ? 'y' : 'ies'}: ${names}` }],
+          }
+        }
+      }
+      return { ...next, players }
+    }
+
+    // 1-5: destroy all units in Mecatol Rex's system, and each player with units in systems adjacent
+    // to Mecatol Rex's system destroys 3 of their own units in each of those systems.
+    const mecatolEntry = Object.entries(next.systems).find(([id]) => id === 'mecatol' || id === 'mecatolrex' || id === MECATOL_ID)
+    if (!mecatolEntry) return next
+    const [mecatolId, mecatolSys] = mecatolEntry
+
+    // 1. Destroy ALL units in Mecatol Rex's system (space + planets)
+    const mecatolSpaceUnits = [...mecatolSys.space]
+    const mecatolGroundUnits = mecatolSys.planets.flatMap(p => [...p.ground, ...p.structures])
+    const allMecatolUnits = [...mecatolSpaceUnits, ...mecatolGroundUnits]
+
+    const clearedMecatol = {
+      ...mecatolSys,
+      space: [],
+      planets: mecatolSys.planets.map(p => ({ ...p, ground: [], structures: [] })),
+    }
+    next = {
+      ...next,
+      systems: { ...next.systems, [mecatolId]: clearedMecatol },
+    }
+    next = returnToReinforcements(next, allMecatolUnits)
+    if (allMecatolUnits.length > 0) {
+      next = {
+        ...next,
+        log: [...next.log, { t: 'info', text: `Ixthian Artifact: destroyed all ${allMecatolUnits.length} units in Mecatol Rex system` }],
+      }
+    }
+
+    // 2. Destroy 3 units per player in systems adjacent to Mecatol Rex
+    const adjacentSysIds = neighbours(next.systems, mecatolId, undefined, false, next)
     for (const sysId of adjacentSysIds) {
-      const sys = systems[sysId]
-      if (!sys) continue
-      for (const seat of state.players.map((_, i) => i as Seat)) {
-        const myUnits = sys.space.filter(u => u.owner === seat && isShip(u.type))
-        if (myUnits.length <= 3) {
-          // Destroy all units if 3 or fewer
-          if (myUnits.length > 0) {
-            systems[sysId] = { ...sys, space: sys.space.filter(u => u.owner !== seat || !isShip(u.type)) }
-            next = { ...next, systems }
-            next = returnToReinforcements(next, myUnits)
-            next = { ...next, log: [...next.log, { t: 'info', text: `Ixthian Artifact: ${myUnits.length} units of seat ${seat + 1} are destroyed in ${sysId} (adjacent to Mecatol)` }] }
-          }
+      for (const seat of next.players.map((_, i) => i as Seat)) {
+        const sys = next.systems[sysId]
+        if (!sys) continue
+        const seatSpaceUnits = sys.space.filter(u => u.owner === seat)
+        const seatPlanetUnits = sys.planets.flatMap(p => [...p.ground, ...p.structures].filter(u => u.owner === seat))
+        const totalSeatUnits = [...seatSpaceUnits, ...seatPlanetUnits]
+        if (totalSeatUnits.length === 0) continue
+
+        let victims: typeof totalSeatUnits
+        if (totalSeatUnits.length <= 3) {
+          victims = totalSeatUnits
         } else {
-          // Otherwise, destroy 3 cheapest units
-          const toDestroy = NON_FIGHTER_ORDER.flatMap(t => myUnits.filter(u => u.type === t)).slice(0, 3)
-          if (toDestroy.length > 0) {
-            systems[sysId] = { ...sys, space: sys.space.filter(u => !toDestroy.find(v => v.id === u.id)) }
-            next = { ...next, systems }
-            next = returnToReinforcements(next, toDestroy)
-            next = { ...next, log: [...next.log, { t: 'info', text: `Ixthian Artifact: 3 units of seat ${seat + 1} are destroyed in ${sysId}` }] }
-          }
+          victims = [...totalSeatUnits].sort((a, b) => {
+            const rankA = UNIT_DESTRUCTION_ORDER.indexOf(a.type)
+            const rankB = UNIT_DESTRUCTION_ORDER.indexOf(b.type)
+            return (rankA === -1 ? 99 : rankA) - (rankB === -1 ? 99 : rankB)
+          }).slice(0, 3)
+        }
+
+        const victimIds = new Set(victims.map(u => u.id))
+        const updatedSys = {
+          ...next.systems[sysId],
+          space: next.systems[sysId].space.filter(u => !victimIds.has(u.id)),
+          planets: next.systems[sysId].planets.map(p => ({
+            ...p,
+            ground: p.ground.filter(u => !victimIds.has(u.id)),
+            structures: p.structures.filter(u => !victimIds.has(u.id)),
+          })),
+        }
+        next = {
+          ...next,
+          systems: { ...next.systems, [sysId]: updatedSys },
+        }
+        next = returnToReinforcements(next, victims)
+        next = trimCargo(next, sysId, seat)
+        next = {
+          ...next,
+          log: [...next.log, { t: 'info', text: `Ixthian Artifact: seat ${seat} destroys ${victims.length} units in ${sysId}` }],
         }
       }
     }
@@ -688,38 +941,160 @@ const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
     return next
   },
+  conventions_of_war: (state, agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'conventions_of_war'],
+        log: [...state.log, { t: 'info', text: 'Conventions of War: bombardment against cultural planets is forbidden' }],
+      }
+    }
+    // Against: Each player that voted "Against" discards all of their action cards
+    let next = state
+    const votes = agenda.votes
+    for (const seat of state.players.map((_, i) => i as Seat)) {
+      if (votes[seat]?.outcome === 'Against') {
+        const discarded = next.players[seat].actionCards
+        if (discarded.length > 0) {
+          next = {
+            ...next,
+            actionCardDiscard: [...next.actionCardDiscard, ...discarded],
+            players: next.players.map((p, i) => i === seat ? { ...p, actionCards: [] } : p) as GameState['players'],
+            log: [...next.log, { t: 'info', text: `Conventions of War: ${next.players[seat].name} discards ${discarded.length} action cards` }],
+          }
+        }
+      }
+    }
+    return next
+  },
+  terraforming_initiative: (state, _agenda, outcome) => {
+    const planet = planetById(state, outcome)
+    return planet ? attachLaw(state, 'terraforming_initiative', outcome, { resources: planet.resources + 1, influence: planet.influence + 1 }) : state
+  },
+  incentive_program: (state, _agenda, outcome) => {
+    const isStage1 = outcome === 'For'
+    const nextId = state.objectiveOrder.find(id => {
+      const def = objectiveDef(id)
+      return def && def.stage === (isStage1 ? 'stage1' : 'stage2') && !state.publicObjectives.includes(id)
+    })
+    if (!nextId) {
+      return { ...state, log: [...state.log, { t: 'info', text: `Incentive Program: no remaining ${isStage1 ? 'Stage I' : 'Stage II'} public objectives to reveal` }] }
+    }
+    const def = objectiveDef(nextId)
+    return {
+      ...state,
+      publicObjectives: [...state.publicObjectives, nextId],
+      log: [...state.log, { t: 'info', text: `Incentive Program: revealed public objective ${def?.text ?? nextId}` }],
+    }
+  },
+  anti_intellectual_revolution: (state, _agenda, outcome) => {
+    if (outcome === 'For') {
+      return {
+        ...state,
+        activeAgendas: [...(state.activeAgendas ?? []), 'anti_intellectual_revolution'],
+        log: [...state.log, { t: 'info', text: 'Anti-Intellectual Revolution: researching tech requires destroying 1 non-fighter ship' }],
+      }
+    }
+    return {
+      ...state,
+      activeAgendas: [...(state.activeAgendas ?? []), 'anti_intellectual_revolution_against'],
+      log: [...state.log, { t: 'info', text: 'Anti-Intellectual Revolution: each player must exhaust 1 planet per technology at start of strategy phase' }],
+    }
+  },
+  classified_document_leaks: (state, _agenda, outcome) => {
+    if (outcome === 'abstain') return state
+    const obj = objectiveDef(outcome)
+    const objName = obj?.name ?? outcome
+    const activeAgendas = (state.activeAgendas ?? []).includes('classified_document_leaks')
+      ? state.activeAgendas
+      : [...(state.activeAgendas ?? []), 'classified_document_leaks']
+    const publicObjectives = state.publicObjectives.includes(outcome)
+      ? state.publicObjectives
+      : [...state.publicObjectives, outcome]
+    return {
+      ...state,
+      activeAgendas,
+      publicObjectives,
+      log: [
+        ...state.log,
+        { t: 'info', text: `Classified Document Leaks: secret objective "${objName}" is now a public objective` },
+      ],
+    }
+  },
+  judicial_abolishment: (state, _agenda, outcome) => {
+    if (outcome === 'abstain') return state
+    return discardLaw(state, outcome)
+  },
+  miscount_disclosed: (state, _agenda, outcome) => {
+    if (outcome === 'abstain') return state
+    const lawDef = findAgenda(outcome)
+    const lawName = lawDef?.name ?? outcome
+    return {
+      ...state,
+      log: [...state.log, { t: 'info', text: `Miscount Disclosed: ${lawName} is elected for revote` }],
+    }
+  },
 }
 
 /** Public Execution keeps the elected player out of the vote for the rest of this agenda phase. */
 const BARS_VOTING: Readonly<Record<string, true>> = { public_execution: true }
 
-function applyOutcome(state: GameState, agenda: AgendaRound, outcome: string): GameState {
+function applyOutcome(state: GameState, agenda: AgendaRound, outcome: string, seed?: number): GameState {
   const resolver = AGENDA_RESOLVERS[agenda.revealed]
-  const resolved = resolver ? resolver(state, agenda, outcome) : state
-  if (resolver) {
-    return { ...resolved, log: [...resolved.log, { t: 'info', text: `${agendaDef(agenda.revealed).name} resolves: ${outcome}` }] }
+  let resolved = resolver ? resolver(state, agenda, outcome, seed) : state
+  const def = findAgenda(agenda.revealed)
+  if (def?.kind === 'law' && outcome === 'Against' && resolved.activeAgendas?.includes(agenda.revealed)) {
+    resolved = {
+      ...resolved,
+      activeAgendas: resolved.activeAgendas.filter(a => a !== agenda.revealed),
+    }
   }
-  return {
-    ...resolved,
-    log: [...resolved.log, { t: 'info', text: `the elected outcome of ${agendaDef(agenda.revealed).name} has no engine effect yet — recorded, not enforced` }],
+  const formatted = formatOutcome(state, agenda.revealed, outcome)
+  const logEntries: LogEntry[] = [
+    { t: 'info', text: `${agendaDef(agenda.revealed).name} resolves: ${formatted}` },
+  ]
+  if (!resolver) {
+    logEntries.push({
+      t: 'info',
+      text: `the elected outcome of ${agendaDef(agenda.revealed).name} has no engine effect yet — recorded, not enforced`,
+    })
   }
+  return { ...resolved, log: [...resolved.log, ...logEntries] }
 }
 
 /** Reveals the round's first (or second) agenda and seeds a fresh vote. */
 function revealAgenda(state: GameState, slot: 1 | 2, barredFromVoting: Seat[]): GameState {
-  const revealed = state.agendaDeck[0]
+  if (state.agendaDeck.length === 0) return state
+  let currentDeck = state.agendaDeck
+  let log = state.log
+
+  // (When this agenda is revealed, if there are no valid targets, discard and reveal another from top of deck)
+  while (currentDeck.length > 1) {
+    const top = currentDeck[0]
+    const noLaws = (top === 'miscount_disclosed' || top === 'new_constitution' || top === 'judicial_abolishment') && lawsInPlay(state).length === 0
+    const noSecrets = top === 'classified_document_leaks' && scoredSecretObjectives(state).length === 0
+    if (noLaws || noSecrets) {
+      log = [...log, { t: 'info', text: `${agendaDef(top).name}: discarded because no valid targets in play, revealing next agenda` }]
+      currentDeck = currentDeck.slice(1)
+    } else {
+      break
+    }
+  }
+
+  const revealed = currentDeck[0]
   // Galactic Threat: the Nekro Virus cannot vote, so it never enters the order — filtering it out here,
   // rather than offering it zero outcomes, is what keeps the vote able to run to completion.
   const order = voteOrder(state).filter(s => !barredFromVoting.includes(s) && state.players[s].faction !== 'nekro')
   // Xxcha: Quash - discard the current agenda and reveal the next one
-  const isQuash = state.players[state.active].faction === 'xxcha' && slot === 1 && state.agendaDeck.length > 1
+  const isQuash = state.players[state.active]?.faction === 'xxcha' && slot === 1 && currentDeck.length > 1
   const nextSlot = isQuash ? 2 : slot
+  const actualRevealed = isQuash ? currentDeck[1] : revealed
   return {
     ...state,
-    agendaDeck: isQuash ? state.agendaDeck.slice(2) : state.agendaDeck.slice(1),
-    agenda: { revealed: isQuash ? state.agendaDeck[1] : revealed, slot: nextSlot, votes: {}, order, barredFromVoting },
+    agendaDeck: isQuash ? currentDeck.slice(2) : currentDeck.slice(1),
+    agenda: { revealed: actualRevealed, slot: nextSlot, votes: {}, order, barredFromVoting },
     active: order[0] ?? state.speaker,
-    log: [...state.log, { t: 'info', text: `agenda revealed: ${agendaDef(isQuash ? state.agendaDeck[1] : revealed).name}` }],
+    log: [...log, { t: 'info', text: `agenda revealed: ${agendaDef(actualRevealed).name}` }],
   }
 }
 
@@ -732,16 +1107,38 @@ export function enterAgendaOrNextRound(state: GameState, _seed: number, startNex
 }
 
 /** R10: tally the just-finished vote, apply the outcome, then move to the second agenda or the next round. */
-function resolveAgendaRound(state: GameState, _seed: number, startNextRound: (s: GameState) => GameState): GameState {
+function resolveAgendaRound(state: GameState, seed: number, startNextRound: (s: GameState) => GameState): GameState {
   const agenda = state.agenda
   if (!agenda) return state
-  const outcome = winningOutcome(state, agenda)
-  let next = outcome === null ? state : applyOutcome(state, agenda, outcome)
+  const win = winningOutcome(state, agenda)
+  const outcome = win?.outcome ?? null
+  let next = state
+  if (win && win.tieBreak && outcome !== null) {
+    const speakerName = state.players[state.speaker]?.name ?? `seat ${state.speaker}`
+    const formatted = formatOutcome(state, agenda.revealed, win.outcome)
+    next = {
+      ...next,
+      log: [...next.log, { t: 'info', text: `Tied vote: Speaker ${speakerName} decided outcome in favor of ${formatted}` }],
+    }
+  }
+  next = outcome === null ? next : applyOutcome(next, agenda, outcome, seed)
   const barred = BARS_VOTING[agenda.revealed] && outcome !== null ? [Number.parseInt(outcome, 10) as Seat] : []
+
+  // Miscount Disclosed: revote on the elected law as if just revealed
+  if (agenda.revealed === 'miscount_disclosed' && outcome !== null && outcome !== 'abstain') {
+    const order = voteOrder(next).filter(s => !barred.includes(s) && next.players[s].faction !== 'nekro')
+    return {
+      ...next,
+      agenda: { revealed: outcome, slot: agenda.slot, votes: {}, order, barredFromVoting: barred },
+      active: order[0] ?? next.speaker,
+      log: [...next.log, { t: 'info', text: `Miscount Disclosed: revoting on ${agendaDef(outcome).name} as if just revealed` }],
+    }
+  }
+
   next = { ...next, agenda: null }
   const winner = victoryCheck(next)
   if (winner !== null) {
-    return { ...next, phase: 'ended', winner, log: [...next.log, { t: 'info', text: `seat ${winner} wins with ${next.players[winner].vp} VP` }] }
+    return { ...next, phase: 'ended', winner, log: [...next.log, { t: 'info', text: `${next.players[winner].name} wins with ${next.players[winner].vp} VP` }] }
   }
   if (agenda.slot === 1 && next.agendaDeck.length > 0) {
     return { ...revealAgenda(next, 2, barred), phase: 'agenda' }

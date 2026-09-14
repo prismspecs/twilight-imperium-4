@@ -11,6 +11,7 @@ export function ProduceDrawer() {
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   const [planets, setPlanets] = useState<string[]>([])
   const [tradeGoods, setTradeGoods] = useState(0)
+  const [selectedGroundTo, setSelectedGroundTo] = useState<string | null>(null)
   if (!session) return null
   const state = session.state
   const seat = state.active
@@ -22,6 +23,14 @@ export function ProduceDrawer() {
     const planet = Object.values(state.systems).flatMap(s => s.planets).find(p => p.id === id)
     return sum + (planet ? planet.resources : 0)
   }, 0) + tradeGoods
+
+  const sysBefore = state.systems[systemId]
+  const floatingFactory = sysBefore?.space.some(u => u.type === 'floating_factory' && u.owner === seat)
+  const controlledPlanets = sysBefore?.planets.filter(p => p.owner === seat) ?? []
+  const hasGround = (units.infantry ?? 0) > 0
+  const effectiveGroundTo = selectedGroundTo ?? (controlledPlanets[0]?.id ?? 'space')
+  const finalGroundTo = (floatingFactory && effectiveGroundTo !== 'space') ? effectiveGroundTo : undefined
+
   return (
     <div className="drawer bottom wide" data-testid="produce-drawer">
       <div className="in">
@@ -33,7 +42,14 @@ export function ProduceDrawer() {
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-produce"
               disabled={total === 0 || total > limit || paid < cost}
-              onClick={() => { if (apply({ type: 'produce', units, planets, tradeGoods })) { setUnits({}); setPlanets([]); setTradeGoods(0) } }}>
+              onClick={() => {
+                if (apply({ type: 'produce', units, planets, tradeGoods, groundTo: finalGroundTo })) {
+                  setUnits({})
+                  setPlanets([])
+                  setTradeGoods(0)
+                  setSelectedGroundTo(null)
+                }
+              }}>
               Confirm production
             </button>
             <button type="button" className="btn quiet" data-testid="btn-end-tactical"
@@ -41,6 +57,30 @@ export function ProduceDrawer() {
           </div>
         </div>
         <ProductionPicker state={state} seat={seat} limit={limit} units={units} onUnits={setUnits} />
+        {floatingFactory && controlledPlanets.length > 0 && hasGround ? (
+          <div className="rowline" style={{ margin: '8px 0', alignItems: 'center', gap: '8px' }} data-testid="ground-deploy-selector">
+            <span className="sub" style={{ fontWeight: 600 }}>Deploy ground forces to:</span>
+            {controlledPlanets.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                className={`pay${effectiveGroundTo === p.id ? ' on' : ''}`}
+                data-testid={`ground-to-${p.id}`}
+                onClick={() => setSelectedGroundTo(p.id)}
+              >
+                Planet: {p.name}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`pay${effectiveGroundTo === 'space' ? ' on' : ''}`}
+              data-testid="ground-to-space"
+              onClick={() => setSelectedGroundTo('space')}
+            >
+              Space area
+            </button>
+          </div>
+        ) : null}
         <PayRow state={state} seat={seat} needed={cost} planets={planets} onPlanets={setPlanets}
           tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
       </div>

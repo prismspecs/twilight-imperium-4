@@ -2,14 +2,12 @@
 
 ## Faction abilities — wired vs display-only in factionAbilities.ts
 
-Wired in engine (with tests): assimilate, harrow (l1z1x); munitions_reserves, armada (letnev); ambush, pillage (mentak); unrelenting (sardakk); fragile, brilliant, analytical (jolnar); quantum_entanglement, slipstream (creuss); mitosis (arborec); scavenge, nomadic (saar); masters_of_trade, guild_ships (hacan); versatile, orbital_drop (sol); star_forge, gashlai_physiology (muaat); peace_accords, quash (xxcha); telepathic, foresight (naalu); galactic_threat, propagation, technological_singularity (nekro).
+Wired in engine (with tests): assimilate, harrow (l1z1x); munitions_reserves, armada (letnev); ambush, pillage (mentak); unrelenting (sardakk); fragile, brilliant, analytical (jolnar); quantum_entanglement, slipstream (creuss); mitosis (arborec); scavenge, nomadic (saar); masters_of_trade, guild_ships (hacan); versatile, orbital_drop (sol); star_forge, gashlai_physiology (muaat); peace_accords, quash (xxcha); telepathic, foresight (naalu); galactic_threat, propagation, technological_singularity (nekro); blood_ties, reclamation (winnu); stall_tactics, scheming, crafty (yssaril).
 
 Remaining (alphabetical by faction):
 - hacan: arbiters
 - nekro: (technological_singularity wired as valefar-assimilate hook only)
-- winnu: blood_ties, reclamation
 - yin: indoctrination, devotion
-- yssaril: stall_tactics, scheming, crafty
 
 Known limitations of current wirings (rulings taken during execution, need design passes):
 - arborec: the Letani Warriors' PRODUCTION ability (pooled, can build infantry without a dock,
@@ -17,11 +15,7 @@ Known limitations of current wirings (rulings taken during execution, need desig
   lrr-factions.md 76). Mitosis itself (no dock-built infantry, mandatory status-phase placement) is wired.
 - nekro propagation: grants 3 strategy tokens instead of researching technology (no tech-choice UI).
 - nekro galactic_threat: the seat is correctly skipped in the vote order; the outcome-prediction tech steal is not wired.
-- agendas: Elect Planet is enumerated and Senate Sanctuary/Terraforming Initiative/Core Mining/Compensated
-  Disarmament/Minister of War resolve; the attached ongoing effects (Demilitarized Zone landing ban, Holy
-  Planet of Ixth VP swings, Research Team prerequisite ignores) are recorded in `Planet.attachments` but not
-  enforced. Elect Law and Elect Scored Secret Objective are still abstain-only stubs (laws in play are only
-  tracked as planet attachments so far).
+- agendas: All 50 base game agendas are fully defined in AGENDA_RESOLVERS. Elect Planet, Elect Law, Elect Scored Secret Objective, and Elect Player are all enumerated with legal outcomes. Attached laws (Senate Sanctuary, Terraforming Initiative, Core Mining, Compensated Disarmament, Demilitarized Zone, Holy Planet of Ixth, Research Teams) and Elect Player laws (Ministries, Imperial Arbiter, Shard of the Throne, Crown of Emphidia, Prophecy of Ixth, Committee Formation, Crown of Thalnos) are resolved. Prophecy of Ixth (+1 fighter combat bonus, discarded when producing < 2 fighters) and Conventions of War (cultural bombardment ban) are enforced. Miscount Disclosed triggers an immediate revote on the elected law. Classified Document Leaks places the secret objective in publicObjectives. Judicial Abolishment discards the elected law from play.
 - planet resource/influence changes from attached laws are live in the engine but invisible on the board:
   the generated galaxy's tile art bakes the printed values into the image, so a modified planet needs a
   badge overlay that does not exist yet.
@@ -31,8 +25,8 @@ Known limitations of current wirings (rulings taken during execution, need desig
 - sol orbital_drop: reinforcement accounting not validated against the fleet supply edge cases.
 - muaat star_forge: uses cheapestPlanets for the destroyer cost; production-capacity validation missing.
 
-## Faction tech — 11 factions have zero `kind: 'faction'` entries in techs.ts
-(saar, muaat, sol, creuss, mentak, naalu, sardakk, winnu, xxcha, yin, yssaril) — only 6 have faction tech (l1z1x, letnev, arborec, hacan, jolnar, nekro).
+## Faction tech — all 17 factions populated in techs.ts
+All 17 factions have both of their faction technologies (34 total: 8 unit upgrades and 26 faction ability technologies) fully defined in `src/data/techs.ts`.
 
 ## Promissory notes — 0 files, 0 engine wiring
 Requires `src/data/promissory_notes.ts` + engine module. The old trade-post code was removed but its tests remain (see below).
@@ -64,15 +58,9 @@ The gate was dead for a long stretch; three classes of rot shipped while it was 
 - `publicize_weapon_schematics` "For": prereq ignore on war sun techs and war sun SUSTAIN DAMAGE loss
   require deeper refactoring: `canResearch` and `canSustain` need GameState to check `activeAgendas`,
   which requires updating all callers in `research.ts`, `combat.ts`, and movement/adjacency.
-- `regulated_conscription` "For" production cap is enforced via `productionCost` but doesn't yet affect
-  `productionLimit` or the UI's production picker display — a player might still be offered to produce
-  2 fighters for 1 resource (if the system has resources for it) despite the law.
+- `regulated_conscription` "For": cost calculation (1 resource per fighter/infantry) is enforced in engine via `productionCost(..., state)`, and UI `ProductionPicker` and AI `fillProduce` pass `state`.
 - `wormhole_research` "For": each player with ships in a wormhole system may research 1 technology;
   that per-player research prompt is not machine-drivable inside the synchronous resolver, so the
   resolver logs "prompt required" and only destroys the ships in alpha/beta wormhole systems.
 - `wormhole_research` "Against": token type returned to reinforcements is unspecified by the card; the
   resolver takes a tactic token (default pool), flooring at 0.
-- PDS II Deep Space Cannon now fires from systems adjacent to the active system (combat.ts
-  `spaceCannonOffense`, hex + wormhole adjacency with Enforced Travel Ban respected), but Creuss's Quantum
-  Entanglement (special wormhole adjacency for PDS II) is not special-cased per shooting owner; adjacency
-  is computed once for the attacker's faction rather than per PDS owner.

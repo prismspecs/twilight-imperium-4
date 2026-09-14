@@ -1,10 +1,11 @@
 // src/engine/agendas.test.ts
 import { describe, expect, it } from 'vitest'
 import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets, transferCrownRoyalLaws } from './agendas'
+import { fighterBonus } from './effects'
 import { applyMove, legalMoves } from './index'
 import { startNextRound } from './statusPhase'
 import { createGame } from './setup'
-import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
+import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from './testUtils'
 import { constructionPlanets } from './strategicActions'
 import { homeSystemOf } from './board'
 import type { GameConfig, GameState, Planet, Result, Seat } from './types'
@@ -304,12 +305,18 @@ describe('R10 resolvers', () => {
     expect(s.agenda?.order).not.toContain(0)   // seat 0 is barred from this vote
   })
 
-  it('an agenda with no resolver still resolves the vote and logs that nothing was enforced', () => {
-    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'judicial_abolishment'), agendaDeck: [] as string[] })   // one round only
-    s = value(vote(s, 'abstain', []))
-    s = value(vote(s, 'abstain', []))
+  it('Judicial Abolishment: discards the elected law from play', () => {
+    let s = deepFreeze({
+      ...toAgendaPhase(toActionPhase(), 'judicial_abolishment'),
+      activeAgendas: ['fleet_regulations'],
+      agendaDeck: [] as string[],
+    })
+    expect(legalOutcomes(s, 'judicial_abolishment')).toEqual(['fleet_regulations'])
+    s = value(vote(s, 'fleet_regulations', []))
+    s = value(vote(s, 'fleet_regulations', []))
     expect(s.agenda).toBeNull()
-    expect(s.log.some(e => e.t === 'info' && e.text.includes('no engine effect yet'))).toBe(true)
+    expect(s.activeAgendas).not.toContain('fleet_regulations')
+    expect(s.log.some(e => e.t === 'info' && e.text.includes('Law discarded from play: Fleet Regulations'))).toBe(true)
   })
 
   it('Shard of the Throne: the elected player gains 1 VP and becomes the owner', () => {
@@ -510,10 +517,155 @@ describe('R10 resolvers', () => {
     expect(s.activeAgendas).toContain('imperial_arbiter')
     expect(s.players[1].vp).toBe(0)   // no VP for Imperial Arbiter
 
-    let t = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'minister_of_sciences'), agendaDeck: [] as string[] })
-    t = value(vote(t, '0', []))
-    t = value(vote(t, '0', []))
-    expect(t.lawOwners?.minister_of_sciences).toBe(0)
-    expect(t.activeAgendas).toContain('minister_of_sciences')
+    let m = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'minister_of_war'), agendaDeck: [] as string[] })
+    m = value(vote(m, '0', []))
+    m = value(vote(m, '0', []))
+    expect(m.lawOwners?.minister_of_war).toBe(0)
+    expect(m.activeAgendas).toContain('minister_of_war')
+  })
+
+  it('Conventions of War For: sets law active and prevents bombardment of cultural planets', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'conventions_of_war'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.activeAgendas).toContain('conventions_of_war')
+  })
+
+  it('Conventions of War Against: each Against voter discards all action cards', () => {
+    let base = toActionPhase()
+    const players = [...base.players] as GameState['players']
+    players[0] = { ...players[0], actionCards: ['plague', 'flank_speed'] }
+    players[1] = { ...players[1], actionCards: ['shields_holding'] }
+    base = deepFreeze({ ...base, players })
+    let s = deepFreeze({ ...toAgendaPhase(base, 'conventions_of_war'), agendaDeck: [] as string[] })
+    // seat 1 votes For, seat 0 (speaker) votes Against -> tie broken in favor of Against
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'Against', []))
+    // seat 0 voted Against, loses hand; seat 1 voted For, retains hand
+    expect(s.players[0].actionCards).toHaveLength(0)
+    expect(s.players[1].actionCards).toHaveLength(1)
+  })
+
+  it('Terraforming Initiative attaches law to elected planet (+1 resource, +1 influence)', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'terraforming_initiative'), agendaDeck: [] as string[] })
+    const homeId = homeSystemOf(s, 0)
+    const planetId = s.systems[homeId].planets[0].id
+    const origPlanet = planetByIdOf(s, planetId)!
+    s = value(vote(s, planetId, []))
+    s = value(vote(s, planetId, []))
+    const updated = planetByIdOf(s, planetId)!
+    expect(updated.attachments).toContain('terraforming_initiative')
+    expect(updated.resources).toBe(origPlanet.resources + 1)
+    expect(updated.influence).toBe(origPlanet.influence + 1)
+  })
+
+  it('Incentive Program For reveals next Stage I public objective, Against reveals Stage II', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'incentive_program'), agendaDeck: [] as string[] })
+    const countBefore = s.publicObjectives.length
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.publicObjectives.length).toBe(countBefore + 1)
+
+    let t = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'incentive_program'), agendaDeck: [] as string[] })
+    t = value(vote(t, 'Against', []))
+    t = value(vote(t, 'Against', []))
+    expect(t.publicObjectives.length).toBe(countBefore + 1)
+  })
+
+  it('Anti-Intellectual Revolution For/Against activates respective agenda state', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'anti_intellectual_revolution'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    expect(s.activeAgendas).toContain('anti_intellectual_revolution')
+
+    let t = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'anti_intellectual_revolution'), agendaDeck: [] as string[] })
+    t = value(vote(t, 'Against', []))
+    t = value(vote(t, 'Against', []))
+    expect(t.activeAgendas).toContain('anti_intellectual_revolution_against')
+  })
+
+  it('Colonial Redistribution destroys units on non-home planet and places infantry for lowest-VP player', () => {
+    let base = toActionPhase()
+    const players = [...base.players] as GameState['players']
+    players[0] = { ...players[0], vp: 3 }
+    players[1] = { ...players[1], vp: 1 } // lowest VP
+    base = deepFreeze({ ...base, players })
+    // tile-26 (lodor) is a non-home planet controlled by seat 0
+    let s = withPlanetOwner(base, 'tile-26', 'lodor', 0)
+    s = withUnits(s, 'tile-26', 0, ['infantry', 'infantry', 'pds'], 'lodor')
+    s = deepFreeze({ ...toAgendaPhase(s, 'colonial_redistribution'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'lodor', []))
+    s = value(vote(s, 'lodor', []))
+    const lodor = planetByIdOf(s, 'lodor')!
+    expect(lodor.owner).toBe(1)
+    expect(lodor.ground.filter(u => u.type === 'infantry' && u.owner === 1)).toHaveLength(1)
+    expect(lodor.structures).toHaveLength(0)
+  })
+
+  it('Speaker tie-break is explicitly logged when vote is tied', () => {
+    let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'Against', []))
+    const tieLog = s.log.find(e => e.t === 'info' && e.text.includes('Tied vote: Speaker'))
+    expect(tieLog).toBeDefined()
+  })
+
+  it('Classified Document Leaks: elected scored secret objective becomes a public objective', () => {
+    let s = toActionPhase()
+    s = withPlayer(s, 0, { scoredObjectives: ['uf'] })
+    s = deepFreeze({ ...toAgendaPhase(s, 'classified_document_leaks'), agendaDeck: [] as string[] })
+    expect(legalOutcomes(s, 'classified_document_leaks')).toEqual(['uf'])
+    s = value(vote(s, 'uf', []))
+    s = value(vote(s, 'uf', []))
+    expect(s.agenda).toBeNull()
+    expect(s.publicObjectives).toContain('uf')
+    expect(s.activeAgendas).toContain('classified_document_leaks')
+    expect(s.log.some(e => e.t === 'info' && e.text.includes('Unveil Flagship" is now a public objective'))).toBe(true)
+  })
+
+  it('Miscount Disclosed: elects an active law to revote on', () => {
+    let s = toActionPhase()
+    s = { ...s, activeAgendas: ['fleet_regulations'] }
+    s = deepFreeze({ ...toAgendaPhase(s, 'miscount_disclosed'), agendaDeck: [] as string[] })
+    expect(legalOutcomes(s, 'miscount_disclosed')).toEqual(['fleet_regulations'])
+    s = value(vote(s, 'fleet_regulations', []))
+    s = value(vote(s, 'fleet_regulations', []))
+    // The agenda round does not end; instead the elected law is revealed for a revote
+    expect(s.agenda?.revealed).toBe('fleet_regulations')
+    expect(s.phase).toBe('agenda')
+    // Players revote "Against" to discard the law
+    s = value(vote(s, 'Against', []))
+    s = value(vote(s, 'Against', []))
+    expect(s.agenda).toBeNull()
+    expect(s.activeAgendas).not.toContain('fleet_regulations')
+  })
+
+  it('Prophecy of Ixth: gives +1 fighter combat roll bonus; discarded when producing < 2 fighters, retained when >= 2', () => {
+    let s = toActionPhase()
+    const sysId = homeSystemOf(s, 0)
+    const planetId = s.systems[sysId].planets[0].id
+    s = { ...s, activeAgendas: ['prophecy_of_ixth'], lawOwners: { prophecy_of_ixth: 0 } }
+    expect(fighterBonus(s, 0)).toBe(1)
+
+    // Producing 2 fighters retains Prophecy of Ixth
+    const staged2 = withTactical(s, { systemId: sysId, step: 'production' })
+    const r2 = applyMove(staged2, { type: 'produce', units: { fighter: 2 }, planets: [planetId], tradeGoods: 0 }, 0)
+    expect(r2.ok).toBe(true)
+    if (r2.ok) {
+      expect(r2.value.activeAgendas).toContain('prophecy_of_ixth')
+      expect(r2.value.lawOwners?.prophecy_of_ixth).toBe(0)
+      expect(fighterBonus(r2.value, 0)).toBe(1)
+    }
+
+    // Producing 1 fighter discards Prophecy of Ixth
+    const staged1 = withTactical(s, { systemId: sysId, step: 'production' })
+    const r1 = applyMove(staged1, { type: 'produce', units: { fighter: 1 }, planets: [planetId], tradeGoods: 0 }, 0)
+    expect(r1.ok).toBe(true)
+    if (r1.ok) {
+      expect(r1.value.activeAgendas).not.toContain('prophecy_of_ixth')
+      expect(r1.value.lawOwners?.prophecy_of_ixth).toBeUndefined()
+      expect(fighterBonus(r1.value, 0)).toBe(0)
+      expect(r1.value.log.some(e => e.t === 'info' && e.text.includes('Prophecy of Ixth is discarded'))).toBe(true)
+    }
   })
 })

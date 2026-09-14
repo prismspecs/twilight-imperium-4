@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { applyMove, createGame, deriveSeed, isAi, legalMoves, pendingFor, pendingReaction } from '../engine'
+import { applyMove, createGame, deriveSeed, formatOutcome, isAi, legalMoves, pendingFor, pendingReaction, winningOutcome } from '../engine'
 import type { GameConfig, GameState, LogEntry, Move, Seat } from '../engine/types'
+import { findAgenda } from '../data/agendas'
 import { aiStep } from '../ai'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
@@ -54,18 +55,130 @@ function handoffFor(config: GameConfig | undefined, prevState: GameState, next: 
  * resolving the first agenda reveals the second in the same move, so the slot (or the card) changing is
  * the first agenda closing out — otherwise its result would never be shown at all. A fully unattended
  * (all-AI) game has nobody to dismiss it, so it never blocks there — same reasoning as `handoffFor`. */
-function agendaResultFor(config: GameConfig | undefined, prevState: GameState, next: GameState): LogEntry[] | null {
+export interface AgendaVoteSummary {
+  seat: Seat
+  playerName: string
+  faction: string
+  outcome: string
+  formattedOutcome: string
+  influence: number
+  abstained: boolean
+}
+
+export interface AgendaResultData {
+  agendaId: string
+  slot: 1 | 2
+  agendaName: string
+  agendaKind: 'law' | 'directive'
+  agendaText: string
+  outcome: string
+  formattedOutcome: string
+  tieBreak: boolean
+  speaker: Seat
+  speakerName: string
+  tally: Record<string, number>
+  votes: AgendaVoteSummary[]
+  logs: LogEntry[]
+}
+
+/** R10: the structured outcome and log entries an agenda's resolution just added — reveal, outcome,
+ * vote breakdown, and effects — the moment `castVote` closes it out. */
+function agendaResultFor(config: GameConfig | undefined, prevState: GameState, next: GameState): AgendaResultData | null {
   if (humanSeats(config) < 1 || prevState.agenda === null) return null
+  const prevAgenda = prevState.agenda
   const closedOut = next.agenda === null
-    || next.agenda.slot !== prevState.agenda.slot
-    || next.agenda.revealed !== prevState.agenda.revealed
+    || next.agenda.slot !== prevAgenda.slot
+    || next.agenda.revealed !== prevAgenda.revealed
   if (!closedOut) return null
+
   const added = next.log.slice(prevState.log.length)
-  return added.length > 0 ? added : null
+  // Filter out reveal of the next agenda so slot 1 resolution doesn't leak slot 2's reveal
+  const filteredLogs = added.filter(entry => {
+    if (entry.t === 'info' && entry.text.startsWith('agenda revealed:') && next.agenda !== null) {
+      return false
+    }
+    return true
+  })
+
+  // Reconstruct full votes including the last move that resolved the agenda
+  const fullVotes: Record<number, { outcome: string; influence: number }> = {}
+  for (const [s, v] of Object.entries(prevAgenda.votes)) {
+    if (v) fullVotes[Number(s)] = v
+  }
+  const lastMoveEntry = added.find(e => e.t === 'move' && e.move.type === 'castVote')
+  if (lastMoveEntry && lastMoveEntry.t === 'move' && lastMoveEntry.move.type === 'castVote') {
+    const move = lastMoveEntry.move
+    const lastSeat = lastMoveEntry.seat ?? prevAgenda.order[0]
+    if (lastSeat !== null && lastSeat !== undefined) {
+      const inf = move.planets.reduce((sum, pId) => {
+        const planet = Object.values(prevState.systems).flatMap(s => s.planets).find(p => p.id === pId)
+        return sum + (planet?.influence ?? 0)
+      }, 0)
+      fullVotes[lastSeat] = { outcome: move.outcome, influence: inf }
+    }
+  }
+
+  // Tally influence per outcome (excluding abstains with 0 influence)
+  const tallyMap: Record<string, number> = {}
+  for (const vote of Object.values(fullVotes)) {
+    if (!vote || vote.outcome === 'abstain') continue
+    tallyMap[vote.outcome] = (tallyMap[vote.outcome] ?? 0) + vote.influence
+  }
+
+  // Determine winner and tie-break
+  const win = winningOutcome(prevState, { ...prevAgenda, votes: fullVotes })
+  const outcome = win?.outcome ?? 'abstain'
+  const tieBreak = win?.tieBreak ?? false
+  const formattedOutcome = formatOutcome(prevState, prevAgenda.revealed, outcome)
+
+  // Vote summaries per player
+  const votesSummary: AgendaVoteSummary[] = prevState.players.map((p, seat) => {
+    const v = fullVotes[seat]
+    const abstained = !v || v.influence === 0 || v.outcome === 'abstain'
+    const voteOutcome = v?.outcome ?? 'abstain'
+    return {
+      seat: seat as Seat,
+      playerName: p.name,
+      faction: p.faction,
+      outcome: voteOutcome,
+      formattedOutcome: formatOutcome(prevState, prevAgenda.revealed, voteOutcome),
+      influence: v?.influence ?? 0,
+      abstained,
+    }
+  })
+
+  const def = findAgenda(prevAgenda.revealed)
+  const agendaName = def?.name ?? prevAgenda.revealed
+  const agendaKind = def?.kind ?? 'directive'
+  const agendaText = def?.text ?? ''
+  const speaker = prevState.speaker
+  const speakerName = prevState.players[speaker]?.name ?? `Player ${speaker}`
+
+  return {
+    agendaId: prevAgenda.revealed,
+    slot: prevAgenda.slot,
+    agendaName,
+    agendaKind,
+    agendaText,
+    outcome,
+    formattedOutcome,
+    tieBreak,
+    speaker,
+    speakerName,
+    tally: tallyMap,
+    votes: votesSummary,
+    logs: filteredLogs,
+  }
 }
 
 /** Which seat is expected to provide input/act next in this game state. */
 export function seatToAct(state: GameState): Seat {
+  if (state.pendingActionCardDiscards?.length) {
+    return state.pendingActionCardDiscards[0]
+  }
+  if (state.pendingSchemingDiscards?.length) {
+    return state.pendingSchemingDiscards[0]
+  }
   const pending = pendingFor(state)
   if (pending) return pending.owner
   if (state.pendingSecondary !== null && state.pendingSecondary.queue.length > 0) {
@@ -80,6 +193,14 @@ export function seatToAct(state: GameState): Seat {
 /** Whether the AI loop should automatically take a move in this state. */
 export function shouldAiStep(config: GameConfig | undefined, state: GameState): boolean {
   if (state.winner !== null || state.phase === 'ended') return false
+
+  // 0. Pending action card discard / Scheming: only the seat with pending discard acts
+  if (state.pendingActionCardDiscards?.length) {
+    return isAi(config, state.pendingActionCardDiscards[0])
+  }
+  if (state.pendingSchemingDiscards?.length) {
+    return isAi(config, state.pendingSchemingDiscards[0])
+  }
 
   // 1. Pending hits: only the owner of the fleet taking hits may assign them
   const pending = pendingFor(state)
@@ -141,7 +262,7 @@ export interface Session {
   handoff: Seat | null
   /** Set the instant an agenda vote resolves it, cleared only by `dismissAgendaResult` — the outcome stays
    * on screen until a player acknowledges it, the same way a handoff holds the board until dismissed. */
-  agendaResult: LogEntry[] | null
+  agendaResult: AgendaResultData | null
   /** Which seat is an AI. Absent (an old saved game) means both seats are human. */
   config?: GameConfig
   autoPassOnZero?: boolean

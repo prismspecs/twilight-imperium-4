@@ -1407,7 +1407,7 @@ button { font-family: inherit; }
   position: fixed;
   right: 12px;
   top: 56px;
-  bottom: 66px;
+  max-height: calc(100vh - 122px);
   width: 350px;
   zoom: var(--k);
   /* one step above the modal stage (.stage.has-modal, 85): the deck's tabs (My Faction, objectives,
@@ -1419,6 +1419,7 @@ button { font-family: inherit; }
   background: transparent;
   overflow: hidden;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  pointer-events: none;
 }
 
 .floating-right-deck.is-collapsed {
@@ -1433,6 +1434,7 @@ button { font-family: inherit; }
   justify-content: space-between;
   padding: 4px 4px 6px;
   gap: 10px;
+  pointer-events: auto;
 }
 
 /* The deck has no panel chrome of its own — the section title floats over the board, so it gets its
@@ -1473,11 +1475,14 @@ button { font-family: inherit; }
 }
 
 .frd-body {
-  flex: 1;
+  flex: 0 1 auto;
+  max-height: calc(100vh - 122px - 36px);
   overflow-y: auto;
+  min-height: 0;
   padding: 12px;
   display: flex;
   flex-direction: column;
+  pointer-events: auto;
 }
 
 .frd-pane {
@@ -2670,6 +2675,87 @@ button { font-family: inherit; }
   background: #000;
   border-radius: var(--radius-sm);
 }
+.uc-flagship-card {
+  width: 100%;
+  aspect-ratio: 1573 / 1034;
+  background: radial-gradient(circle at 50% 35%, rgba(15, 23, 42, 0.95), #030712 90%);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 3px 4px 2px;
+}
+.uc-fc-head {
+  font-family: var(--font-display);
+  font-size: 0.56rem;
+  font-weight: var(--weight-title);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.4);
+  padding-bottom: 2px;
+  line-height: 1.1;
+}
+.uc-fc-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex: 1;
+  min-height: 0;
+  gap: 2px;
+  padding: 1px 0;
+}
+.uc-fc-sprite {
+  max-width: 48%;
+  max-height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+.uc-fc-traits {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--font-display);
+  font-size: 0.46rem;
+  font-weight: var(--weight-bold);
+  color: var(--accent-amber);
+  text-align: right;
+  line-height: 1.1;
+}
+.uc-fc-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 2px;
+}
+.uc-fc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 2px;
+  padding: 1px 0;
+}
+.uc-fc-stat span {
+  font-family: var(--font-display);
+  font-size: 0.4rem;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+.uc-fc-stat b {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: var(--weight-bold);
+  color: var(--ink-bright);
+  line-height: 1.1;
+}
 .uc .n {
   margin-top: 5px;
   font-family: var(--font-display);
@@ -2921,7 +3007,10 @@ button { font-family: inherit; }
   gap: 10px;
   overflow-y: auto;
   flex: 1;
-  padding-right: 4px;
+  min-height: 0;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--alpha-frame) transparent;
 }
 
 /* Grid view when a category tab is filtered */
@@ -2949,6 +3038,7 @@ button { font-family: inherit; }
   text-align: left;
   transition: all var(--transition-default);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
 }
 
 .tc:hover:not(:disabled) {
@@ -2963,6 +3053,7 @@ button { font-family: inherit; }
   aspect-ratio: 750 / 488;
   background: #03050a;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .tc img.art {
@@ -3026,6 +3117,7 @@ button { font-family: inherit; }
   padding: 8px 10px 9px;
   background: var(--deep-space-surface, #0d131f);
   border-top: 1px solid var(--alpha-frame);
+  flex-shrink: 0;
 }
 
 .cap-top {
@@ -3103,6 +3195,75 @@ button { font-family: inherit; }
   color: #86efac;
 }
 
+.tc-desc {
+  font-family: var(--font-text);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink, #cbd5e1);
+  margin-top: 5px;
+  text-align: left;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Faction technology custom card visual */
+.tc-faction-art {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #1e293b 0%, #030712 100%);
+  overflow: hidden;
+}
+
+.tc-faction-art.tc-disc-blue {
+  background: radial-gradient(ellipse at center, rgba(14, 165, 233, 0.4) 0%, rgba(3, 7, 18, 0.95) 75%);
+  border-bottom: 2px solid rgba(14, 165, 233, 0.5);
+}
+.tc-faction-art.tc-disc-red {
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.4) 0%, rgba(3, 7, 18, 0.95) 75%);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.5);
+}
+.tc-faction-art.tc-disc-green {
+  background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.4) 0%, rgba(3, 7, 18, 0.95) 75%);
+  border-bottom: 2px solid rgba(34, 197, 94, 0.5);
+}
+.tc-faction-art.tc-disc-yellow {
+  background: radial-gradient(ellipse at center, rgba(234, 179, 8, 0.4) 0%, rgba(3, 7, 18, 0.95) 75%);
+  border-bottom: 2px solid rgba(234, 179, 8, 0.5);
+}
+.tc-faction-art.tc-disc-special {
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.4) 0%, rgba(3, 7, 18, 0.95) 75%);
+  border-bottom: 2px solid rgba(168, 85, 247, 0.5);
+}
+
+.tc-faction-portrait {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.85));
+  z-index: 1;
+}
+
+.tc-disc-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  padding: 3px;
+  z-index: 2;
+}
+
+
 /* Dialogs */
 .dialog {
   position: absolute;
@@ -3160,8 +3321,13 @@ button { font-family: inherit; }
   left: 0; top: 8px; bottom: 8px;
   width: min(520px, 60%);
   z-index: 30;
+  display: flex;
+  flex-direction: column;
 }
 .logpanel .in {
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -3172,11 +3338,13 @@ button { font-family: inherit; }
   box-shadow: var(--shadow-modal);
 }
 .loglist {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--alpha-frame) transparent;
 }
 .logline {
   font-family: var(--font-text);
@@ -3281,9 +3449,14 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  height: 48px;
 }
-.mvu .ico img { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.85)); }
+.mvu .ico img {
+  max-height: 48px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.85));
+}
 .mvu .n {
   margin-top: 4px;
   font-family: var(--font-display);
@@ -3976,3 +4149,589 @@ button { font-family: inherit; }
   color: #cbd5e1;
   line-height: 1.2;
 }
+
+/* ---- Faint Center-Screen Turn Alert ----------------------------------- */
+.faint-center-turn-alert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 16px 36px;
+  border-radius: var(--radius-soft);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 24px rgba(234, 179, 8, 0.25);
+  backdrop-filter: blur(8px);
+  opacity: 0.95;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.fcta-prefix {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold, #eab308);
+  text-shadow: 0 0 12px rgba(234, 179, 8, 0.7);
+}
+
+.fcta-instruction {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+/* ==========================================================================
+   Victory / Game Over Screen
+   Command console imperial proclamation and tactical final standings
+   ========================================================================== */
+
+.victory-screen {
+  position: relative;
+  max-width: 1400px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 32px 36px 90px;
+  z-index: 1;
+  color: var(--ink-bright);
+}
+
+.victory-hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 24px;
+  z-index: 1;
+}
+
+.victory-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 9999px;
+  color: #fde047;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.victory-title {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4.5vw, 54px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  color: #fbbf24;
+  text-shadow: 0 0 24px rgba(234, 179, 8, 0.4);
+}
+
+.victory-tagline {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin: 0 auto;
+  max-width: 800px;
+  line-height: 1.4;
+}
+
+/* Champion Banner Card */
+.victory-champion-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto 32px;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(30, 24, 14, 0.9) 0%, rgba(15, 20, 32, 0.96) 60%, rgba(10, 15, 26, 0.98) 100%);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 0 28px rgba(234, 179, 8, 0.18), 0 8px 30px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.victory-champion-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.victory-champion-avatar-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid #eab308;
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.35);
+  overflow: hidden;
+  background: #000;
+}
+
+.victory-champion-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.victory-champion-sigil-bg {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 140%;
+  opacity: 0.08;
+  pointer-events: none;
+  user-select: none;
+}
+
+.victory-champion-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.victory-champion-sub {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #eab308;
+  text-transform: uppercase;
+}
+
+.victory-champion-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--ink-bright);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.victory-champion-faction {
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.victory-champion-color-pill {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.victory-champion-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.victory-champion-vp-val {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fbbf24;
+}
+
+.victory-champion-vp-lbl {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fde047;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Standings Section */
+.victory-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.victory-section-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-bright);
+  text-transform: uppercase;
+}
+
+.victory-section-count {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+/* Grid of Cards */
+.victory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.victory-grid.two-player {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Player Card */
+.victory-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(16, 23, 38, 0.94) 0%, rgba(10, 14, 24, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.victory-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.victory-card.is-winner {
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.15), 0 4px 18px rgba(0, 0, 0, 0.6);
+}
+
+.victory-card-color-strip {
+  height: 3px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.victory-card-header {
+  padding: 12px 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.victory-card-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.victory-rank-pill {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.victory-rank-pill.rank-1 {
+  background: #eab308;
+  color: #000;
+  font-weight: 800;
+}
+
+.victory-rank-pill.rank-2 {
+  background: #cbd5e1;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.victory-rank-pill.rank-3 {
+  background: #d97706;
+  color: #fff;
+  font-weight: 800;
+}
+
+.victory-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #000;
+}
+
+.victory-card-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.victory-card-pname {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.victory-card-fname {
+  font-family: var(--font-text);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.victory-card-score-box {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.victory-card.is-winner .victory-card-score-box {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.victory-card-vp-val {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-bright);
+}
+
+.victory-card.is-winner .victory-card-vp-val {
+  color: #fbbf24;
+}
+
+.victory-card-vp-lbl {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.victory-card.is-winner .victory-card-vp-lbl {
+  color: #fde047;
+}
+
+/* Objectives list within card */
+.victory-card-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.victory-card-body-lbl {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 2px;
+}
+
+.victory-card-obj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 230px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.victory-card-obj-list::-webkit-scrollbar {
+  width: 4px;
+}
+.victory-card-obj-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.victory-no-objectives {
+  padding: 18px 12px;
+  text-align: center;
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-muted);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+/* Scored objective item */
+.victory-obj-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 17, 28, 0.7);
+}
+
+.victory-obj-item.stage-1 {
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.06);
+}
+
+.victory-obj-item.stage-2 {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.victory-obj-item.stage-secret {
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.06);
+}
+
+.victory-obj-item.stage-special {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.victory-obj-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.victory-obj-badge {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.victory-obj-item.stage-1 .victory-obj-badge {
+  background: rgba(249, 115, 22, 0.22);
+  color: #fdba74;
+}
+
+.victory-obj-item.stage-2 .victory-obj-badge {
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
+}
+
+.victory-obj-item.stage-secret .victory-obj-badge {
+  background: rgba(168, 85, 247, 0.22);
+  color: #e9d5ff;
+}
+
+.victory-obj-item.stage-special .victory-obj-badge {
+  background: rgba(234, 179, 8, 0.22);
+  color: #fef08a;
+}
+
+.victory-obj-points {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-bright);
+}
+
+.victory-obj-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-bright);
+  line-height: 1.25;
+}
+
+.victory-obj-desc {
+  font-family: var(--font-text);
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
+
+/* Footer Action Dock */
+.victory-footer {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+

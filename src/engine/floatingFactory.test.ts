@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { homeSystemOf } from './board'
+import { capacity } from './economy'
 import { applyMove } from './index'
 import { fulfils } from './objectives'
 import { deepFreeze, SAAR_CONFIG, toActionPhase, withCards, withUnits } from './testUtils'
@@ -160,4 +161,68 @@ describe('Saar Floating Factory', () => {
     const withShip = withUnits(enemyFf, dest, 0, ['cruiser'])
     expect(fulfils(withShip, 0, 'csl')).toBe(true)
   })
+
+  it('places ground forces produced by Warfare secondary on named controlled planet via groundTo', () => {
+    const s = withCards(toActionPhase(1, 1, SAAR_CONFIG), 1, ['warfare'])
+    const played = applyMove(s, { type: 'strategic', card: 'warfare', params: {} }, 1)
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.pendingSecondary?.card).toBe('warfare')
+    expect(played.value.active).toBe(0) // Saar seat 0 is next in queue
+    const home = homeSystemOf(played.value, 0)
+    const homePlanet = played.value.systems[home].planets.find(p => p.owner === 0)!
+    const answered = applyMove(played.value, {
+      type: 'secondary',
+      card: 'warfare',
+      accept: true,
+      params: { units: { infantry: 1 }, planets: [homePlanet.id], tradeGoods: 0, groundTo: homePlanet.id },
+    }, 1)
+    if (!answered.ok) throw new Error(answered.error)
+    const planetAfter = answered.value.systems[home].planets.find(p => p.id === homePlanet.id)!
+    expect(planetAfter.ground.some(u => u.type === 'infantry' && u.owner === 0)).toBe(true)
+  })
+
+  it('provides capacity (4 for Floating Factory I, 5 for Floating Factory II)', () => {
+    const ffUnit = { id: 999, type: 'floating_factory' as const, owner: 0, damaged: false }
+    expect(capacity([ffUnit], 0, { faction: 'saar', techs: [] })).toBe(4)
+    expect(capacity([ffUnit], 0, { faction: 'saar', techs: ['floating_factory_ii'] })).toBe(5)
+  })
+
+  it('allows moving carrier + floating factory carrying 8 units without capacity error', () => {
+    const s = toActionPhase(1, 0, SAAR_CONFIG)
+    const home = homeSystemOf(s, 0)
+    const dest = s.systems[home].neighbours[0]
+    // Starting Saar fleet has 1 carrier (cap 4) and 1 floating_factory (cap 4), total capacity 8.
+    // Starting units also include 2 fighters and 4 infantry. Let's add 1 fighter and 1 infantry so total carried is 8 (3 fighters + 5 infantry).
+    const withExtraUnits = withUnits(withUnits(s, home, 0, ['fighter']), home, 0, ['infantry'])
+    const carrier = withExtraUnits.systems[home].space.find(u => u.type === 'carrier')!
+    const ff = withExtraUnits.systems[home].space.find(u => u.type === 'floating_factory')!
+    const fighters = withExtraUnits.systems[home].space.filter(u => u.type === 'fighter')
+    const infantry = [
+      ...withExtraUnits.systems[home].space.filter(u => u.type === 'infantry'),
+      ...withExtraUnits.systems[home].planets.flatMap(p => p.ground).filter(u => u.type === 'infantry'),
+    ]
+    expect(fighters).toHaveLength(3)
+    expect(infantry).toHaveLength(5)
+    const allCargo = [...fighters.map(u => u.id), ...infantry.map(u => u.id)]
+
+    const started = applyMove(withExtraUnits, { type: 'startTactical', systemId: dest }, 1)
+    if (!started.ok) throw new Error(started.error)
+
+    // Carrier carries 4, Floating Factory carries 4
+    const moved = applyMove(started.value, {
+      type: 'moveShips',
+      moves: [
+        { unitId: carrier.id, from: home, carrying: allCargo.slice(0, 4) },
+        { unitId: ff.id, from: home, carrying: allCargo.slice(4, 8) },
+      ],
+    }, 1)
+    expect(moved.ok).toBe(true)
+    if (!moved.ok) throw new Error(moved.error)
+    const destSpace = moved.value.systems[dest].space.filter(u => u.owner === 0)
+    expect(destSpace.filter(u => u.type === 'carrier')).toHaveLength(1)
+    expect(destSpace.filter(u => u.type === 'floating_factory')).toHaveLength(1)
+    expect(destSpace.filter(u => u.type === 'fighter')).toHaveLength(3)
+    expect(destSpace.filter(u => u.type === 'infantry')).toHaveLength(5)
+  })
 })
+

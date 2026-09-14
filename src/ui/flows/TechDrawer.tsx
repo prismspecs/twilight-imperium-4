@@ -54,6 +54,8 @@ export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDra
       ? 'Level 0 (No prereqs)'
       : prereqList.map(([c, count]) => `${count} ${COLUMN_NAME[c as TechColor] ?? c}`).join(', ')
 
+    const artUrl = techArtUrl(techId)
+
     return (
       <button
         key={techId}
@@ -62,10 +64,21 @@ export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDra
         data-testid={`tech-card-${techId}`}
         disabled={!open}
         onClick={() => onSelect(techId)}
-        title={`${name} (${isOwned ? 'Owned' : open ? 'Available' : `Requires ${prereqLabel}`})`}
+        title={`${name}\n${t.description}\n(${isOwned ? 'Owned' : open ? 'Available' : `Requires ${prereqLabel}`})`}
       >
         <div className="tc-media">
-          <img className="art" src={techArtUrl(techId)} alt={name} loading="lazy" />
+          {artUrl ? (
+            <img className="art" src={artUrl} alt={name} loading="lazy" />
+          ) : (
+            <div className={`tc-faction-art tc-disc-${t.colour ?? 'special'}`}>
+              {t.faction ? (
+                <img className="tc-faction-portrait" src={`/assets/factions/${t.faction}.png`} alt={name} />
+              ) : null}
+              {t.colour ? (
+                <span className="tc-disc-badge"><TechColourIcon colour={t.colour} /></span>
+              ) : null}
+            </div>
+          )}
           <span className={`tc-badge ${stateClass}`}>
             {isOwned ? 'Owned' : isSel ? 'Selected' : open ? 'Researchable' : 'Locked'}
           </span>
@@ -83,6 +96,11 @@ export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDra
             ) : null}
             <span className="tc-prereq">{prereqLabel}</span>
           </div>
+          {t.description ? (
+            <div className="tc-desc" data-testid={`tech-desc-${techId}`}>
+              {t.description}
+            </div>
+          ) : null}
         </div>
       </button>
     )

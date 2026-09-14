@@ -1,4 +1,4 @@
-import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
+import { NON_FIGHTER_SHIPS, isMovable, unitStats, type StatsOwner } from '../data/units'
 import type { GameState, Owner, Player, Result, Seat, System, Unit, UnitType } from './types'
 
 /** A seat's own producing structure in a system: a planet-bound space dock, or Saar's Floating Factory in
@@ -174,7 +174,7 @@ export function nonFighterShips(units: Unit[], owner: Owner): number {
 }
 
 export function capacity(units: Unit[], owner: Owner, stats: StatsOwner): number {
-  return units.filter(u => u.owner === owner && isShip(u.type)).reduce((sum, u) => sum + unitStats(u.type, stats).capacity, 0)
+  return units.filter(u => u.owner === owner && isMovable(u.type)).reduce((sum, u) => sum + unitStats(u.type, stats).capacity, 0)
 }
 
 /**

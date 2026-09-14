@@ -9,7 +9,7 @@ import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
-import { canResearch, researchable, researchableWithSkips } from './research'
+import { canResearch, researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { FACTIONS } from '../data/factions'
 import { techDef } from '../data/techs'
 import { hasTech, homeSystemOf, maxFightersAllowed } from './board'
@@ -19,35 +19,6 @@ import { MECATOL_ID } from '../data/map'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
 
-/**
- * LRR "Technology Specialties" 12: the seat's own ready planets that carry one, each worth ignoring one
- * matching prerequisite symbol on whatever technology is being researched.
- */
-function techSkipCandidates(state: GameState, seat: Seat): { planetId: string; colour: TechColor }[] {
-  const out: { planetId: string; colour: TechColor }[] = []
-  for (const sys of Object.values(state.systems)) {
-    for (const p of sys.planets) if (p.owner === seat && !p.exhausted && p.techSkip) out.push({ planetId: p.id, colour: p.techSkip })
-  }
-  return out
-}
-
-/**
- * One legal (not the only possible) set of the seat's specialty planets that gets `techId` researchable —
- * greedily one planet per still-needed colour, cheapest in the sense of "fewest planets spent" since it never
- * takes a second planet of a colour the tech only needs once. Empty array if no skip is needed at all; null if
- * no combination of the seat's own specialty planets reaches it.
- */
-function skipPlanetsFor(state: GameState, seat: Seat, techId: string, owned: string[]): string[] | null {
-  const player = { faction: state.players[seat].faction, techs: owned }
-  if (canResearch(player, techId)) return []
-  const need = { ...techDef(techId).prereq }
-  const chosen: { planetId: string; colour: TechColor }[] = []
-  for (const c of techSkipCandidates(state, seat)) {
-    if ((need[c.colour] ?? 0) > chosen.filter(x => x.colour === c.colour).length) chosen.push(c)
-  }
-  const skips = chosen.map(c => c.colour)
-  return canResearch(player, techId, false, skips) ? chosen.map(c => c.planetId) : null
-}
 
 /** `cheapestPayment`, but treating `avoid` as already exhausted first — so a resource payment never lands
  * on a planet the same move is also spending as a technology-specialty skip. */
@@ -97,10 +68,10 @@ function tacticalMoves(state: GameState): Move[] {
     case 'invasion': {
       const out: Move[] = []
       for (const planetId of bombardablePlanets(state)) out.push({ type: 'bombard', planetId })
-      if ((tac.systemId === MECATOL_ID || tac.systemId === 'mecatol') && state.custodiansToken) {
-        const hasShips = state.systems[tac.systemId]?.space.some(u => u.owner === seat && (isShip(u.type) || u.type === 'infantry'))
-        const canPay = readyInfluence(state, seat) + state.players[seat].tradeGoods >= 6
-        if (hasShips && canPay) {
+      if ((tac.systemId === MECATOL_ID || tac.systemId === 'mecatol' || tac.systemId === '18') && state.custodiansToken) {
+        const hasInfantry = state.systems[tac.systemId]?.space.some(u => u.owner === seat && u.type === 'infantry')
+        const canPay = state.players[seat].faction === 'winnu' || readyInfluence(state, seat) + state.players[seat].tradeGoods >= 6
+        if (hasInfantry && canPay) {
           out.push({ type: 'removeCustodians' })
         }
       }
@@ -325,6 +296,16 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
 
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
+  // LRR 112 & 140: excess action cards must be discarded immediately
+  if (state.pendingActionCardDiscards?.length) {
+    const seat = state.pendingActionCardDiscards[0]
+    return state.players[seat].actionCards.map(cardId => ({ type: 'discardActionCard', cardId }))
+  }
+  // Yssaril Scheming: 1 action card must be chosen and discarded immediately
+  if (state.pendingSchemingDiscards?.length) {
+    const seat = state.pendingSchemingDiscards[0]
+    return state.players[seat].actionCards.map(cardId => ({ type: 'discardActionCard', cardId }))
+  }
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
   if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
   // R9: an open reaction window blocks everything else too; the seat it is waiting on may play a matching
@@ -368,7 +349,14 @@ export function legalMoves(state: GameState): Move[] {
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
   for (const card of unusedCards(state, seat)) out.push(...primaryMoves(state, seat, card))
   // R9: an "ACTION:" card is a whole action, so it belongs beside the tactical and strategic ones
+  // R9: an "ACTION:" card is a whole action, so it belongs beside the tactical and strategic ones
   out.push(...actionCardMoves(state, seat))
+  // Yssaril Stall Tactics: "Action: Discard 1 action card from your hand."
+  if (state.players[seat].faction === 'yssaril') {
+    for (const cardId of state.players[seat].actionCards) {
+      out.push({ type: 'stallTactics', cardId })
+    }
+  }
   if (canInheritance(state, seat)) {
     for (const techId of inheritanceTechs(state, seat)) out.push({ type: 'research', techId, via: 'inheritance' })
   }
@@ -407,6 +395,10 @@ function matches(candidate: Move, move: Move): boolean {
     // that knows what the printed ability needs
     case 'playActionCard':
       return candidate.type === 'playActionCard' && candidate.cardId === move.cardId
+    case 'discardActionCard':
+      return candidate.type === 'discardActionCard' && candidate.cardId === move.cardId
+    case 'stallTactics':
+      return candidate.type === 'stallTactics' && candidate.cardId === move.cardId
     case 'secondary':
       return candidate.type === 'secondary' && candidate.card === move.card && candidate.accept === move.accept
     case 'research':
@@ -425,6 +417,9 @@ function matches(candidate: Move, move: Move): boolean {
 }
 
 export function validateMove(state: GameState, move: Move): Result<true> {
+  if ((state.pendingActionCardDiscards?.length || state.pendingSchemingDiscards?.length) && move.type !== 'discardActionCard') {
+    return { ok: false, error: 'excess action cards or Scheming discard must be resolved first' }
+  }
   if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   const ok = legalMoves(state).some(candidate => matches(candidate, move))
   if (ok) return { ok: true, value: true }

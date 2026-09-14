@@ -7,7 +7,7 @@ import { checkFleet, homeSystemOf, returnToReinforcements, shipsOf } from './boa
 import { cheapestPayment, distributeTokens, exhaustPlanets, fleetPoolLimit, nonFighterShips, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
-import { canResearch, colourCounts } from './research'
+import { canResearch, colourCounts, exhaustTechSkipPlanets } from './research'
 import { techDef } from '../data/techs'
 import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor, UnitType } from './types'
 
@@ -136,26 +136,6 @@ export function readyPlanets(state: GameState, seat: Seat, planets: string[], ma
   return { ok: true, value: { ...state, systems } }
 }
 
-/**
- * LRR "Technology Specialties" 12: exhausts each named planet (controlled, ready, carrying that specialty)
- * before the research itself is checked, and hands back the colour it ignores one prerequisite of.
- */
-function exhaustTechSkipPlanets(state: GameState, seat: Seat, planetIds: string[]): Result<{ state: GameState; skips: TechColor[] }> {
-  let next = state
-  const skips: TechColor[] = []
-  for (const planetId of planetIds) {
-    const sysId = Object.keys(next.systems).find(id => next.systems[id].planets.some(p => p.id === planetId))
-    if (!sysId) return { ok: false, error: `unknown planet ${planetId}` }
-    const sys = next.systems[sysId]
-    const planet = sys.planets.find(p => p.id === planetId)
-    if (!planet || planet.owner !== seat) return { ok: false, error: `planet ${planetId} not controlled` }
-    if (planet.exhausted) return { ok: false, error: `planet ${planetId} is exhausted` }
-    if (!planet.techSkip) return { ok: false, error: `planet ${planetId} has no technology specialty` }
-    skips.push(planet.techSkip)
-    next = { ...next, systems: { ...next.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, exhausted: true } : p) } } }
-  }
-  return { ok: true, value: { state: next, skips } }
-}
 
 /**
  * R5: adds the technology after the prerequisite check; Inheritance Systems ignores the prerequisites.
@@ -318,7 +298,7 @@ function withFleetPoolIntact(result: Result<GameState>, seat: Seat): Result<Game
 /** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
 function warfareSecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   const staged: GameState = { ...state, tactical: { systemId: homeSystemOf(state, seat), step: 'production' } }
-  const made = produce(staged, params.units ?? {}, params.planets ?? [], params.tradeGoods ?? 0)
+  const made = produce(staged, params.units ?? {}, params.planets ?? [], params.tradeGoods ?? 0, params.groundTo)
   if (!made.ok) return made
   return { ok: true, value: { ...made.value, tactical: state.tactical } }
 }

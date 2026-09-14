@@ -81,3 +81,43 @@ describe('scoreTech and calibrated tech scoring', () => {
     expect(scoreGood).toBeGreaterThan(scoreBad)
   })
 })
+
+describe('tactical suicide prevention', () => {
+  it('heavily penalizes sending a lone ship into an enemy cluster of ships', () => {
+    let state = createGame(BASE_CONFIG, 105)
+    // Identify a non-home system adjacent to seat 0's ships
+    const targetSysId = Object.keys(state.systems).find(id => id.startsWith('tile-'))!
+    const targetSys = state.systems[targetSysId]
+
+    // Put a large enemy cluster (dreadnought, carrier, cruiser) in targetSysId
+    const enemyFleet = [
+      { id: 901, type: 'dreadnought' as const, owner: 1 as const, damaged: false },
+      { id: 902, type: 'carrier' as const, owner: 1 as const, damaged: false },
+      { id: 903, type: 'cruiser' as const, owner: 1 as const, damaged: false },
+    ]
+
+    state = {
+      ...state,
+      systems: {
+        ...state.systems,
+        [targetSysId]: {
+          ...targetSys,
+          space: enemyFleet,
+        },
+      },
+    }
+
+    const view = playerView(state, 0)
+    const w = DEFAULT_WEIGHTS
+
+    const moveSuicide: Move = {
+      type: 'startTactical',
+      systemId: targetSysId,
+    }
+
+    const score = scoreMove(view, moveSuicide, 0, w)
+    // Score should be strongly negative (w.priority or suicide penalty)
+    expect(score).toBeLessThan(0)
+  })
+})
+

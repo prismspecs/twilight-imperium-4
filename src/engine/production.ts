@@ -6,6 +6,16 @@ import type { GameState, Result, Seat, Unit, UnitType } from './types'
 
 export const PRODUCIBLE: readonly UnitType[] = ['infantry', 'fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 
+export function canProduceUnit(player: { faction: FactionId; techs: string[] }, type: UnitType): boolean {
+  if (type === 'warsun') {
+    return player.faction === 'muaat' || player.techs.includes('war_sun')
+  }
+  if (type === 'infantry' && player.faction === 'arborec') {
+    return false
+  }
+  return PRODUCIBLE.includes(type)
+}
+
 /** R14.1: a dock (or any unit with PRODUCTION) is blockaded when the system holds another player's ships
  * and none of the seat's own - a blockaded unit may still produce ground forces, just not ships. */
 export function isBlockaded(state: GameState, seat: Seat, systemId: string): boolean {
@@ -34,6 +44,9 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     if (n === 0) continue
     if (n < 0 || !Number.isInteger(n)) return { ok: false, error: `invalid count for ${type}` }
     if (!PRODUCIBLE.includes(type)) return { ok: false, error: `R4.4: ${type} cannot be produced` }
+    if (type === 'warsun' && player.faction !== 'muaat' && !player.techs.includes('war_sun')) {
+      return { ok: false, error: 'R4.4/LRR 91.1: War Sun requires the War Sun technology' }
+    }
     if (blockaded && isShip(type)) return { ok: false, error: 'R14.1: this dock is blockaded by another player\'s ships — it can still produce ground forces' }
   }
   // R3.3/Arborec Mitosis (lrr-factions.md 9-13): space docks cannot produce Letani Warriors — infantry
@@ -85,8 +98,21 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
   const sys = paid.value.systems[tac.systemId]
   const log = [...paid.value.log, { t: 'info' as const, text: `seat ${seat} produces ${total} units for ${cost}` }]
   if (trimmedFighters) log.push({ t: 'info' as const, text: `${trimmedFighters} fighters exceed the capacity and are not produced` })
+  const hasProphecy = (paid.value.activeAgendas ?? []).includes('prophecy_of_ixth') && paid.value.lawOwners?.prophecy_of_ixth === seat
+  let nextActiveAgendas = paid.value.activeAgendas
+  let nextLawOwners = paid.value.lawOwners
+  if (hasProphecy && (order.fighter ?? 0) < 2) {
+    nextActiveAgendas = nextActiveAgendas?.filter(a => a !== 'prophecy_of_ixth')
+    if (nextLawOwners) {
+      const { prophecy_of_ixth: _, ...rest } = nextLawOwners
+      nextLawOwners = rest
+    }
+    log.push({ t: 'info' as const, text: `seat ${seat} produced fewer than 2 fighters: Prophecy of Ixth is discarded` })
+  }
   const next: GameState = {
     ...paid.value, players, nextUnitId: nextId, log,
+    activeAgendas: nextActiveAgendas,
+    lawOwners: nextLawOwners,
     systems: {
       ...paid.value.systems,
       [tac.systemId]: {

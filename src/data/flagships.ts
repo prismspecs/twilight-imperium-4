@@ -14,7 +14,7 @@ export const FLAGSHIP_INFO: Record<FactionId, FlagshipInfo> = {
   l1z1x: { name: '[0.0.1]', ability: 'Hits it and your dreadnoughts in this system score must go on non-fighter ships first, whenever there is one to take them.' },
   letnev: { name: 'Arc Secundus', ability: 'Strips Planetary Shield from everyone else in the system, and repairs itself at the start of every combat round.' },
   arborec: { name: 'Duha Menaimon', ability: 'Lets you produce up to 5 units in the system the moment you activate it.' },
-  saar: { name: 'Son of Ragh', ability: '' },
+  saar: { name: 'Son of Ragh', ability: 'Anti-Fighter Barrage 6 (x4).' },
   muaat: { name: 'The Inferno', ability: 'Can spend a strategy token as an action to conjure a cruiser straight into its own system.' },
   hacan: { name: 'Wrath of Kenara', ability: 'Lets you pay a trade good to boost any of its combat rolls by 1, after seeing the roll.' },
   sol: { name: 'Genesis', ability: 'Spawns a fresh infantry into the system every status phase.' },

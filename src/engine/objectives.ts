@@ -147,7 +147,7 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
 
     // Secret objectives (1 VP)
     case 'ans':
-      return player.techs.filter(tId => findTech(tId)?.kind === 'faction').length >= 2
+      return player.techs.filter(tId => findTech(tId)?.faction !== undefined).length >= 2
     case 'btgk': {
       const hasAlpha = Object.values(state.systems).some(s => s.wormhole === 'alpha' && s.space.some(u => u.owner === seat && isShip(u.type)))
       const hasBeta = Object.values(state.systems).some(s => s.wormhole === 'beta' && s.space.some(u => u.owner === seat && isShip(u.type)))

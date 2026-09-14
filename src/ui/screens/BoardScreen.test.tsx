@@ -64,4 +64,27 @@ describe('the board screen layout', () => {
     fireEvent.mouseEnter(screen.getByTestId(`tile-${systemId}`))
     expect(screen.getByTestId('panel-0')).toBeTruthy()
   })
+
+  it('displays faint center turn alert with "It\'s your turn." and context-specific action text', () => {
+    // 1. Idle action phase
+    const state = toActionPhase()
+    renderWithSession(state, <BoardScreen />)
+    const alert = screen.getByTestId('faint-center-turn-alert')
+    expect(alert).toBeTruthy()
+    expect(alert.textContent).toContain("It's your turn.")
+    expect(alert.textContent).toContain('Choose an action: Tactical, Strategic, or Component.')
+  })
+
+  it('displays "Pick a technology." in faint center turn alert when Technology secondary is active', () => {
+    const state: GameState = {
+      ...toActionPhase(),
+      active: 0,
+      pendingSecondary: { card: 'technology', owner: 1, queue: [0] },
+    }
+    renderWithSession(state, <BoardScreen />)
+    const alert = screen.getByTestId('faint-center-turn-alert')
+    expect(alert).toBeTruthy()
+    expect(alert.textContent).toContain("It's your turn.")
+    expect(alert.textContent).toContain('Pick a technology.')
+  })
 })

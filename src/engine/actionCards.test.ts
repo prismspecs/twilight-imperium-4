@@ -4,8 +4,10 @@ import { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, drawActionCards, pl
 import { applyMove, legalMoves, validateMove } from './index'
 import { PLAYABLE_REACTION_CARDS } from './reactions'
 import { createGame, shuffledActionCards } from './setup'
+import { aiStep } from '../ai'
+import { seatToAct, shouldAiStep } from '../ui/store'
 import { BASE_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
-import type { GameState, Seat } from './types'
+import type { GameConfig, GameState, Seat } from './types'
 
 const ALL_PLAYABLE_CARDS: readonly string[] = [...PLAYABLE_ACTION_CARDS, ...PLAYABLE_REACTION_CARDS]
 
@@ -66,14 +68,76 @@ describe('R9 the action card deck', () => {
     expect(drawn.log.some(e => e.t === 'info' && e.text.includes('deck is empty'))).toBe(true)
   })
 
-  it('holds the hand at the limit of seven and discards the surplus', () => {
-    const state = createGame(BASE_CONFIG, 3)
-    const full = withHand(state, 0, state.actionCardDeck.slice(0, HAND_LIMIT))
+  it('LRR 112 & 140: marks player with >7 cards as pending discard and allows choosing which to discard', () => {
+    const state = toActionPhase()
+    const initialHand = state.actionCardDeck.slice(0, HAND_LIMIT)
+    const full = deepFreeze({
+      ...withHand(state, 0, initialHand),
+      actionCardDeck: state.actionCardDeck.slice(HAND_LIMIT),
+    })
     const drawn = drawActionCards(full, 0, 2, 5)
-    expect(drawn.players[0].actionCards.length).toBe(HAND_LIMIT)
-    expect(drawn.players[0].actionCards).toEqual(full.players[0].actionCards)
-    expect(drawn.actionCardDiscard.length).toBe(2)
-    expect(drawn.log.some(e => e.t === 'info' && e.text.includes('over the hand limit'))).toBe(true)
+    expect(drawn.players[0].actionCards.length).toBe(HAND_LIMIT + 2)
+    expect(drawn.pendingActionCardDiscards).toEqual([0])
+
+    // Other moves are blocked
+    const validation = validateMove(drawn, { type: 'pass' })
+    expect(validation.ok).toBe(false)
+    if (!validation.ok) expect(validation.error).toContain('excess action cards must be discarded first')
+
+    // Legal moves offers discarding each card in hand
+    const legals = legalMoves(drawn)
+    expect(legals.length).toBe(HAND_LIMIT + 2)
+    expect(legals.every(m => m.type === 'discardActionCard')).toBe(true)
+
+    // Discard one card
+    const cardToDiscard1 = drawn.players[0].actionCards[0]
+    const step1 = applyMove(drawn, { type: 'discardActionCard', cardId: cardToDiscard1 }, 1)
+    expect(step1.ok).toBe(true)
+    if (!step1.ok) throw new Error(step1.error)
+    expect(step1.value.players[0].actionCards.length).toBe(HAND_LIMIT + 1)
+    expect(step1.value.players[0].actionCards).not.toContain(cardToDiscard1)
+    expect(step1.value.actionCardDiscard).toContain(cardToDiscard1)
+    expect(step1.value.pendingActionCardDiscards).toEqual([0])
+
+    // Discard second card to get down to 7
+    const cardToDiscard2 = step1.value.players[0].actionCards[0]
+    const step2 = applyMove(step1.value, { type: 'discardActionCard', cardId: cardToDiscard2 }, 2)
+    expect(step2.ok).toBe(true)
+    if (!step2.ok) throw new Error(step2.error)
+    expect(step2.value.players[0].actionCards.length).toBe(HAND_LIMIT)
+    expect(step2.value.pendingActionCardDiscards).toBeUndefined()
+
+    // Now normal moves are unblocked
+    const afterLegals = legalMoves(step2.value)
+    expect(afterLegals.length).toBeGreaterThan(0)
+    expect(afterLegals.every(m => m.type !== 'discardActionCard')).toBe(true)
+  })
+
+  it('LRR 112 & 140: AI automatically discards excess cards down to hand limit', () => {
+    const config: GameConfig = {
+      players: [
+        { faction: 'l1z1x', color: 'blue', name: 'A' },
+        { faction: 'letnev', color: 'red', name: 'B', playerType: 'ai' },
+      ],
+      speaker: 0,
+    }
+    const state = toActionPhase(1, 0, config)
+    const initialHand = state.actionCardDeck.slice(0, HAND_LIMIT)
+    const full = deepFreeze({
+      ...withHand(state, 1, initialHand),
+      actionCardDeck: state.actionCardDeck.slice(HAND_LIMIT),
+    })
+    const drawn = drawActionCards(full, 1, 2, 5)
+    expect(drawn.pendingActionCardDiscards).toEqual([1])
+    expect(shouldAiStep(config, drawn)).toBe(true)
+    expect(seatToAct(drawn)).toBe(1)
+
+    // AI steps to discard
+    const legals = legalMoves(drawn)
+    const stepRes = aiStep(drawn, legals, 1, 42)
+    expect(stepRes).not.toBeNull()
+    expect(stepRes?.chosen.type).toBe('discardActionCard')
+    expect(stepRes?.state.players[1].actionCards.length).toBe(HAND_LIMIT + 1)
   })
 })
 

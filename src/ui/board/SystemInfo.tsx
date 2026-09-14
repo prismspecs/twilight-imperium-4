@@ -53,6 +53,35 @@ export function SystemInfo({ state, systemId, onClose }: { state: GameState; sys
                     {planet.owner !== null ? `Controlled by ${state.players[planet.owner].name}` : 'Uncontrolled'}
                     {planet.exhausted ? ', exhausted' : ''}
                   </div>
+                  {(() => {
+                    const ground = groupUnits(planet.ground)
+                    const structures = groupUnits(planet.structures)
+                    if (ground.length === 0 && structures.length === 0) return null
+                    return (
+                      <div className="sysinfo-units" data-testid={`system-info-ground-${planet.id}`} style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {ground.map(group => (
+                          <span key={`${group.owner}-${group.type}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <UnitStack
+                              group={group}
+                              colour={group.owner === 'guardian' ? 'grey' : state.players[group.owner].color}
+                              testId={`system-info-ground-${planet.id}-${group.owner}-${group.type}`}
+                              alwaysCount
+                            />
+                          </span>
+                        ))}
+                        {structures.map(group => (
+                          <span key={`${group.owner}-${group.type}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <UnitStack
+                              group={group}
+                              colour={group.owner === 'guardian' ? 'grey' : state.players[group.owner].color}
+                              testId={`system-info-struct-${planet.id}-${group.owner}-${group.type}`}
+                              alwaysCount
+                            />
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

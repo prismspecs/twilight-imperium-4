@@ -1,7 +1,7 @@
 {
   "name": "next-missing-agendas",
   "taskFile": ".ralph/next-missing-agendas.md",
-  "iteration": 12,
+  "iteration": 14,
   "maxIterations": 15,
   "itemsPerIteration": 2,
   "reflectEvery": 1,
@@ -10,5 +10,5 @@
   "status": "active",
   "startedAt": "2026-09-12T10:42:15.045Z",
   "ownerSessionId": "01a088ac-8bd0-74fe-9568-a0b2b2c3ddd7",
-  "lastReflectionAt": 12
+  "lastReflectionAt": 14
 }

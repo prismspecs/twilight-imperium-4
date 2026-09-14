@@ -67,6 +67,7 @@ export const PLANET_SPOTS: Record<string, PlanetSpot> = {
   gral: { art: { left: 95, top: 97, width: 86, height: 86 }, plate: { left: 146, top: 152, flip: true } },
   // 18_MR.png: disc fitted at art (171,152) r 121 -> board d 164, centred on the tile like the print
   'mecatol-rex': { art: { left: 34, top: 18.5, width: 164, height: 164 }, plate: { left: 64, top: 150 } },
+  mr: { art: { left: 34, top: 18.5, width: 164, height: 164 }, plate: { left: 64, top: 150 } },
   // 10_ArcPime.png: Arc Prime fitted at art (131,87) r 63, Wren Terra at (224,205) r 63, both with the
   // banner along the top of their disc
   'arc-prime': { art: { left: 45, top: 16, width: 86, height: 86 }, plate: { left: 56, top: 10 } },
@@ -128,6 +129,7 @@ export const PLATE_SIZE: Record<string, { width: number; height: number }> = {
   quann: { width: 92, height: PLATE_H }, bereg: { width: 90, height: PLATE_H },
   starpoint: { width: 110, height: PLATE_H }, 'lirta-iv': { width: 99, height: PLATE_H },
   centauri: { width: 105, height: PLATE_H }, gral: { width: 85, height: PLATE_H }, 'mecatol-rex': { width: 106, height: PLATE_H },
+  mr: { width: 106, height: PLATE_H },
   'arc-prime': { width: 94, height: PLATE_H }, 'wren-terra': { width: 104, height: PLATE_H },
 }
 
@@ -163,6 +165,7 @@ export const SPACE_BOX: Record<string, { left: number; top: number; width: numbe
   // Mecatol's printed disc leaves no empty space at all, so the box runs from under the guardian label
   // (ends y24) down to the nameplate (starts y150), the tallest box on the map
   mecatol: { left: 77, top: 27, width: 104, height: 120 },
+  '18': { left: 77, top: 27, width: 104, height: 120 },
   // between Bereg's banner (ends y44) and Lirta IV's (starts y152), left of the alpha wormhole at (170,40)
   bereg: { left: 77, top: 69, width: 122, height: 74 },
   // like Bereg, but the alpha wormhole sits out on the right rim at (194,88), so the box is taller

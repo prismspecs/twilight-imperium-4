@@ -39,10 +39,28 @@ export function toActionPhase(seed = 1, active: Seat = 0, config: GameConfig = B
   return deepFreeze({ ...s, active })
 }
 
+export function resolveTestSystemId(state: GameState, systemId: string, planetId?: string): string {
+  if (state.systems[systemId]) return systemId
+  if (systemId === 'home-n') return 'home-0'
+  if (systemId === 'home-s') return 'home-1'
+  const effPlanet = planetId === 'mecatol-rex' ? 'mr' : (planetId === '000' ? '0.0.0' : planetId)
+  const match = Object.keys(state.systems).find(id => {
+    const sys = state.systems[id]
+    if (effPlanet && sys.planets.some(p => p.id === effPlanet || p.id === planetId)) return true
+    return sys.id.toLowerCase() === systemId.toLowerCase() ||
+      sys.name.toLowerCase() === systemId.toLowerCase() ||
+      sys.planets.some(p => p.name.toLowerCase() === systemId.toLowerCase() || p.id.toLowerCase() === systemId.toLowerCase())
+  })
+  return match ?? systemId
+}
+
 /** Places units in a system (in space, or on a planet when planetId is given) and takes them out of the reinforcements. */
 export function withUnits(state: GameState, systemId: string, owner: Owner, types: UnitType[], planetId?: string): GameState {
   let nextId = state.nextUnitId
-  const sys = state.systems[systemId]
+  const effPlanet = planetId === 'mecatol-rex' ? 'mr' : planetId
+  const targetSysId = resolveTestSystemId(state, systemId, effPlanet)
+  const sys = state.systems[targetSysId]
+  if (!sys) throw new Error(`withUnits: system ${systemId} not found`)
   const made: Unit[] = types.map(type => ({ id: nextId++, type, owner, damaged: false }))
   const players = [...state.players] as GameState['players']
   if (owner !== 'guardian') {
@@ -51,14 +69,14 @@ export function withUnits(state: GameState, systemId: string, owner: Owner, type
     for (const type of types) reinforcements[type] = Math.max(0, reinforcements[type] - 1)
     players[owner] = { ...p, reinforcements }
   }
-  const planets = sys.planets.map(p => p.id !== planetId ? p : {
+  const planets = sys.planets.map(p => (p.id !== effPlanet && p.id !== planetId) ? p : {
     ...p,
     ground: [...p.ground, ...made.filter(u => u.type === 'infantry')],
     structures: [...p.structures, ...made.filter(u => u.type !== 'infantry')],
   })
   return deepFreeze({
     ...state, players, nextUnitId: nextId,
-    systems: { ...state.systems, [systemId]: { ...sys, space: planetId ? sys.space : [...sys.space, ...made], planets } },
+    systems: { ...state.systems, [targetSysId]: { ...sys, space: effPlanet ? sys.space : [...sys.space, ...made], planets } },
   })
 }
 
@@ -111,10 +129,13 @@ export function withExhausted(state: GameState, planetIds: string[], exhausted =
 }
 
 export function withPlanetOwner(state: GameState, systemId: string, planetId: string, owner: Seat | null): GameState {
-  const sys = state.systems[systemId]
+  const effPlanet = planetId === 'mecatol-rex' ? 'mr' : planetId
+  const targetSysId = resolveTestSystemId(state, systemId, effPlanet)
+  const sys = state.systems[targetSysId]
+  if (!sys) return state
   return deepFreeze({
     ...state,
-    systems: { ...state.systems, [systemId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, owner } : p) } },
+    systems: { ...state.systems, [targetSysId]: { ...sys, planets: sys.planets.map(p => (p.id === effPlanet || p.id === planetId) ? { ...p, owner } : p) } },
   })
 }
 
@@ -126,19 +147,25 @@ export function cardsUsed(state: GameState): GameState {
 }
 
 export function shipId(state: GameState, systemId: string, type: UnitType, owner: Owner = 0): number {
-  const unit = state.systems[systemId].space.find(u => u.type === type && u.owner === owner)
+  const targetSysId = resolveTestSystemId(state, systemId)
+  const unit = state.systems[targetSysId]?.space.find(u => u.type === type && u.owner === owner)
   if (!unit) throw new Error(`no ${type} of ${String(owner)} in ${systemId}`)
   return unit.id
 }
 
 export function groundIds(state: GameState, systemId: string, planetId: string, owner: Owner = 0): number[] {
-  return state.systems[systemId].planets
-    .filter(p => p.id === planetId)
+  const effPlanet = planetId === 'mecatol-rex' ? 'mr' : (planetId === '000' ? '0.0.0' : planetId)
+  const targetSysId = resolveTestSystemId(state, systemId, effPlanet)
+  const sys = state.systems[targetSysId]
+  if (!sys) return []
+  return sys.planets
+    .filter(p => p.id === effPlanet || p.id === planetId)
     .flatMap(p => p.ground.filter(u => u.owner === owner).map(u => u.id))
 }
 
 export function carriedIds(state: GameState, systemId: string, owner: Owner = 0): number[] {
-  return state.systems[systemId].space.filter(u => u.owner === owner && u.type === 'infantry').map(u => u.id)
+  const targetSysId = resolveTestSystemId(state, systemId)
+  return state.systems[targetSysId]?.space.filter(u => u.owner === owner && u.type === 'infantry').map(u => u.id) ?? []
 }
 
 /** Puts a state into the status phase the way `pass` does: speaker first, nothing else running. */

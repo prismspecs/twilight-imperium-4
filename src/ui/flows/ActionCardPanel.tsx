@@ -59,7 +59,14 @@ function offerLabel(state: GameState, params: ActionCardParams | undefined, card
     if (baseCard === 'ghost_ship') return `Place destroyer in ${systemLabel(params.systemId, state)}`
     return systemLabel(params.systemId, state)
   }
-  if (params.techId !== undefined) return techLabel(params.techId)
+  if (params.techId !== undefined) {
+    const label = techLabel(params.techId)
+    if (params.planets && params.planets.length > 0) {
+      const skipNames = params.planets.map(p => planetLabel(state, p)).join(', ')
+      return `${label} (skip: ${skipNames})`
+    }
+    return label
+  }
   if (params.seat !== undefined) return state.players[params.seat].name
   return 'Play it'
 }
@@ -113,13 +120,52 @@ export function ActionCardPanel({ onClose, viewingSeat, onHighlight }: ActionCar
               ? `Nothing on the board is a legal target for this card right now (${def.window.toLowerCase()}).`
               : `This card waits for a moment the game cannot offer yet: ${def.window.toLowerCase()}.`
 
-          if (isMyTurn && isWarEffort && offers.length === 0) {
-            if (state.players[seat].reinforcements.cruiser < 1) {
-              reason = 'No cruisers remaining in your reinforcements (TI4 limit: 8 cruisers).'
-            } else if (shipSystems.length === 0) {
-              reason = 'None of your systems contains a ship in space (ground forces and space docks on planets do not count as ships per TI4 LRR 78.1).'
-            } else if (warEffortBlocked.length > 0) {
-              reason = 'All systems containing your ships have reached your fleet pool capacity. Add command tokens to your fleet pool to place more ships.'
+          if (isMyTurn && offers.length === 0) {
+            if (baseCard === 'focused_research') {
+              if (state.players[seat].tradeGoods < 4) {
+                reason = `Requires 4 trade goods (you have ${state.players[seat].tradeGoods}).`
+              } else {
+                reason = 'No technologies available to research that meet your prerequisites.'
+              }
+            } else if (isWarEffort) {
+              if (state.players[seat].reinforcements.cruiser < 1) {
+                reason = 'No cruisers remaining in your reinforcements (TI4 limit: 8 cruisers).'
+              } else if (shipSystems.length === 0) {
+                reason = 'None of your systems contains a ship in space (ground forces and space docks on planets do not count as ships per TI4 LRR 78.1).'
+              } else if (warEffortBlocked.length > 0) {
+                reason = 'All systems containing your ships have reached your fleet pool capacity. Add command tokens to your fleet pool to place more ships.'
+              }
+            } else if (baseCard === 'frontline_deployment') {
+              const myPlanets = Object.values(state.systems).flatMap(s => s.planets).filter(p => p.owner === seat)
+              if (state.players[seat].reinforcements.infantry < 1) {
+                reason = 'No infantry remaining in your reinforcements.'
+              } else if (myPlanets.length === 0) {
+                reason = 'You control no planets to place infantry on.'
+              }
+            } else if (baseCard === 'rise_of_a_messiah') {
+              const myPlanets = Object.values(state.systems).flatMap(s => s.planets).filter(p => p.owner === seat)
+              if (state.players[seat].reinforcements.infantry < 1) {
+                reason = 'No infantry remaining in your reinforcements.'
+              } else if (myPlanets.length === 0) {
+                reason = 'You control no planets.'
+              }
+            } else if (baseCard === 'ghost_ship') {
+              if (state.players[seat].reinforcements.destroyer < 1) {
+                reason = 'No destroyers remaining in your reinforcements (TI4 limit: 8 destroyers).'
+              } else {
+                reason = "No unowned wormhole system outside home systems exists without other players' ships."
+              }
+            } else if (baseCard === 'mining_initiative') {
+              const myPlanets = Object.values(state.systems).flatMap(s => s.planets).filter(p => p.owner === seat)
+              if (myPlanets.length === 0) {
+                reason = 'You control no planets.'
+              }
+            } else if (baseCard === 'insubordination') {
+              reason = 'No other player has a command token in their tactic pool.'
+            } else if (baseCard === 'spy') {
+              reason = 'No other player holds any action cards to discard.'
+            } else if (baseCard === 'unexpected_action') {
+              reason = 'You have no command tokens on the game board to remove.'
             }
           }
 

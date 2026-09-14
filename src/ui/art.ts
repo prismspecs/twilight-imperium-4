@@ -36,19 +36,28 @@ const TECH_FILE: Record<string, string> = {
   infantry_ii: 'tech_infantry_2.jpg', fighter_ii: 'tech_fighter_2.jpg', destroyer_ii: 'tech_destroyer_2.jpg',
   cruiser_ii: 'tech_cruiser_2.jpg', carrier_ii: 'tech_carrier_2.jpg', dreadnought_ii: 'tech_dreadnought_2.jpg',
   space_dock_ii: 'tech_spacedock_2.jpg',
+  pds_ii: 'tech_pds_2.jpg',
+  war_sun: 'tech_warsun.jpg',
   inheritance_systems: 'tech_faction_inheritance_systems.jpg',
   super_dreadnought_ii: 'tech_faction_superdreadnought_2.jpg',
   l4_disruptors: 'tech_faction_l4_disruptors.jpg',
   non_euclidean_shielding: 'tech_faction_noneuclidean_shielding.jpg',
+  prototype_war_sun_ii: 'tech_warsun.jpg',
+  letani_warrior_ii: 'tech_infantry_2.jpg',
+  spec_ops_ii: 'tech_infantry_2.jpg',
+  advanced_carrier_ii: 'tech_carrier_2.jpg',
+  hybrid_crystal_fighter_ii: 'tech_fighter_2.jpg',
+  exotrireme_ii: 'tech_dreadnought_2.jpg',
+  floating_factory_ii: 'tech_spacedock_2.jpg',
 }
 
 /** Reference cards for the production drawer; `flagship` is resolved by faction before this lookup, and
  * `floating_factory` is mapped onto `spacedock` in `unitCardUrl` for lack of its own card art. */
-const UNIT_CARD: Record<Exclude<UnitType, 'floating_factory'>, string> = {
+const UNIT_CARD: Partial<Record<UnitType, string>> = {
   infantry: 'unit_generic_infantry.png', fighter: 'unit_generic_fighter.png',
   destroyer: 'unit_generic_destroyer.png', cruiser: 'unit_generic_cruiser.png',
   carrier: 'unit_generic_carrier.png', dreadnought: 'unit_generic_dreadnought.png',
-  warsun: 'unit_generic_warsun_0.png', flagship: 'unit_generic_dreadnought.png',
+  warsun: 'unit_generic_warsun_0.png',
   pds: 'unit_generic_pds.png', spacedock: 'unit_generic_spacedock.png',
 }
 
@@ -88,24 +97,9 @@ export function planetTrait(planetId: string, traitOverride?: PlanetTrait | null
   return PLANET_TRAIT[planetId] ?? 'none'
 }
 
-export const PORTRAIT: Record<FactionId, string> = {
+export const PORTRAIT: Partial<Record<FactionId, string>> = {
   l1z1x: '/assets/factions/leader_l1z1x_commander.png',
   letnev: '/assets/factions/leader_letnev_commander.png',
-  arborec: '/assets/factions/leader_arborec_commander.png',
-  saar: '/assets/factions/leader_saar_commander.png',
-  muaat: '/assets/factions/leader_muaat_commander.png',
-  hacan: '/assets/factions/leader_hacan_commander.png',
-  sol: '/assets/factions/leader_sol_commander.png',
-  creuss: '/assets/factions/leader_creuss_commander.png',
-  mentak: '/assets/factions/leader_mentak_commander.png',
-  naalu: '/assets/factions/leader_naalu_commander.png',
-  nekro: '/assets/factions/leader_nekro_commander.png',
-  sardakk: '/assets/factions/leader_sardakk_commander.png',
-  jolnar: '/assets/factions/leader_jolnar_commander.png',
-  winnu: '/assets/factions/leader_winnu_commander.png',
-  xxcha: '/assets/factions/leader_xxcha_commander.png',
-  yin: '/assets/factions/leader_yin_commander.png',
-  yssaril: '/assets/factions/leader_yssaril_commander.png',
 }
 export const SIGIL: Record<FactionId, string> = {
   l1z1x: '/assets/factions/l1z1x.png',
@@ -282,17 +276,22 @@ export function strategyCardUrl(card: StrategyCardId): string {
 export function techIconUrl(colour: TechColor): string {
   return `/assets/icons/tech_${colour}.png`
 }
-export function techArtUrl(techId: string): string {
-  return `/assets/cards/${TECH_FILE[techId] ?? 'cardback_public2.png'}`
+export function techArtUrl(techId: string): string | null {
+  const file = TECH_FILE[techId]
+  return file ? `/assets/cards/${file}` : null
 }
-export function unitCardUrl(type: UnitType, faction: FactionId): string {
-  // Only l1z1x and letnev have their own flagship reference art; every other faction falls through to the
-  // generic flagship card below rather than showing a real but wrong faction's named ship.
-  if (type === 'flagship' && faction === 'l1z1x') return '/assets/factions/unit_l1z1x_flagship_001.png'
-  if (type === 'flagship' && faction === 'letnev') return '/assets/factions/unit_letnev_flagship_arc_secundus.png'
+export function unitCardUrl(type: UnitType, faction: FactionId): string | null {
+  // Only l1z1x and letnev have their own flagship reference art; every other faction returns null so the UI
+  // renders a dedicated flagship card with the actual faction flagship stats instead of a wrong ship scan.
+  if (type === 'flagship') {
+    if (faction === 'l1z1x') return '/assets/factions/unit_l1z1x_flagship_001.png'
+    if (faction === 'letnev') return '/assets/factions/unit_letnev_flagship_arc_secundus.png'
+    return null
+  }
   if (type === 'dreadnought' && faction === 'l1z1x') return '/assets/factions/unit_l1z1x_superdreadnought.jpg'
   // No dedicated Floating Factory reference card art yet; the plain space dock's stands in.
-  return `/assets/cards/${UNIT_CARD[type === 'floating_factory' ? 'spacedock' : type]}`
+  const file = UNIT_CARD[type === 'floating_factory' ? 'spacedock' : type]
+  return file ? `/assets/cards/${file}` : null
 }
 export function ownerKey(owner: Owner): string {
   return owner === 'guardian' ? 'guardian' : String(owner)

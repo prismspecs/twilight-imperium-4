@@ -1,7 +1,7 @@
 // src/ui/hotseat.e2e.test.tsx
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 function click(testId: string): void {
@@ -26,6 +26,7 @@ function handoff(): void {
 
 describe('a scripted hot-seat game', () => {
   it('R3.1 to R3.3: plays a full first round through the rendered UI', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     window.location.hash = '#/?seed=7'
     render(<App ticking={false} />)
 
@@ -39,7 +40,7 @@ describe('a scripted hot-seat game', () => {
     click('controller-2-human')
     click('btn-clock-on')
     click('btn-start')
-    expect(text('round')).toBe('Round 1 of 8, strategy phase')
+    expect(text('round')).toBe('Round 1, strategy phase')
     expect(text('clock-0')).toBe('15:00')
 
     // 3-player snake draft: [0, 1, 2, 2, 1, 0]
@@ -56,7 +57,7 @@ describe('a scripted hot-seat game', () => {
     click('strategy-card-imperial')   // seat 0
 
     // Enters action phase
-    expect(text('round')).toBe('Round 1 of 8, action phase')
+    expect(text('round')).toBe('Round 1, action phase')
     expect(text('strategy-state-leadership')).toBe('Despot, ready')
     expect(text('turn-0')).toBe('Your turn') // Leadership has initiative 1
 

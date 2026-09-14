@@ -4,7 +4,7 @@ import {
   SPEND_OBJECTIVES, cheapestInfluencePlanets, cheapestPayment, isAi, neighbours,
   payObjective, payableObjectives, scoreable, tokensGained,
 } from '../../engine'
-import { ownedPlanets } from '../format'
+import { ownedPlanets, planetLabel } from '../format'
 import { Stepper } from './Stepper'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
@@ -64,6 +64,7 @@ export function StatusDialog() {
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   const [plan, setPlan] = useState<Record<string, number>>({})
   const [chosenSpends, setChosenSpends] = useState<string[]>([])
+  const [mitosisPlanet, setMitosisPlanet] = useState<string | null>(null)
   if (!session) return null
   const state = session.state
   if (isAi(session.config, state.active)) return null
@@ -75,6 +76,8 @@ export function StatusDialog() {
   const scoring = scoreable(state, seat)
   const payable = payableObjectives(state, seat)
   const spendPlan = planSpends(state, seat, chosenSpends)
+  const owned = ownedPlanets(state, seat)
+  const selectedMitosisPlanet = mitosisPlanet ?? (owned[0]?.id ?? null)
   // Mirrors TokenSheet's own target/placed math: the confirm move needs the sheet to land on exactly
   // `target`, so block the click while it doesn't rather than let distributeTokens reject it after the fact.
   const target = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
@@ -100,11 +103,13 @@ export function StatusDialog() {
         tokens: sheet,
         redistribute: redistribute.length ? redistribute : undefined,
         objectivePayments: Object.keys(spendPlan).length ? spendPlan : undefined,
+        mitosisPlanet: player.faction === 'arborec' ? (selectedMitosisPlanet ?? undefined) : undefined,
       },
     })
     setTokens(null)
     setPlan({})
     setChosenSpends([])
+    setMitosisPlanet(null)
   }
 
   return (
@@ -150,6 +155,32 @@ export function StatusDialog() {
                 </button>
               )
             })}
+          </div>
+        ) : null}
+        {player.faction === 'arborec' ? (
+          <div className="rowline" data-testid="status-mitosis">
+            <span className="lbl">Mitosis</span>
+            {player.reinforcements.infantry < 1 ? (
+              <span className="sub">No infantry available in reinforcements.</span>
+            ) : owned.length === 0 ? (
+              <span className="sub">No controlled planets to place infantry on.</span>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span className="sub">Place 1 free infantry on:</span>
+                {owned.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`btn ${selectedMitosisPlanet === p.id ? 'gold' : 'quiet'}`}
+                    style={{ fontSize: '12px', padding: '4px 10px' }}
+                    data-testid={`status-mitosis-${p.id}`}
+                    onClick={() => setMitosisPlanet(p.id)}
+                  >
+                    {selectedMitosisPlanet === p.id ? '✓ ' : ''}{planetLabel(state, p.id)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
         <TokenSheet current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />

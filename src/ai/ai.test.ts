@@ -205,5 +205,24 @@ describe('AI opponent', () => {
 
     expect(aiColonizedOutsideHome.length).toBeGreaterThanOrEqual(4)
   })
+
+  it('aiStep succeeds on warfare secondary under Regulated Conscription (game MA7Y7S)', () => {
+    let state = toActionPhase(47, 0)
+    state = {
+      ...state,
+      activeAgendas: ['regulated_conscription'],
+      active: 1,
+      pendingSecondary: { card: 'warfare', owner: 0, queue: [1] },
+      players: state.players.map((p, i) => i === 1
+        ? { ...p, faction: 'hacan', tokens: { ...p.tokens, strategy: 1 }, tradeGoods: 1, techs: ['sarween_tools'] }
+        : p
+      ),
+    }
+    const moves = legalMoves(state)
+    const step = aiStep(state, moves, 1, 100)
+    expect(step).not.toBeNull()
+    expect(step?.chosen.type).toBe('secondary')
+    expect(step?.chosen).toMatchObject({ card: 'warfare' })
+  })
 })
 

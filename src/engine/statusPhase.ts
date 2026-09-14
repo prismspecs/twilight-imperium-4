@@ -49,12 +49,19 @@ function seatAfter(state: GameState, seat: Seat): number {
   return (seat - state.speaker + state.players.length) % state.players.length
 }
 
-/** In base game TI4, the check fires at 10 VP and unconditionally after round 8. */
+/**
+ * LRR 2895.7 / 2896.8 / 2379.2: In base game TI4, the game ends immediately when one player has 10 VP,
+ * or when the speaker cannot reveal an objective card during status phase step 2 because all public
+ * objectives have been revealed.
+ */
 export function victoryCheck(state: GameState): Seat | null {
   const targetVp = 10
-  const maxRounds = 8
-  if (state.players.every(p => p.vp < targetVp) && state.round < maxRounds) return null
-  return decideWinner(state)
+  if (state.players.some(p => p.vp >= targetVp)) return decideWinner(state)
+  const deckExhausted = state.objectiveOrder.length > 0 &&
+    state.publicObjectives.length >= state.objectiveOrder.length &&
+    state.objectiveOrder[state.round] === undefined
+  if (deckExhausted) return decideWinner(state)
+  return null
 }
 
 /** R3.3 steps 2 and 4 to 6: score-adjacent bookkeeping that runs whether or not the agenda phase follows. */
@@ -63,7 +70,7 @@ function endOfRoundCleanup(state: GameState, seed: number): GameState {
   // One objective off the shuffled pool per round
   const nextId = state.objectiveOrder[state.round]
   const revealed = nextId === undefined ? undefined : objectiveDef(nextId)
-  if (state.round < 8 && revealed && !next.publicObjectives.includes(revealed.id)) {
+  if (revealed && !next.publicObjectives.includes(revealed.id)) {
     next = {
       ...next,
       publicObjectives: [...next.publicObjectives, revealed.id],

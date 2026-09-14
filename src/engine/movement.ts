@@ -1,7 +1,8 @@
 import { tileByNumber } from '../data/tiles'
 import { isMovable, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, hasTech, homeSystemOf, returnToReinforcements, statsOwner, trimCargo } from './board'
+import { checkFleet, hasTech, homeSystemOf, returnToReinforcements, trimCargo } from './board'
+import { canAnySpaceCannonFire } from './combat'
 import { ignoresFleets, moveBonus, tacticalEffect, wormholesLinked } from './effects'
 import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
@@ -365,12 +366,12 @@ export function endMovement(state: GameState, _seed?: number): Result<GameState>
     const combat: CombatState = { round: 0, attacker: seat, defender: foes[0].owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
     return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
-  // R4.1 step 1: a defending PDS fires even when there are no enemy ships in space.
-  // We enter the spaceCombat step with round 0 so the defense roll is interactive and visible.
-  const gunner = sys.planets.flatMap(p => p.structures).find(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon)
-  if (!mine.length || !gunner) {
-    return { ok: true, value: { ...state, tactical: afterSpaceStep(state, tac.systemId, seat) } }
+  // R4.1 step 1: Space Cannon Offense (including PDS II deep space cannon and active player offense).
+  // We enter the spaceCombat step with round 0 so space cannon offense is interactive and visible.
+  const { canFire, defender } = canAnySpaceCannonFire(state, tac.systemId, seat)
+  if (canFire) {
+    const combat: CombatState = { round: 0, attacker: seat, defender, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
+    return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
-  const combat: CombatState = { round: 0, attacker: seat, defender: gunner.owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
-  return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
+  return { ok: true, value: { ...state, tactical: afterSpaceStep(state, tac.systemId, seat) } }
 }

@@ -77,7 +77,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     startingTechs: ['antimass_deflectors', 'sarween_tools'],
     startingUnits: [
       { type: 'carrier', count: 2 }, { type: 'cruiser', count: 1 }, { type: 'fighter', count: 2 },
-      { type: 'infantry', count: 2, planetIndex: 0 }, { type: 'infantry', count: 1, planetIndex: 1 }, { type: 'infantry', count: 1, planetIndex: 2 },
+      { type: 'infantry', count: 1, planetIndex: 0 }, { type: 'infantry', count: 2, planetIndex: 1 }, { type: 'infantry', count: 1, planetIndex: 2 },
       { type: 'spacedock', count: 1, planetIndex: 1 },
     ],
     abilities: ['masters_of_trade', 'guild_ships', 'arbiters'],

@@ -63,7 +63,12 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
           )}
         </span>
       )}
-      <span className="row-ground" style={{ left: centre.left, top: centre.top }} data-testid={`ground-row-${planet.id}`}>
+      <span
+        className="row-ground"
+        style={{ left: centre.left, top: centre.top }}
+        data-testid={`ground-row-${planet.id}`}
+        title={`${planet.name}: ${ground.map(g => `${g.count} ${g.type}`).join(', ') || 'No ground forces'}`}
+      >
         {planet.owner !== null ? (() => {
           const ownerPlayer = state.players[planet.owner]
           const ownerInk = ownerPlayer ? COLOUR_INK[ownerPlayer.color] : undefined
@@ -101,8 +106,12 @@ function PlanetMarkers({ state, planet, index, count, isGalaxy }: { state: GameS
           </span>
         ))}
       </span>
-      <span className="row-structures" data-testid={`structure-row-${planet.id}`}
-        style={{ left: centre.left, top: centre.top + (plateOnTop ? STRUCT_OFFSET : -STRUCT_OFFSET) }}>
+      <span
+        className="row-structures"
+        data-testid={`structure-row-${planet.id}`}
+        style={{ left: centre.left, top: centre.top + (plateOnTop ? STRUCT_OFFSET : -STRUCT_OFFSET) }}
+        title={`${planet.name} structures: ${structures.map(s => `${s.count} ${s.type}`).join(', ') || 'No structures'}`}
+      >
         {structures.map(group => (
           <span key={`${ownerKey(group.owner)}-${group.type}`} data-testid={`structure-${planet.id}-${ownerKey(group.owner)}-${group.type}`}>
             <UnitStack group={group} colour={colourOf(state, group.owner)}

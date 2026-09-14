@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { cardOwner, homeSystemOf, isAi, productionLimit, secondaryTokenCost } from '../../engine'
+import { cardOwner, hasOwnDock, homeSystemOf, isAi, productionLimit, secondaryTokenCost } from '../../engine'
+import { skipPlanetsFor } from '../../engine/research'
 import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
-import { CARD_NAME, ownedPlanets, systemLabel, techLabel } from '../format'
+import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
 import { PayRow } from './PayRow'
 import { ProductionPicker, costOf, unitTotal } from './ProductionPicker'
@@ -21,6 +22,7 @@ export function SecondaryPanel() {
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   const [buildSystem, setBuildSystem] = useState<string | null>(null)
   const [build, setBuild] = useState<{ planetId: string; type: 'pds' | 'spacedock' } | null>(null)
+  const [warfareGroundTo, setWarfareGroundTo] = useState<string | null>(null)
   if (!session) return null
   const state = session.state
   if (isAi(session.config, state.active)) return null
@@ -33,7 +35,10 @@ export function SecondaryPanel() {
   const isFree = window.freeSeats?.includes(seat) ?? false
   const offer = secondaryOffer(legal)
   const template: StrategicParams = offer.accept ?? {}
-  const pay = planets ?? template.planets ?? []
+  const chosenTech = techId ?? template.techId
+  const techMatch = legal.find(m => m.type === 'secondary' && m.card === 'technology' && m.accept && m.params?.techId === chosenTech)
+  const techSkips = techMatch?.params?.techSkipPlanets ?? (chosenTech ? (skipPlanetsFor(state, seat, chosenTech, player.techs) ?? undefined) : undefined)
+  const pay = planets ?? (card === 'technology' && techMatch?.params?.planets ? techMatch.params.planets : template.planets ?? [])
   const influence = pay.reduce((sum, id) => {
     const planet = ownedPlanets(state, seat).find(p => p.id === id)
     return sum + (planet ? planet.influence : 0)
@@ -52,6 +57,13 @@ export function SecondaryPanel() {
     return planet ? [{ systemId, planetId: spec.planetId, planetName: planet.name, type: spec.type }] : []
   })
 
+  const home = homeSystemOf(state, seat)
+  const homeSys = state.systems[home]
+  const warfareFloatingFactory = homeSys?.space.some(u => u.type === 'floating_factory' && u.owner === seat)
+  const warfareControlledPlanets = homeSys?.planets.filter(p => p.owner === seat) ?? []
+  const effectiveWarfareGroundTo = warfareGroundTo ?? (warfareControlledPlanets[0]?.id ?? 'space')
+  const finalWarfareGroundTo = (warfareFloatingFactory && effectiveWarfareGroundTo !== 'space') ? effectiveWarfareGroundTo : undefined
+
   function params(): StrategicParams {
     switch (card) {
       case 'leadership': return { planets: pay, tradeGoods, tokens: sheet }
@@ -60,15 +72,19 @@ export function SecondaryPanel() {
         systemId: buildSystem ?? template.systemId,
         structures: build ? [build] : [],
       }
-      case 'technology': return { techId: techId ?? template.techId, planets: pay, tradeGoods }
-      case 'warfare': return { units, planets: pay, tradeGoods }
+      case 'technology': return {
+        techId: chosenTech,
+        techSkipPlanets: techSkips,
+        planets: pay,
+        tradeGoods,
+      }
+      case 'warfare': return { units, planets: pay, tradeGoods, groundTo: finalWarfareGroundTo }
       default: return {}
     }
   }
 
   // R6 warfare secondary: the space dock in the home system produces up to its full limit, so the responder
   // picks the units and pays for them exactly like a tactical production, not a fixed single infantry.
-  const home = homeSystemOf(state, seat)
   const warfareLimit = productionLimit(state, seat, home)
   const warfareCount = unitTotal(units)
   const warfareCost = costOf(state, seat, units)
@@ -97,7 +113,13 @@ export function SecondaryPanel() {
               ? 'The action card deck and the discard pile are both empty, so there is nothing to draw.'
               : card === 'construction'
                 ? 'You control no planet with room for another structure, or your reinforcements hold no PDS and no space dock.'
-                : undefined
+                : card === 'warfare'
+                  ? !hasOwnDock(state.systems[home], seat)
+                    ? player.faction === 'saar'
+                      ? 'You have no Floating Factory in your home system (Warfare secondary only resolves production at a space dock in your home system).'
+                      : 'You have no space dock in your home system (Warfare secondary only resolves production at a space dock in your home system).'
+                    : 'You cannot produce any units in your home system (no affordable units or production capacity is 0).'
+                  : undefined
       : card === 'leadership' && gained < 1
         ? 'You have not spent any influence yet: spend 3 influence per command token gained, or trade goods 1 for 1.'
         : undefined
@@ -155,22 +177,66 @@ export function SecondaryPanel() {
           <>
             <Rewards items={[
               {
-                icon: (techId ?? template.techId) ? techArtUrl(techId ?? template.techId ?? '') : strategyCardUrl('technology'),
+                icon: (techId ?? template.techId) ? (techArtUrl(techId ?? template.techId ?? '') ?? strategyCardUrl('technology')) : strategyCardUrl('technology'),
                 alt: (techId ?? template.techId) ? techLabel(techId ?? template.techId ?? '') : 'Technology',
                 count: 1,
                 label: (techId ?? template.techId) ? techLabel(techId ?? template.techId ?? '') : 'Technology',
               },
             ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+            {techSkips && techSkips.length > 0 ? (
+              <div className="sub" style={{ color: 'var(--accent-cyan)', fontWeight: 600 }} data-testid="secondary-tech-skip-note">
+                Tech specialty planet exhausted to skip prerequisite: {techSkips.map(id => planetLabel(state, id)).join(', ')}
+              </div>
+            ) : null}
             <PayRow state={state} seat={seat} needed={needed} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
-            <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId ?? template.techId ?? null} onSelect={setTechId} />
+            <TechDrawer
+              state={state}
+              seat={seat}
+              allowed={techOptions}
+              selected={techId ?? template.techId ?? null}
+              onSelect={id => {
+                setTechId(id)
+                setPlanets(null)
+              }}
+            />
           </>
         ) : null}
         {card === 'warfare' ? (
           <>
             <div className="sub" data-testid="secondary-units">
-              Produce at {systemLabel(home, state)}: {warfareLimit} units at most, {warfareCount} chosen, cost {warfareCost}.
+              {warfareLimit > 0
+                ? `Produce at ${systemLabel(home, state)}: ${warfareLimit} units at most, ${warfareCount} chosen, cost ${warfareCost}.`
+                : player.faction === 'saar'
+                  ? `Cannot produce: no Floating Factory in ${systemLabel(home, state)} (Warfare secondary requires a space dock in your home system).`
+                  : `Cannot produce: no space dock in ${systemLabel(home, state)}.`}
             </div>
-            <ProductionPicker state={state} seat={seat} limit={warfareLimit} units={units} onUnits={setUnits} />
+            {warfareLimit > 0 ? (
+              <ProductionPicker state={state} seat={seat} limit={warfareLimit} units={units} onUnits={setUnits} />
+            ) : null}
+            {warfareFloatingFactory && warfareControlledPlanets.length > 0 && (units.infantry ?? 0) > 0 ? (
+              <div className="rowline" style={{ margin: '8px 0', alignItems: 'center', gap: '8px' }} data-testid="warfare-ground-deploy-selector">
+                <span className="sub" style={{ fontWeight: 600 }}>Deploy ground forces to:</span>
+                {warfareControlledPlanets.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`pay${effectiveWarfareGroundTo === p.id ? ' on' : ''}`}
+                    data-testid={`warfare-ground-to-${p.id}`}
+                    onClick={() => setWarfareGroundTo(p.id)}
+                  >
+                    Planet: {p.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`pay${effectiveWarfareGroundTo === 'space' ? ' on' : ''}`}
+                  data-testid="warfare-ground-to-space"
+                  onClick={() => setWarfareGroundTo('space')}
+                >
+                  Space area
+                </button>
+              </div>
+            ) : null}
             <PayRow state={state} seat={seat} needed={warfareCost} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
           </>
         ) : null}

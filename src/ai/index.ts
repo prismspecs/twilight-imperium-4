@@ -1,4 +1,4 @@
-import { applyMove, createGame, legalMoves } from '../engine'
+import { applyMove, controlledPlanets, createGame, legalMoves } from '../engine'
 import { homeSystemOf } from '../engine/board'
 import { deriveSeed, mulberry32 } from '../engine/rng'
 import type { GameState, Move, Seat } from '../engine/types'
@@ -22,11 +22,14 @@ function fillTemplate(state: GameState, move: Move, seat: Seat): Move {
       const tac = state.tactical
       if (!tac) return move
       const plan = fillProduce(state, seat, tac.systemId)
-      return { type: 'produce', units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods }
+      return { type: 'produce', units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods, ...(plan.groundTo ? { groundTo: plan.groundTo } : {}) }
     }
     case 'status': {
       const tokens = fillStatusTokens(state, seat)
-      return { type: 'status', params: { tokens } }
+      const isArborec = state.players[seat].faction === 'arborec'
+      const owned = controlledPlanets(state, seat)
+      const mitosisPlanet = isArborec && owned.length > 0 ? owned[0].planetId : undefined
+      return { type: 'status', params: { tokens, ...(mitosisPlanet ? { mitosisPlanet } : {}) } }
     }
     case 'castVote': {
       const planets = fillCastVote(state, seat)
@@ -43,7 +46,7 @@ function fillTemplate(state: GameState, move: Move, seat: Seat): Move {
           type: 'secondary',
           card: 'warfare',
           accept: true,
-          params: { units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods },
+          params: { units: plan.units, planets: plan.planets, tradeGoods: plan.tradeGoods, ...(plan.groundTo ? { groundTo: plan.groundTo } : {}) },
         }
       }
       return move
@@ -96,7 +99,10 @@ function seedOf(state: GameState): number {
  */
 const TEMPLATE_MOVES: ReadonlySet<Move['type']> = new Set(['moveShips', 'produce', 'status'])
 const exclusionKey = (m: Move): string =>
-  m.type === 'castVote' ? `castVote:${m.outcome}` : TEMPLATE_MOVES.has(m.type) ? m.type : JSON.stringify(m)
+  m.type === 'castVote' ? `castVote:${m.outcome}`
+    : m.type === 'secondary' && m.card === 'warfare' && m.accept ? 'secondary:warfare:accept'
+    : TEMPLATE_MOVES.has(m.type) ? m.type
+    : JSON.stringify(m)
 
 export interface AiStepResult { state: GameState; chosen: Move; rejected: Move[] }
 

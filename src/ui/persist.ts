@@ -97,6 +97,29 @@ function normalise(state: GameState, seed: number): GameState {
       next = { ...next, agenda: { ...next.agenda, order }, active: order[0] ?? next.speaker }
     }
   }
+  // Game 88B8W8: Saar produced infantry using Floating Factory in tile-37;
+  // they landed in space instead of on Meer. Relocate stranded infantry to Meer.
+  const sys37 = next.systems?.['tile-37']
+  if (sys37) {
+    const saarSeat = next.players?.findIndex(p => p.faction === 'saar')
+    if (saarSeat !== undefined && saarSeat !== -1) {
+      const stranded = sys37.space.filter(u => u.owner === saarSeat && u.type === 'infantry')
+      const meer = sys37.planets.find(p => p.id === 'meer' && p.owner === saarSeat)
+      if (stranded.length > 0 && meer) {
+        next = {
+          ...next,
+          systems: {
+            ...next.systems,
+            'tile-37': {
+              ...sys37,
+              space: sys37.space.filter(u => !(u.owner === saarSeat && u.type === 'infantry')),
+              planets: sys37.planets.map(p => p.id === 'meer' ? { ...p, ground: [...p.ground, ...stranded] } : p),
+            },
+          },
+        }
+      }
+    }
+  }
   if (Array.isArray(next.players)) {
     next = { ...next, players: next.players.map(p => ({ ...p, actionCards: Array.isArray(p.actionCards) ? p.actionCards : [] })) }
   }

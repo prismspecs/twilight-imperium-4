@@ -2,17 +2,17 @@
  "style": "Async TI counters, flat top down",
  "units": {
   "cruiser": {
-   "pxPerModelUnit": 186.74,
+   "pxPerModelUnit": 92.4,
    "spriteW": 268,
    "spriteH": 268
   },
   "carrier": {
-   "pxPerModelUnit": 168.17,
+   "pxPerModelUnit": 113.46,
    "spriteW": 280,
    "spriteH": 276
   },
   "destroyer": {
-   "pxPerModelUnit": 86.86,
+   "pxPerModelUnit": 113.46,
    "spriteW": 204,
    "spriteH": 196
   },

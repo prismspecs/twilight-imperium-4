@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { POST_IDS } from '../data/posts'
 import { applyMove } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
 import { deepFreeze, groundIds, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs } from './testUtils'
@@ -36,16 +35,16 @@ describe('R3.3 status phase', () => {
     expect(submit(hyper, plain(5)).ok).toBe(false)
   })
   it('R3.3 step 1: fulfilled objectives score, each only once', () => {
-    // a pool of one keeps the second status phase from revealing something that is already fulfilled
+    // a pool of two keeps the second status phase from revealing something that is already fulfilled
     let s: GameState = {
-      ...toActionPhase(), publicObjectives: ['win_space_combat'],
-      objectiveOrder: ['win_space_combat'],
+      ...toActionPhase(), publicObjectives: ['lead_from_the_front'],
+      objectiveOrder: ['lead_from_the_front', 'corner_the_market'],
     }
-    s = withPlayer(s, 0, { spaceCombatWins: 1 })
-    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
+    s = withPlayer(s, 0, { tokensSpentThisRound: 3 })
+    s = withPlanetOwner(s, 'mecatol', 'mr', 0)
     const done = bothSubmit(toStatusPhase(s))
     expect(done.players[0].vp).toBe(1)                               // the objective (no passive Mecatol VP in base game)
-    expect(done.players[0].scoredObjectives).toEqual(['win_space_combat'])
+    expect(done.players[0].scoredObjectives).toEqual(['lead_from_the_front'])
     expect(done.players[1].vp).toBe(0)
     const second = bothSubmit(toStatusPhase({ ...done, phase: 'action' }))
     expect(second.players[0].vp).toBe(1)                             // does not score again
@@ -55,29 +54,30 @@ describe('R3.3 status phase', () => {
     const done = bothSubmit(toStatusPhase(start))
     expect(done.publicObjectives).toEqual([start.objectiveOrder[0], start.objectiveOrder[1]])
     expect(done.round).toBe(2)
-    const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 8, publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }))
+    const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 8, objectiveOrder: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }))
     expect(late.publicObjectives).toHaveLength(8)
     expect(late.phase).toBe('ended')
   })
   it('R3.3 step 4/R3.1: planets and cards ready, played cards return at 0, unpicked keep their bonus', () => {
     const base = toActionPhase()
+    const homeSys = base.systems['home-0']
     const dirty = deepFreeze({
       ...base,
       players: [
         {
-          ...base.players[0], inheritanceExhausted: true, resourcesSpentThisRound: 8, tradedThisRound: { west: true, east: true },
-          passed: true, scoredObjectives: ['win_space_combat'],
+          ...base.players[0], inheritanceExhausted: true, resourcesSpentThisRound: 8,
+          passed: true, scoredObjectives: ['lead_from_the_front'],
         },
         { ...base.players[1], passed: true },
       ] as GameState['players'],
-      systems: { ...base.systems, bereg: { ...base.systems.bereg, activatedBy: [0 as const], planets: base.systems.bereg.planets.map(p => ({ ...p, exhausted: true })) } },
+      systems: { ...base.systems, 'home-0': { ...homeSys, activatedBy: [0 as const], planets: homeSys.planets.map(p => ({ ...p, exhausted: true })) } },
     })
     const done = bothSubmit(toStatusPhase(dirty))
-    expect(done.systems.bereg.activatedBy).toEqual([])
-    expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
-    expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, resourcesSpentThisRound: 0, passed: false, tradedThisRound: { west: false, east: false } })
+    expect(done.systems['home-0'].activatedBy).toEqual([])
+    expect(done.systems['home-0'].planets.every(p => !p.exhausted)).toBe(true)
+    expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, resourcesSpentThisRound: 0, passed: false })
     // these are once-per-game (or once-ever) flags, not per-round state: the reset must leave them untouched
-    expect(done.players[0]).toMatchObject({ scoredObjectives: ['win_space_combat'] })
+    expect(done.players[0]).toMatchObject({ scoredObjectives: ['lead_from_the_front'] })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft
@@ -94,7 +94,7 @@ describe('R3.3 status phase', () => {
     const done = bothSubmit(owned)
     expect(done.guardianRolls).toBe(0)
   })
-  it('R3.3 step 6 / R7: 10 victory points end the game, round 8 ends it in any case', () => {
+  it('R3.3 step 6 / R7: 10 victory points end the game, objective deck exhaustion ends it in any case', () => {
     const rich = withPlayer(toActionPhase(), 1, { vp: 10 })
     const done = bothSubmit(toStatusPhase(rich))
     expect(done.phase).toBe('ended')
@@ -102,10 +102,9 @@ describe('R3.3 status phase', () => {
     const open = bothSubmit(toStatusPhase(withPlayer(toActionPhase(), 1, { vp: 9 })))
     expect(open.phase).toBe('strategy')
     expect(open.winner).toBeNull()
-    const last = bothSubmit(toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 8 }))
+    const last = bothSubmit(toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 10, objectiveOrder: toActionPhase().objectiveOrder.slice(0, 10), publicObjectives: toActionPhase().objectiveOrder.slice(0, 10) }))
     expect(last.phase).toBe('ended')
     expect(last.winner).toBe(0)
-    expect(last.round).toBe(8)
   })
   it('R7: the tie-break chain is Mecatol Rex, then planets, then the speaker\'s opponent', () => {
     const tied = withPlayer(withPlayer(toActionPhase(), 0, { vp: 4 }), 1, { vp: 4 })
@@ -118,13 +117,13 @@ describe('R3.3 status phase', () => {
     expect(decideWinner({ ...even, speaker: 1 })).toBe(0)
   })
   it('R7: both players reach 10 VP in the same status phase through real submissions, tie-break decides', () => {
-    let s = withPlayer(toActionPhase(), 0, { vp: 9, spaceCombatWins: 1 })
-    s = withPlayer(s, 1, { vp: 9, spaceCombatWins: 1 })
-    s = { ...s, publicObjectives: ['win_space_combat'], objectiveOrder: ['win_space_combat'] }
-    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // tie-break will favor Mecatol Rex controller
+    let s = withPlayer(toActionPhase(), 0, { vp: 9, tokensSpentThisRound: 3 })
+    s = withPlayer(s, 1, { vp: 9, tokensSpentThisRound: 3 })
+    s = { ...s, publicObjectives: ['lead_from_the_front'], objectiveOrder: ['lead_from_the_front'] }
+    s = withPlanetOwner(s, 'mecatol', 'mr', 0)                // tie-break will favor Mecatol Rex controller
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].vp).toBe(10)                               // 9 + 1 for win_space_combat
-    expect(done.players[1].vp).toBe(10)                               // 9 + 1 for win_space_combat
+    expect(done.players[0].vp).toBe(10)                               // 9 + 1 for lead_from_the_front
+    expect(done.players[1].vp).toBe(10)                               // 9 + 1 for lead_from_the_front
     expect(done.phase).toBe('ended')
     expect(done.winner).toBe(0)                                       // tied at 10, decided by the Mecatol Rex controller
   })
@@ -171,75 +170,50 @@ describe('R3.3 status phase', () => {
     expect(second.phase).toBe('strategy')
     expect(second.players[0].tokens.tactic).toBe(5)                   // seat 0's own submission was applied
   })
-  it('R8: every round brings two new posts, neither of them one of the round before', () => {
-    for (const seed of [1, 2, 3, 5, 8, 13, 21]) {
-      const before = toActionPhase(seed)
-      const done = bothSubmit(toStatusPhase(before))
-      expect(done.round).toBe(2)
-      expect(done.posts.west).not.toBe(done.posts.east)
-      expect([before.posts.west, before.posts.east]).not.toContain(done.posts.west)
-      expect([before.posts.west, before.posts.east]).not.toContain(done.posts.east)
-      // the pair is new, so an ability nobody took is simply gone and the fresh pair starts unused
-      expect(done.postAbilityUsed).toEqual({ west: false, east: false })
-      expect(done.log.filter(e => e.t === 'info' && e.text.startsWith('Trade posts:'))).toHaveLength(2)
-      // the roll is seeded, so the same game rolled again brings the same pair in the same round
-      expect(bothSubmit(toStatusPhase(before)).posts).toEqual(done.posts)
-    }
-  })
-  it('R8: a used ability does not carry into the next round, even on the same side', () => {
-    const before = toActionPhase(3)
-    const used = deepFreeze({ ...before, postAbilityUsed: { west: true, east: true } })
-    expect(bothSubmit(toStatusPhase(used)).postAbilityUsed).toEqual({ west: false, east: false })
-  })
-  it('R8: the excluded pair is the previous one, not a fixed two off the top of the list', () => {
-    const excluded = new Set<string>()
-    const arrived = new Set<string>()
-    // the status move carries its own seed in real play (the UI derives it from the move count), so the
-    // round-2 roll is varied here the same way; a fixed move seed would draw the same slots every game
-    for (let seed = 1; seed <= 30; seed++) {
-      const before = toActionPhase(seed)
-      const done = bothSubmit(toStatusPhase(before), 500 + seed)
-      excluded.add([before.posts.west, before.posts.east].sort().join('/'))
-      arrived.add(done.posts.west)
-      arrived.add(done.posts.east)
-    }
-    expect(excluded.size).toBeGreaterThan(1)          // different games sit out different pairs
-    expect(arrived.size).toBe(POST_IDS.length)        // and every post still arrives in some game's round 2
-  })
   it('R7: the round objective is scored from the round it was fulfilled in, then its counter resets', () => {
-    let s = { ...toActionPhase(), round: 4, publicObjectives: ['control_4_outside_home', 'spend_6_resources'] }
-    s = withPlayer(s, 0, { resourcesSpentThisRound: 6 })
+    let s = { ...toActionPhase(), round: 4, publicObjectives: ['lead_from_the_front'] }
+    s = withPlayer(s, 0, { tokensSpentThisRound: 3 })
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].scoredObjectives).toEqual(['spend_6_resources'])
-    expect(done.players[0].resourcesSpentThisRound).toBe(0)
+    expect(done.players[0].scoredObjectives).toEqual(['lead_from_the_front'])
+    expect(done.players[0].tokensSpentThisRound).toBe(0)
   })
   describe('Arborec faction tech Bioplasmosis', () => {
     it('relocates infantry to a planet the seat controls in the same or an adjacent system', () => {
-      const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'bereg', 'bereg', 0), 0, ['bioplasmosis'])
-      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
-      const moved = value(submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] }))
-      expect(moved.systems['home-n'].planets[0].ground.some(u => u.id === infantryId)).toBe(false)
-      expect(moved.systems.bereg.planets.find(p => p.id === 'bereg')?.ground.some(u => u.id === infantryId)).toBe(true)
+      const base = toActionPhase()
+      const adjSysId = base.systems['home-0'].neighbours[0]
+      const adjPlanet = base.systems[adjSysId]?.planets[0] ?? { id: 'test_adj_p', name: 'Test', resources: 1, influence: 1, trait: null, techSkip: null, owner: 0, ground: [], structures: [], exhausted: false }
+      let s = withPlayer(toStatusPhase(base), 0, { faction: 'arborec' })
+      if (!base.systems[adjSysId]?.planets.length) {
+        s = { ...s, systems: { ...s.systems, [adjSysId]: { ...s.systems[adjSysId], planets: [adjPlanet] } } }
+      }
+      s = withPlanetOwner(s, adjSysId, adjPlanet.id, 0)
+      s = withTechs(s, 0, ['bioplasmosis'])
+      const infantryId = groundIds(s, 'home-0', '0.0.0', 0)[0]
+      const moved = value(submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: adjPlanet.id }] }))
+      expect(moved.systems['home-0'].planets[0].ground.some(u => u.id === infantryId)).toBe(false)
+      expect(moved.systems[adjSysId].planets.find(p => p.id === adjPlanet.id)?.ground.some(u => u.id === infantryId)).toBe(true)
     })
     it('is rejected for a seat that has not researched it', () => {
-      const s = withPlanetOwner(toStatusPhase(toActionPhase()), 'bereg', 'bereg', 0)
-      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
-      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] })
+      const s = withPlanetOwner(toStatusPhase(toActionPhase()), 'home-0', '0.0.0', 0)
+      const infantryId = groundIds(s, 'home-0', '0.0.0', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: '0.0.0' }] })
       expect(r.ok).toBe(false)
       if (!r.ok) expect(r.error).toMatch(/not been researched/)
     })
     it('is rejected when the destination planet is not the seat\'s own', () => {
       const s = withTechs(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 0, ['bioplasmosis'])
-      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
-      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'bereg' }] })   // bereg is neutral
+      const infantryId = groundIds(s, 'home-0', '0.0.0', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'mr' }] })   // mr is neutral
       expect(r.ok).toBe(false)
       if (!r.ok) expect(r.error).toMatch(/not controlled/)
     })
     it('is rejected across two systems that are neither the same nor adjacent', () => {
-      // home-n neighbours bereg and sakulag but not starpoint or quann or home-s
-      const s = withTechs(withPlanetOwner(withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' }), 'starpoint', 'starpoint', 0), 0, ['bioplasmosis'])
-      const infantryId = groundIds(s, 'home-n', '000', 0)[0]
-      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: 'starpoint' }] })
+      // home-0 does not neighbour home-1 (opposite sides of hex)
+      const base = withPlayer(toStatusPhase(toActionPhase()), 0, { faction: 'arborec' })
+      const destPlanet = base.systems['home-1'].planets[0]?.id ?? 'other'
+      const s = withTechs(withPlanetOwner(base, 'home-1', destPlanet, 0), 0, ['bioplasmosis'])
+      const infantryId = groundIds(s, 'home-0', '0.0.0', 0)[0]
+      const r = submit(s, { tokens: { ...s.players[0].tokens, tactic: s.players[0].tokens.tactic + tokensGained(s, 0) }, redistribute: [{ infantryId, to: destPlanet }] })
       expect(r.ok).toBe(false)
       if (!r.ok) expect(r.error).toMatch(/adjacent/)
     })

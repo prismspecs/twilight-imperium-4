@@ -46,9 +46,9 @@ const TOP_DOWN: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
  */
 const COUNTERS: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
   dreadnought: { pxPerModelUnit: 113.46, spriteW: 308, spriteH: 308 },
-  carrier: { pxPerModelUnit: 168.17, spriteW: 280, spriteH: 276 },
-  cruiser: { pxPerModelUnit: 186.74, spriteW: 268, spriteH: 268 },
-  destroyer: { pxPerModelUnit: 86.86, spriteW: 204, spriteH: 196 },
+  carrier: { pxPerModelUnit: 113.46, spriteW: 280, spriteH: 276 },
+  cruiser: { pxPerModelUnit: 92.4, spriteW: 268, spriteH: 268 },
+  destroyer: { pxPerModelUnit: 113.46, spriteW: 204, spriteH: 196 },
   fighter: { pxPerModelUnit: 69.29, spriteW: 128, spriteH: 124 },
   flagship: { pxPerModelUnit: 106.68, spriteW: 320, spriteH: 324 },
   warsun: { pxPerModelUnit: 70.89, spriteW: 224, spriteH: 260 },

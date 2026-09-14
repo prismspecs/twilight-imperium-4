@@ -48,6 +48,14 @@ describe('R10 the agenda dialog', () => {
     expect(screen.getByTestId('agenda-outcome-1').textContent).toContain('B')
   })
 
+  it('an Elect Planet agenda formats planet 0.0.0 as Elect [0.0.0] and not as Elect Player', () => {
+    const s = toAgendaPhase(toActionPhase(), 'holy_planet_of_ixth')
+    renderWithSession(s, <BoardScreen />)
+    const btn = screen.getByTestId('agenda-outcome-0.0.0')
+    expect(btn.textContent).toContain('[0.0.0]')
+    expect(btn.textContent).not.toContain('Elect Player')
+  })
+
   it('shows a dismissible overlay naming the resolved outcome once the round closes, and holds the board inert behind it', () => {
     const s = { ...toAgendaPhase(toActionPhase(), 'mutiny'), agendaDeck: [] as string[] }   // one round only
     renderWithSession(s, <BoardScreen />)

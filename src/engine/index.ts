@@ -1,4 +1,4 @@
-import { playActionCard } from './actionCards'
+import { discardActionCard, playActionCard, stallTactics } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { castVote } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
@@ -14,6 +14,10 @@ import type { GameState, Move, Result } from './types'
 
 export function applyMove(state: GameState, move: Move, seed: number): Result<GameState> {
   if (state.winner !== null) return { ok: false, error: 'game over' }
+  // LRR 112 & 140: excess action cards must be discarded immediately
+  if ((state.pendingActionCardDiscards?.length || state.pendingSchemingDiscards?.length) && move.type !== 'discardActionCard') {
+    return { ok: false, error: 'excess action cards / Scheming discard must be resolved first' }
+  }
   // R4.1 step 4: while hits wait to be assigned, assigning them is the only thing anybody may do
   if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   // R9: while a reaction window is open, the only thing anybody may do is answer it — play a card into it or
@@ -23,7 +27,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
   }
   // the move is logged before it is dispatched, so it always precedes the dice rolls it produced; a rejected
   // move returns the error and the caller keeps its untouched state, log entry included
-  const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: state.active, move, seed }] }
+  const seatToLog = state.pendingActionCardDiscards?.[0] ?? (pendingReaction(state)?.queue[0] ?? (pendingFor(state)?.owner ?? state.active))
+  const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: seatToLog, move, seed }] }
   let result: Result<GameState>
   try {
     switch (move.type) {
@@ -54,6 +59,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'playActionCard':
         result = pendingReaction(logged) ? playReactionCard(logged, move.cardId, move.params) : playActionCard(logged, move.cardId, move.params, seed)
         break
+      case 'discardActionCard': result = discardActionCard(logged, move.cardId); break
+      case 'stallTactics': result = stallTactics(logged, move.cardId); break
       case 'research': result = research(logged, move.techId); break
       case 'productionBiomes': result = productionBiomes(logged, move.target); break
       case 'status': result = status(logged, move.params, seed); break
@@ -88,22 +95,22 @@ export { assembleDraftedGame } from './draft/assembleMap'
 export type { AssembledDraftGame } from './draft/assembleMap'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
-export { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, actionCardName } from './actionCards'
+export { HAND_LIMIT, PLAYABLE_ACTION_CARDS, actionCardMoves, actionCardName, discardActionCard, stallTactics } from './actionCards'
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
 export { homeSystemOf } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
 export { canInheritance, canProductionBiomes, inheritanceTechs, productionBiomesTargets } from './componentActions'
-export { capacity, cheapestInfluencePlanets, cheapestPayment, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
+export { capacity, cheapestInfluencePlanets, cheapestPayment, cheapestPlanets, fleetPoolLimit, hasOwnDock, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets, removeCustodians } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
 export type { MovementObstacle } from './movement'
 export { SPEND_OBJECTIVES, controlledPlanets, controlsMecatol, payObjective, payableObjectives, scoreable } from './objectives'
-export { PRODUCIBLE, isBlockaded } from './production'
+export { PRODUCIBLE, canProduceUnit, isBlockaded } from './production'
 export { researchable } from './research'
 export { deriveSeed } from './rng'
 export { unitsOf } from './setup'
 export { tokensGained } from './statusPhase'
-export { agendaMoves, legalOutcomes, readyInfluencePlanets } from './agendas'
+export { agendaMoves, formatOutcome, legalOutcomes, readyInfluencePlanets, winningOutcome } from './agendas'
 export { cardOwner, constructionPlanets, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 export { INITIATIVE } from './strategyPhase'
 export { PLAYABLE_REACTION_CARDS, pendingReaction, reactingSeat, reactionMoves, skilledRetreatTargets } from './reactions'

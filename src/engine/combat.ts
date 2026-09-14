@@ -23,13 +23,12 @@ const canSustain = (u: Unit, owner: StatsOwner): boolean => !u.damaged && unitSt
 /**
  * All dice draws in a combat use mulberry32(deriveSeed(seed, salt)) with disjoint salts, so a single seed
  * replays deterministically and every die can be reconstructed from the log: anti-fighter barrage uses
- * AFB_SALT_BASE and AFB_SALT_BASE + 1 (one per side); space cannon offense starts at SPACE_CANNON_SALT_BASE
- * and takes one salt per shooting owner (at most two in this duel engine, so it cannot reach the AFB
- * salts); round r >= 1 combat rolls use 4r + 10 (attacker) and 4r + 11 (defender), which start at 14 and so
- * never collide with either pre-combat step.
+ * AFB_SALT_BASE and AFB_SALT_BASE + 1 (one per side); ambush uses AMBUSH_SALT_BASE; space cannon offense
+ * uses SPACE_CANNON_SALT_BASE (500) and increments per shooter; round r >= 1 combat rolls use 4r + 10 (attacker)
+ * and 4r + 11 (defender), which start at 14.
  */
 const AFB_SALT_BASE = 3
-const SPACE_CANNON_SALT_BASE = 5
+const SPACE_CANNON_SALT_BASE = 500
 const AMBUSH_SALT_BASE = 7
 
 interface Ctx { systemId: string; attacker: Seat; defender: Owner; round: number }
@@ -106,8 +105,10 @@ export function pendingFor(state: GameState): PendingHits | null {
   return state.tactical?.combat?.pending?.[0] ?? null
 }
 
-/** The seat the engine is waiting on: the owner of the queued hits, otherwise whoever is on turn. */
+/** The seat the engine is waiting on: queued discard, owner of queued hits, otherwise whoever is on turn. */
 export function actingSeat(state: GameState): Seat {
+  if (state.pendingActionCardDiscards?.length) return state.pendingActionCardDiscards[0]
+  if (state.pendingSchemingDiscards?.length) return state.pendingSchemingDiscards[0]
   return pendingFor(state)?.owner ?? state.active
 }
 
@@ -367,8 +368,9 @@ function resumeAfterAssignment(state: GameState, context: string, seed: number):
   if (context === 'space cannon offense') {
     const sys = state.systems[ctx.systemId]
     const defenderShips = shipsOf(sys, ctx.defender).length
-    if (!defenderShips) {
-      // PDS-only defense: hits assigned; advance to round 1 to view results before proceeding
+    const attackerShips = shipsOf(sys, ctx.attacker).length
+    if (!defenderShips || !attackerShips) {
+      // Space cannon only / fleet eliminated: hits assigned; advance to round 1 to view results before proceeding
       return { ...state, tactical: { ...tac, combat: { ...tac.combat, round: 1 } } }
     }
   }
@@ -463,35 +465,105 @@ function combatRolls(state: GameState, ctx: Ctx, owner: Owner, bonus: number, re
 }
 
 /**
- * R4.1 step 1: the PDS of every owner in the system except `attacker` fire at the attacker's ships. Fires
- * even when the attacker meets no enemy ships at all (movement.ts's `endMovement` calls this directly in
- * that case, skipping the rest of space combat).
+ * All units eligible to fire Space Cannon into `systemId` for `owner`:
+ * in-system units with Space Cannon, plus adjacent-system PDS units if the owner has PDS II.
+ * Uses the shooter's own faction adjacency (e.g. Creuss Quantum Entanglement through wormholes).
+ */
+export function eligibleSpaceCannonUnits(state: GameState, systemId: string, owner: Owner): Unit[] {
+  const sOwner = statsOwner(state, owner)
+  const sys = state.systems[systemId]
+  if (!sys) return []
+  const activePlanets = sys.planets.flatMap(p => p.structures.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon))
+  const activeSpace = sys.space.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon)
+  const activeUnits = [...activePlanets, ...activeSpace]
+
+  let deepPds: Unit[] = []
+  if (owner !== 'guardian' && hasTech(state, owner, 'pds_ii')) {
+    const ownerFaction = state.players[owner].faction
+    const adjacentIds = neighbours(state.systems, systemId, ownerFaction, false, state)
+    deepPds = adjacentIds.flatMap(adjId => {
+      const adjSys = state.systems[adjId]
+      if (!adjSys) return []
+      return adjSys.planets.flatMap(p => p.structures.filter(u =>
+        u.owner === owner && u.type === 'pds' && unitStats(u.type, sOwner).spaceCannon
+      ))
+    })
+  }
+  return [...activeUnits, ...deepPds]
+}
+
+/**
+ * Checks whether any player can fire Space Cannon Offense into `systemId` during a tactical action.
+ * Active player shoots at defender/opponents; non-active players shoot at active player.
+ */
+export function canAnySpaceCannonFire(state: GameState, systemId: string, seat: Seat): { canFire: boolean; defender: Owner } {
+  const sys = state.systems[systemId]
+  if (!sys) return { canFire: false, defender: seat }
+  const mine = sys.space.filter(u => u.owner === seat && isShip(u.type))
+  const foes = sys.space.filter(u => u.owner !== seat && isShip(u.type))
+
+  // 1. Active player shooting at foes
+  if (foes.length > 0 && eligibleSpaceCannonUnits(state, systemId, seat).length > 0) {
+    return { canFire: true, defender: foes[0].owner }
+  }
+
+  // 2. Non-active players shooting at active player
+  if (mine.length > 0) {
+    const numPlayers = state.players.length
+    for (let i = 1; i < numPlayers; i++) {
+      const foeSeat = ((seat + i) % numPlayers) as Seat
+      if (eligibleSpaceCannonUnits(state, systemId, foeSeat).length > 0) {
+        return { canFire: true, defender: foeSeat }
+      }
+    }
+  }
+
+  return { canFire: false, defender: foes[0]?.owner ?? seat }
+}
+
+/**
+ * R4.1 step 1: Space Cannon Offense.
+ * Beginning with the active player and proceeding clockwise, each player may use the Space Cannon
+ * ability of each of their units in the active system (and PDS II in adjacent systems).
+ * Non-active players target the active player; the active player targets the defender.
  */
 export function spaceCannonOffense(state: GameState, systemId: string, attacker: Owner, seed: number): GameState {
-  // Deep Space Cannon (PDS II): a PDS II unit may fire its Space Cannon at ships in a system adjacent to
-  // its own during Space Cannon Offense. So besides the PDS in the active system, we also collect PDS II
-  // units in every system adjacent to it (hex or wormhole adjacency, with Enforced Travel Ban respected).
-  const attackerFaction = attacker === 'guardian' ? undefined : state.players[attacker].faction
-  const adjacentIds = neighbours(state.systems, systemId, attackerFaction, false, state)
-  const shooters: Owner[] = []
-  for (const sysId of [systemId, ...adjacentIds]) for (const p of state.systems[sysId].planets) for (const u of p.structures) {
-    if (u.owner !== attacker && !shooters.includes(u.owner)) shooters.push(u.owner)
-  }
   let next = state
   let salt = SPACE_CANNON_SALT_BASE
-  // every shooter fires at the same fleet and their dice depend on nothing the hits change (a PDS sits on a
-  // planet), so all of them roll first and the attacker assigns the whole barrage as one decision
-  const groups: HitGroup[] = []
   const allRolls: DieRoll[] = []
-  for (const owner of shooters) {
-    const sOwner = statsOwner(next, owner)
-    // PDS in the active system, plus PDS II units in adjacent systems (Deep Space Cannon).
-    const activePds = next.systems[systemId].planets.flatMap(p => p.structures.filter(u => u.owner === owner && unitStats(u.type, sOwner).spaceCannon))
-    const deepPds = adjacentIds.flatMap(sysId =>
-      next.systems[sysId].planets.flatMap(p => p.structures.filter(u =>
-        u.owner === owner && u.type === 'pds' && hasTech(next, owner, 'pds_ii') && unitStats(u.type, sOwner).spaceCannon)))
-    const pds = [...activePds, ...deepPds]
+  const numPlayers = state.players.length
+  const shooterOrder: Seat[] = []
+
+  if (attacker !== 'guardian') {
+    for (let i = 0; i < numPlayers; i++) {
+      shooterOrder.push(((attacker + i) % numPlayers) as Seat)
+    }
+  }
+
+  for (const owner of shooterOrder) {
+    const pds = eligibleSpaceCannonUnits(next, systemId, owner)
     if (!pds.length) continue
+
+    // Determine target for this shooter
+    let target: Owner | null = null
+    if (owner === attacker) {
+      const tac = next.tactical
+      const preferred = tac?.combat?.defender
+      if (preferred !== undefined && preferred !== attacker && shipsOf(next.systems[systemId], preferred).length > 0) {
+        target = preferred
+      } else {
+        const foe = next.systems[systemId].space.find(u => u.owner !== attacker && isShip(u.type))
+        if (foe) target = foe.owner
+      }
+    } else {
+      if (shipsOf(next.systems[systemId], attacker).length > 0) {
+        target = attacker
+      }
+    }
+
+    if (target === null) continue
+
+    const sOwner = statsOwner(next, owner)
     const rng = mulberry32(deriveSeed(seed, salt++))
     const rolls: DieRoll[] = []
     let extraDie = hasTech(next, owner, 'plasma_scoring')
@@ -506,9 +578,11 @@ export function spaceCannonOffense(state: GameState, systemId: string, attacker:
     }
     allRolls.push(...rolls)
     next = { ...next, log: [...next.log, { t: 'roll', owner, rolls, context: 'space cannon offense' }] }
-    groups.push({ count: hits, mode: hasTech(next, owner, 'graviton_laser_system') ? 'noFighters' : 'any' })
+    const group: HitGroup = { count: hits, mode: hasTech(next, owner, 'graviton_laser_system') ? 'noFighters' : 'any' }
+    next = resolveHits(next, systemId, target, [group], 'space cannon offense')
   }
-  return resolveHits(withLastRolls(next, allRolls), systemId, attacker, groups, 'space cannon offense')
+
+  return withLastRolls(next, allRolls)
 }
 
 /**
@@ -744,28 +818,15 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   const ctx: Ctx = { systemId: tac.systemId, attacker: tac.combat.attacker, defender: tac.combat.defender, round: tac.combat.round }
   const sys = state.systems[ctx.systemId]
   const defenderShips = shipsOf(sys, ctx.defender).length
-  const defenderHasPds = sys.planets.flatMap(p => p.structures).some(u => u.owner === ctx.defender && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon)
-  const isPdsDefense = !defenderShips && defenderHasPds && ctx.round <= 1
+  const attackerShips = shipsOf(sys, ctx.attacker).length
 
-  if (!shipsOf(sys, ctx.attacker).length && !isPdsDefense) return { ok: false, error: 'the space combat is already decided' }
-  if (!defenderShips && !isPdsDefense) return { ok: false, error: 'the space combat is already decided' }
-
-  // When PDS defense round 0 is resolved, round 1 advances out of space combat
-  if (ctx.round === 1 && !defenderShips) {
-    const attackerShips = shipsOf(sys, ctx.attacker).length
-    if (!attackerShips) {
-      const trimmed = trimCargo(state, ctx.systemId, ctx.attacker)
-      const tacTrimmed = trimmed.tactical!
-      return {
-        ok: true,
-        value: {
-          ...trimmed,
-          tactical: { ...tacTrimmed, step: 'done' },
-          log: [...trimmed.log, { t: 'info', text: `All attacking ships destroyed by space cannon defense in ${ctx.systemId}` }],
-        },
-      }
-    }
+  // When Space Cannon only round 0 is resolved, round 1 advances out of space combat
+  if (ctx.round === 1 && (!defenderShips || !attackerShips)) {
     return { ok: true, value: afterSpaceCannonOnly(state, ctx.systemId, ctx.attacker) }
+  }
+
+  if (ctx.round > 1 && (!attackerShips || !defenderShips)) {
+    return { ok: false, error: 'the space combat is already decided' }
   }
 
   const wantAttacker = munitions?.attacker ?? false
@@ -776,8 +837,11 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
     const opened = withLastRolls(state, [])
     const next = spaceCannonOffense(opened, ctx.systemId, ctx.attacker, seed)
     if (pendingFor(next)) return { ok: true, value: next }
-    if (!defenderShips) {
-      // 0 hits from PDS: advance round to 1 so the roll can be viewed before proceeding to invasion
+    const sysNext = next.systems[ctx.systemId]
+    const defShips = shipsOf(sysNext, ctx.defender).length
+    const attShips = shipsOf(sysNext, ctx.attacker).length
+    if (!defShips || !attShips) {
+      // Space cannon only: advance round to 1 so the roll can be viewed before proceeding out of combat
       const tacNext = next.tactical!
       return { ok: true, value: { ...next, tactical: { ...tacNext, combat: { ...tacNext.combat!, round: 1 } } } }
     }

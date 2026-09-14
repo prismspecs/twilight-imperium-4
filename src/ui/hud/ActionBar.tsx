@@ -98,7 +98,7 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
         {error === null
           ? <div className="h" data-testid="hint">{hint}</div>
           : <div className="h err" role="alert" data-testid="engine-error">{error}</div>}
-        <div className="r" data-testid="round">Round {state.round} of 8, {state.phase} phase</div>
+        <div className="r" data-testid="round">Round {state.round}, {state.phase} phase</div>
       </div>
     </div>
   )

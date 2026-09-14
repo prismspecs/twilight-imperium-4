@@ -3,7 +3,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { homeSystemOf } from '../../engine'
-import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withTechs, withUnits } from '../../engine/testUtils'
+import { SAAR_CONFIG, toActionPhase, withPlanetOwner, withPlayer, withTactical, withTechs, withUnits } from '../../engine/testUtils'
 import type { Seat } from '../../engine/types'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
@@ -387,6 +387,20 @@ describe('the tactical action', () => {
 
     fireEvent.click(proceedBtn)
     expect(screen.getByTestId('invasion-panel')).toBeTruthy()
+  })
+
+  it('renders ground deploy selector when Saar with Floating Factory produces infantry', () => {
+    const base = toActionPhase(1, 0, SAAR_CONFIG)
+    const home = homeSystemOf(base, 0)
+    const s = withTactical(base, { systemId: home, step: 'production' })
+    renderWithSession(s, <BoardScreen />)
+
+    expect(screen.getByTestId('produce-drawer')).toBeTruthy()
+    // Step infantry up to 1
+    fireEvent.click(screen.getByTestId('step-infantry-plus'))
+    // Now ground-deploy-selector should appear
+    expect(screen.getByTestId('ground-deploy-selector')).toBeTruthy()
+    expect(screen.getByTestId('ground-to-space')).toBeTruthy()
   })
 })
 

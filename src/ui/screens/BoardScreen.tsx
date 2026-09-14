@@ -7,7 +7,7 @@ import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
 import { FloatingRightDeck } from '../hud/FloatingRightDeck'
-import { pendingReaction, productionLimit, shipsThatCanReach } from '../../engine'
+import { actingSeat, pendingReaction, productionLimit, reactingSeat, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
@@ -26,6 +26,7 @@ import { ProduceDrawer } from '../flows/ProduceDrawer'
 import { ActionCardPanel } from '../flows/ActionCardPanel'
 import { AgendaDialog } from '../flows/AgendaDialog'
 import { ComponentPanel } from '../flows/ComponentPanel'
+import { DiscardActionCardDialog } from '../flows/DiscardActionCardDialog'
 import { ReactionPanel } from '../flows/ReactionPanel'
 import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
@@ -127,6 +128,85 @@ function ActiveTurnBanner({ state, config }: { state: GameState; config?: GameCo
           {actionText}
         </div>
       </div>
+    </div>
+  )
+}
+
+function currentActor(state: GameState): Seat {
+  if (state.pendingActionCardDiscards?.length) return state.pendingActionCardDiscards[0]
+  if (state.pendingSchemingDiscards?.length) return state.pendingSchemingDiscards[0]
+  const reacting = reactingSeat(state)
+  if (reacting !== null) return reacting
+  if (state.pendingSecondary !== null) return state.pendingSecondary.queue[0] ?? state.pendingSecondary.owner
+  if (state.phase === 'agenda' && state.agenda?.order?.length) return state.agenda.order[0]
+  return actingSeat(state)
+}
+
+function FaintCenterTurnAlert({ state, mode, humanSeat, config }: { state: GameState; mode: ActionMode; humanSeat?: Seat; config?: GameConfig }) {
+  if (state.winner !== null) return null
+  const currentSeat = currentActor(state)
+  const isAiPlayer = isAi(config, currentSeat)
+  const isMyTurn = humanSeat !== undefined ? currentSeat === humanSeat : !isAiPlayer
+  if (!isMyTurn) return null
+
+  let instruction = 'Choose an action: Tactical, Strategic, or Component.'
+  if (state.pendingActionCardDiscards?.length) {
+    instruction = 'Discard action cards to meet the hand limit (7).'
+  } else if (state.pendingSchemingDiscards?.length) {
+    instruction = 'Choose and discard 1 action card for Scheming.'
+  } else if (state.pendingReactions.length > 0) {
+    instruction = 'Play or decline reaction card.'
+  } else if (state.phase === 'strategy') {
+    instruction = 'Pick a strategy card.'
+  } else if (state.pendingSecondary !== null) {
+    const card = state.pendingSecondary.card
+    if (card === 'technology') instruction = 'Pick a technology.'
+    else if (card === 'warfare') instruction = 'Produce units at home.'
+    else if (card === 'leadership') instruction = 'Spend influence for command tokens.'
+    else if (card === 'diplomacy') instruction = 'Ready exhausted planets.'
+    else if (card === 'construction') instruction = 'Place a structure on a controlled planet.'
+    else if (card === 'trade') instruction = 'Replenish commodities.'
+    else if (card === 'politics') instruction = 'Draw action cards.'
+    else if (card === 'imperial') instruction = 'Draw a secret objective.'
+    else instruction = `Decide ${CARD_NAME[card]} secondary.`
+  } else if (state.tactical) {
+    switch (state.tactical.step) {
+      case 'movement':
+        instruction = 'Move ships into the active system.'
+        break
+      case 'spaceCombat':
+        instruction = state.tactical.combat?.pending?.length ? 'Assign combat hits.' : 'Roll space combat dice.'
+        break
+      case 'invasion':
+        instruction = 'Commit ground forces to invade.'
+        break
+      case 'production':
+        instruction = 'Produce units at your space dock.'
+        break
+      case 'done':
+        instruction = 'End your tactical action.'
+        break
+    }
+  } else if (state.phase === 'agenda') {
+    instruction = 'Cast your vote.'
+  } else if (state.phase === 'status') {
+    instruction = 'Distribute command tokens.'
+  } else if (state.turnDone) {
+    instruction = 'End your turn.'
+  } else if (mode === 'tactical') {
+    instruction = 'Activate a system on the galaxy map.'
+  } else if (mode === 'strategic') {
+    instruction = 'Pick a ready strategy card to play.'
+  } else if (mode === 'component') {
+    instruction = 'Choose a component action or pass.'
+  } else if (mode === 'actionCard') {
+    instruction = 'Play an action card.'
+  }
+
+  return (
+    <div className="faint-center-turn-alert" data-testid="faint-center-turn-alert" aria-hidden="true">
+      <div className="fcta-prefix">It's your turn.</div>
+      <div className="fcta-instruction">{instruction}</div>
     </div>
   )
 }
@@ -260,6 +340,8 @@ export function BoardScreen() {
     state.phase === 'status' ||
     state.phase === 'agenda' ||
     pendingReaction(state) !== null ||
+    Boolean(state.pendingActionCardDiscards?.length) ||
+    Boolean(state.pendingSchemingDiscards?.length) ||
     mode === 'strategic' ||
     mode === 'component' ||
     mode === 'actionCard' ||
@@ -331,6 +413,7 @@ export function BoardScreen() {
           humanSeat={humanSeat}
         />
         {/* the board and everything that overlays it, docked between the bars and the two columns */}
+        <FaintCenterTurnAlert state={state} mode={mode} humanSeat={humanSeat} config={session.config} />
         <div className={`stage${hasActiveModal ? ' has-modal' : ''}${isRightDeckOpen ? ' right-deck-open' : ''}${!isSidePanelOpen ? ' side-collapsed' : ''}`} data-testid="stage">
           <ActiveTurnBanner state={state} config={session.config} />
           <BoardMap
@@ -449,6 +532,7 @@ export function BoardScreen() {
         </div>
       ) : null}
       <ReactionPanel />
+      <DiscardActionCardDialog />
       <HandoffOverlay />
       <AgendaResultOverlay />
     </>

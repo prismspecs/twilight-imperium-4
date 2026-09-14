@@ -62,9 +62,14 @@ export function moraleBoost(state: GameState, owner: Owner, kind: 'space' | 'gro
   return live ? 1 : 0
 }
 
-/** R9 Fighter Prototype: +2 to each of the seat's fighters' combat rolls this space combat round. */
+/** R9 Fighter Prototype: +2 to each of the seat's fighters' combat rolls this space combat round.
+ *  Prophecy of Ixth (Law): The owner of this card applies +1 to the result of their fighter's combat rolls. */
 export function fighterBonus(state: GameState, owner: Owner): number {
-  return spaceRoundEffect(state, owner, 'fighter_prototype') ? 2 : 0
+  let bonus = spaceRoundEffect(state, owner, 'fighter_prototype') ? 2 : 0
+  if (state.activeAgendas?.includes('prophecy_of_ixth') && state.lawOwners?.prophecy_of_ixth === owner) {
+    bonus += 1
+  }
+  return bonus
 }
 
 /** Every effect goes when the tactical action does: none of them can outlive it. */

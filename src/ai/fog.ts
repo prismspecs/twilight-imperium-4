@@ -63,6 +63,7 @@ export interface GameStateView {
   custodiansToken: boolean
   /** systemIds into which this seat can move at least one ship before a tactical starts here */
   projection: Set<string>
+  reachableShipCounts?: Record<string, number>
   players: PublicPlayer[]
   systems: Record<string, System>
   tactical: TacticalContext | null
@@ -88,8 +89,13 @@ function maskPlayer(player: Player): PublicPlayer {
  */
 export function playerView(state: GameState, seat: Seat): GameStateView {
   const projection = new Set<string>()
+  const reachableShipCounts: Record<string, number> = {}
   for (const id of Object.keys(state.systems)) {
-    if (shipsThatCanReach(state, seat, id).length > 0) projection.add(id)
+    const reachable = shipsThatCanReach(state, seat, id)
+    if (reachable.length > 0) {
+      projection.add(id)
+      reachableShipCounts[id] = reachable.length
+    }
   }
   return {
     round: state.round,
@@ -101,6 +107,7 @@ export function playerView(state: GameState, seat: Seat): GameStateView {
     publicObjectives: state.publicObjectives,
     custodiansToken: Boolean(state.custodiansToken),
     projection,
+    reachableShipCounts,
     players: state.players.map((p) => p.seat === seat ? forwardPlayer(p) : maskPlayer(p)),
     systems: state.systems,
     tactical: state.tactical,

@@ -37,41 +37,43 @@ const LEVEL_II: Partial<Record<UnitType, Partial<UnitStats>>> = {
 export const UPGRADE_TECH: Partial<Record<UnitType, string>> = {
   infantry: 'infantry_ii', fighter: 'fighter_ii', destroyer: 'destroyer_ii', cruiser: 'cruiser_ii',
   carrier: 'carrier_ii', dreadnought: 'dreadnought_ii', spacedock: 'space_dock_ii', pds: 'pds_ii',
+  warsun: 'war_sun',
 }
 
 /**
  * A faction's own named unit upgrade occupies the same tech-tree slot as the generic one (same prerequisite,
- * mutually exclusive by having its own id) but prints different stats. L1Z1X's Super-Dreadnought II also
- * carries an active ability beyond stats, so it stays special-cased in `unitStats` below rather than
- * joining this table.
+ * mutually exclusive by having its own id) but prints different stats.
  */
 const FACTION_UPGRADE_TECH: Partial<Record<UnitType, Partial<Record<FactionId, string>>>> = {
-  infantry: { sol: 'spec_ops_ii' },
+  infantry: { sol: 'spec_ops_ii', arborec: 'letani_warrior_ii' },
   carrier: { sol: 'advanced_carrier_ii' },
   fighter: { naalu: 'hybrid_crystal_fighter_ii' },
   floating_factory: { saar: 'floating_factory_ii' },
+  dreadnought: { l1z1x: 'super_dreadnought_ii', sardakk: 'exotrireme_ii' },
+  warsun: { muaat: 'prototype_war_sun_ii' },
 }
 
 const FACTION_LEVEL_II: Partial<Record<UnitType, Partial<Record<FactionId, Partial<UnitStats>>>>> = {
-  infantry: { sol: { combat: 6 } },
+  infantry: { sol: { combat: 6 }, arborec: { combat: 7, production: 2 } },
   carrier: { sol: { move: 2, capacity: 8, sustain: true } },
   fighter: { naalu: { combat: 7, move: 2 } },
   floating_factory: { saar: { move: 2, capacity: 5, production: 7 } },
+  dreadnought: { sardakk: { move: 2, bombardment: { value: 4, dice: 2 } } },
 }
 
 /** The die roll Infantry II (or a faction's equivalent) needs to bring a destroyed infantry back. Sol's Spec
- * Ops II returns on a 5, one better than the generic 6. */
+ * Ops II returns on a 5, one better than the generic 6; Arborec's Letani Warrior II revives on 6. */
 export const INFANTRY_REVIVAL_TECH: Partial<Record<FactionId, { tech: string; value: number }>> = {
   sol: { tech: 'spec_ops_ii', value: 5 },
+  arborec: { tech: 'letani_warrior_ii', value: 6 },
 }
 
 /**
  * A faction with its own named unit upgrade never has the generic one to research too — one slot, one path.
- * L1Z1X's Super-Dreadnought II is special-cased directly in `unitStats` (it has an active ability beyond
- * stats), so it is listed here by hand rather than joining `FACTION_UPGRADE_TECH`.
+ * Saar's Floating Factory replaces Space Dock, so Saar also excludes the generic Space Dock II.
  */
 export function excludesGenericUpgrade(type: UnitType, faction: FactionId): boolean {
-  if (type === 'dreadnought' && faction === 'l1z1x') return true
+  if (type === 'spacedock' && faction === 'saar') return true
   return FACTION_UPGRADE_TECH[type]?.[faction] !== undefined
 }
 
@@ -105,6 +107,14 @@ export function unitStats(type: UnitType, owner: StatsOwner): Readonly<UnitStats
   if (type === 'flagship') return FLAGSHIPS[owner.faction]
   if (type === 'dreadnought' && owner.faction === 'l1z1x') {
     return owner.techs.includes('super_dreadnought_ii') ? SUPER_DREADNOUGHT_II : SUPER_DREADNOUGHT_I
+  }
+  if (type === 'warsun' && owner.faction === 'muaat') {
+    return owner.techs.includes('prototype_war_sun_ii')
+      ? { ...LEVEL_I.warsun, cost: 10, move: 3 }
+      : { ...LEVEL_I.warsun, move: 1 }
+  }
+  if (type === 'infantry' && owner.faction === 'arborec' && !owner.techs.includes('letani_warrior_ii')) {
+    return { ...LEVEL_I.infantry, production: 1 }
   }
   const factionUpgrade = FACTION_UPGRADE_TECH[type]?.[owner.faction]
   if (factionUpgrade && owner.techs.includes(factionUpgrade)) {

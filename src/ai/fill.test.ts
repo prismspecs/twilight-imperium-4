@@ -3,8 +3,9 @@ import { createGame } from '../engine'
 import { agendaMoves } from '../engine/agendas'
 import { BASE_CONFIG, toActionPhase, toAgendaPhase, withPlayer } from '../engine/testUtils'
 import { homeSystemOf } from '../engine/board'
+import { productionCost } from '../engine/economy'
 import type { Move } from '../engine/types'
-import { fillCastVote, fillProduce, fillStatusTokens } from './fill'
+import { fillCastVote, fillMoveShips, fillProduce, fillStatusTokens } from './fill'
 import { aiChoose } from './index'
 
 describe('fillProduce calibrated fleet production', () => {
@@ -61,6 +62,23 @@ describe('fillProduce calibrated fleet production', () => {
     // the dock still works: something is produced
     expect(Object.values(plan.units).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0).toBeGreaterThan(0)
   })
+
+  it('respects Regulated Conscription agenda when calculating production cost and payment (game MA7Y7S)', () => {
+    let state = toActionPhase(46, 0)
+    state = {
+      ...state,
+      activeAgendas: ['regulated_conscription'],
+      players: state.players.map((p, i) => i === 0 ? { ...p, faction: 'hacan', tradeGoods: 1, techs: ['sarween_tools'] } : p),
+    }
+    const home = homeSystemOf(state, 0)
+    const plan = fillProduce(state, 0, home)
+    const cost = productionCost(plan.units, { faction: 'hacan', techs: ['sarween_tools'] }, true, state)
+    const resPaid = plan.planets.reduce((sum, pid) => {
+      const p = Object.values(state.systems).flatMap(s => s.planets).find(pl => pl.id === pid)
+      return sum + (p?.resources ?? 0)
+    }, 0)
+    expect(resPaid + plan.tradeGoods).toBeGreaterThanOrEqual(cost)
+  })
 })
 
 describe('fillStatusTokens and aiChoose integration', () => {
@@ -110,3 +128,72 @@ describe('fillCastVote and aiChoose in the agenda phase', () => {
     }
   })
 })
+
+describe('fillMoveShips garrison preservation', () => {
+  it('preserves at least 1 infantry garrison on Mecatol Rex when moving ships out', () => {
+    let state = toActionPhase(42, 0)
+    const mecatolAdj = state.systems['mecatol'].neighbours[0]
+    // Put a carrier and 1 infantry on Mecatol Rex
+    const carrierId = state.nextUnitId
+    const infantryId = state.nextUnitId + 1
+    state = {
+      ...state,
+      nextUnitId: state.nextUnitId + 2,
+      tactical: { systemId: mecatolAdj, step: 'movement' },
+      systems: {
+        ...state.systems,
+        mecatol: {
+          ...state.systems['mecatol'],
+          space: [{ id: carrierId, owner: 0, type: 'carrier', damaged: false }],
+          planets: state.systems['mecatol'].planets.map(p => ({
+            ...p,
+            owner: 0,
+            ground: [{ id: infantryId, owner: 0, type: 'infantry', damaged: false }],
+          })),
+        },
+      },
+    }
+
+    const moves = fillMoveShips(state, 0)
+    const mecatolMove = moves.find(m => m.unitId === carrierId)
+    expect(mecatolMove).toBeDefined()
+    // Should NOT take the single garrison infantry
+    expect(mecatolMove?.carrying).not.toContain(infantryId)
+    expect(mecatolMove?.carrying).toHaveLength(0)
+  })
+
+  it('can carry additional infantry beyond the 1-infantry garrison on Mecatol Rex', () => {
+    let state = toActionPhase(42, 0)
+    const mecatolAdj = state.systems['mecatol'].neighbours[0]
+    const carrierId = state.nextUnitId
+    const inf1 = state.nextUnitId + 1
+    const inf2 = state.nextUnitId + 2
+    state = {
+      ...state,
+      nextUnitId: state.nextUnitId + 3,
+      tactical: { systemId: mecatolAdj, step: 'movement' },
+      systems: {
+        ...state.systems,
+        mecatol: {
+          ...state.systems['mecatol'],
+          space: [{ id: carrierId, owner: 0, type: 'carrier', damaged: false }],
+          planets: state.systems['mecatol'].planets.map(p => ({
+            ...p,
+            owner: 0,
+            ground: [
+              { id: inf1, owner: 0, type: 'infantry', damaged: false },
+              { id: inf2, owner: 0, type: 'infantry', damaged: false },
+            ],
+          })),
+        },
+      },
+    }
+
+    const moves = fillMoveShips(state, 0)
+    const mecatolMove = moves.find(m => m.unitId === carrierId)
+    expect(mecatolMove).toBeDefined()
+    // Can take 1 of the 2 infantry, leaving 1 garrison
+    expect(mecatolMove?.carrying).toHaveLength(1)
+  })
+})
+

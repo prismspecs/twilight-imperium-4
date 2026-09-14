@@ -54,8 +54,8 @@ export function InvasionPanel() {
   const split = suggestedSplit(pool, landings.length, deriveSeed(session.seed, moveCount(state)))
   const countOf = (planetId: string, index: number) => counts[planetId] ?? split[index] ?? 0
 
-  const isMecatolSystem = state.tactical?.systemId === 'mecatol' || state.tactical?.systemId === MECATOL_ID
-  const seat = state.active
+  const isWinnu = state.players[seat]?.faction === 'winnu'
+  const isMecatolSystem = state.tactical?.systemId === 'mecatol' || state.tactical?.systemId === MECATOL_ID || state.tactical?.systemId === '18'
   const readyInf = readyInfluence(state, seat)
   const tradeGoods = state.players[seat]?.tradeGoods ?? 0
   const totalInf = readyInf + tradeGoods
@@ -63,7 +63,7 @@ export function InvasionPanel() {
   const readyInfPlanets = Object.values(state.systems)
     .flatMap(sys => sys.planets)
     .filter(p => p.owner === seat && !p.exhausted && p.influence > 0)
-  const custodiansPayment = tradeGoodsFirstPayment(readyInfPlanets, tradeGoods, 6)
+  const custodiansPayment = isWinnu ? { planets: [], tradeGoods: 0 } : tradeGoodsFirstPayment(readyInfPlanets, tradeGoods, 6)
   const exhaustedInfPlanets = Object.values(state.systems)
     .flatMap(sys => sys.planets)
     .filter(p => p.owner === seat && p.exhausted && p.influence > 0)
@@ -116,26 +116,32 @@ export function InvasionPanel() {
             <span className="lbl" style={{ color: 'var(--gold)' }}>Custodians</span>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <span className="sub">
-                The Custodians of Mecatol Rex demand 6 influence before ground forces may land (+1 VP).
+                {isWinnu
+                  ? 'Blood Ties: The Winnu do not have to spend influence to remove the Custodians token (+1 VP).'
+                  : 'The Custodians of Mecatol Rex demand 6 influence before ground forces may land (+1 VP).'}
               </span>
-              <span className="sub" data-testid="custodians-breakdown" style={{ color: totalInf >= 6 ? 'var(--gold)' : 'var(--muted)' }}>
-                Influence available: <strong>{totalInf} / 6</strong> ({readyInf} ready + {tradeGoods} TG)
-                {exhaustedInfPlanets.length > 0 ? (
-                  <span style={{ marginLeft: 6, opacity: 0.8 }}>
-                    · Exhausted: {exhaustedInfPlanets.map(p => `${planetLabel(state, p.id)} (${p.influence}i)`).join(', ')}
-                  </span>
-                ) : null}
-              </span>
+              {!isWinnu ? (
+                <span className="sub" data-testid="custodians-breakdown" style={{ color: totalInf >= 6 ? 'var(--gold)' : 'var(--muted)' }}>
+                  Influence available: <strong>{totalInf} / 6</strong> ({readyInf} ready + {tradeGoods} TG)
+                  {exhaustedInfPlanets.length > 0 ? (
+                    <span style={{ marginLeft: 6, opacity: 0.8 }}>
+                      · Exhausted: {exhaustedInfPlanets.map(p => `${planetLabel(state, p.id)} (${p.influence}i)`).join(', ')}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
             </div>
             {canRemoveCustodians && custodiansPayment ? (
               <button
                 type="button"
                 className="btn gold"
                 data-testid="btn-remove-custodians"
-                title={`Pays ${String(custodiansPayment.tradeGoods)} trade good${custodiansPayment.tradeGoods === 1 ? '' : 's'}${custodiansPayment.planets.length ? ` + ${custodiansPayment.planets.map(id => planetLabel(state, id)).join(', ')}` : ''} — trade goods spend first, planets stay ready wherever they can`}
+                title={isWinnu
+                  ? 'Winnu Blood Ties: removes the Custodians token for 0 influence'
+                  : `Pays ${String(custodiansPayment.tradeGoods)} trade good${custodiansPayment.tradeGoods === 1 ? '' : 's'}${custodiansPayment.planets.length ? ` + ${custodiansPayment.planets.map(id => planetLabel(state, id)).join(', ')}` : ''} — trade goods spend first, planets stay ready wherever they can`}
                 onClick={() => apply({ type: 'removeCustodians', planets: custodiansPayment.planets, tradeGoods: custodiansPayment.tradeGoods })}
               >
-                Remove Custodians (6 Influence · +1 VP)
+                {isWinnu ? 'Remove Custodians (Blood Ties · +1 VP)' : 'Remove Custodians (6 Influence · +1 VP)'}
               </button>
             ) : (
               <button
@@ -143,9 +149,8 @@ export function InvasionPanel() {
                 className="btn quiet"
                 data-testid="btn-remove-custodians-disabled"
                 disabled
-                title="Requires 6 influence from ready planets and/or trade goods"
               >
-                Cannot Remove (Need 6 Influence)
+                Remove Custodians (6 Influence)
               </button>
             )}
           </div>

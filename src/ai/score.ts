@@ -87,6 +87,12 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'playActionCard': return w.economy
     case 'pass': return scorePass(view, seat, w)
     case 'status': return w.priority // keep the engine's default distribution
+    case 'discardActionCard': return 1
+    case 'stallTactics': {
+      const oppsActive = view.players.some((p, i) => i !== seat && !p.passed)
+      const hand = view.players[seat]?.actionCards ?? []
+      return (hand.length >= 5 && oppsActive) ? 12 : 1
+    }
     default: return 0
   }
 }
@@ -235,9 +241,18 @@ function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w
   // before the tactical resolves. Colonising, conquering and fighting all need units on site, so without
   // either of these (and with no dock here to build at) there is nothing a tactical can actually achieve.
   const shipsHere = sys.space.filter(u => u.owner === seat && u.type !== 'fighter' && u.type !== 'infantry').length
-  const shipsArrive = view.projection.has(systemId)
+  const shipsCanReach = view.reachableShipCounts?.[systemId] ?? (view.projection.has(systemId) ? 1 : 0)
+  const totalFriendlyShips = shipsHere + shipsCanReach
   const build = dockValue(view, systemId, seat)
-  const takeSystem = shipsHere > 0 || shipsArrive
+
+  // Combat odds check: lone ship suicide prevention against clusters of enemy ships
+  const allHostileSpace = sys.space.filter(u => u.owner !== null && u.owner !== seat && u.owner !== 'guardian' && u.type !== 'infantry')
+  const isHopelesslyOutnumbered = hostileShips.length > 0 && (
+    (totalFriendlyShips <= 1 && (hostileShips.length >= 2 || allHostileSpace.length >= 3)) ||
+    (totalFriendlyShips < hostileShips.length && totalFriendlyShips * 2 < hostileShips.length)
+  )
+
+  const takeSystem = (shipsHere > 0 || shipsCanReach > 0) && !isHopelesslyOutnumbered
 
   // no foothold to advance, no planet to take, nowhere to build: the token and turn are pure waste
   if (!takeSystem && build === 0) return -w.priority
@@ -299,7 +314,11 @@ function scoreStartTactical(view: GameStateView, systemId: string, seat: Seat, w
     const combatWeight = hasTempoData(me.faction) 
       ? w.military * getAggression(me.faction) 
       : w.military
-    s -= combatWeight * Math.min(3, hostileShips.length)
+    if (isHopelesslyOutnumbered) {
+      s -= combatWeight * (hostileShips.length + 3) * 2
+    } else {
+      s -= combatWeight * Math.min(3, hostileShips.length)
+    }
   }
 
   // command tokens are finite; count the spend, so a nothing-action loses to a strategy card or an end of turn

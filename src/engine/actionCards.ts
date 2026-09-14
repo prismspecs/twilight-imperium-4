@@ -1,7 +1,7 @@
 import { actionCardDef, findActionCard } from '../data/actionCards'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, destroyUnits, trimCargo } from './board'
-import { canResearch, researchable } from './research'
+import { canResearch, exhaustTechSkipPlanets, researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { deriveSeed, mulberry32, shuffleIds } from './rng'
 import type { ActionCardParams, GameState, Move, Planet, Result, Seat, Unit } from './types'
 
@@ -62,15 +62,18 @@ function reshuffle(state: GameState, seed: number): GameState {
 
 /**
  * R9: draw `count` action cards for a seat, reshuffling the discard pile when the deck runs dry.
- *
- * Ruling: the hand limit of 7 is enforced here, the moment the hand would exceed it (LRR: "if a player ever
- * has more than seven action cards"). The surplus is the freshly drawn card, because there is no interface
- * yet for choosing which card to throw away; when one exists, the choice becomes the player's.
+ * LRR 112 & 140: If a player ever has more than seven action cards, that player must choose
+ * cards to keep and discard the rest.
  */
 export function drawActionCards(state: GameState, seat: Seat, count: number, seed: number): GameState {
   let next = state
+  const player = state.players[seat]
+  const isYssaril = player?.faction === 'yssaril'
+  // Yssaril Scheming: "When you draw 1 or more action cards, draw 1 additional action card. Then, choose and discard 1 action card from your hand."
+  const effectiveCount = isYssaril && count > 0 ? count + 1 : count
+
   const drawn: string[] = []
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < effectiveCount; i++) {
     if (next.actionCardDeck.length === 0) next = reshuffle(next, deriveSeed(seed, i))
     const [top, ...rest] = next.actionCardDeck
     if (top === undefined) break
@@ -82,12 +85,128 @@ export function drawActionCards(state: GameState, seat: Seat, count: number, see
   }
   const players = [...next.players] as GameState['players']
   const hand = [...players[seat].actionCards, ...drawn]
-  const kept = hand.slice(0, HAND_LIMIT)
-  const over = hand.slice(HAND_LIMIT)
-  players[seat] = { ...players[seat], actionCards: kept }
-  const log: GameState['log'] = [...next.log, { t: 'info', text: `seat ${seat} draws ${drawn.length} action card(s)` }]
-  if (over.length) log.push({ t: 'info', text: `seat ${seat} is over the hand limit of ${HAND_LIMIT} and discards ${over.length} card(s)` })
-  return { ...next, players, actionCardDiscard: [...next.actionCardDiscard, ...over], log }
+  players[seat] = { ...players[seat], actionCards: hand }
+
+  const logEntries: GameState['log'] = [
+    ...next.log,
+    {
+      t: 'info',
+      text: isYssaril && count > 0
+        ? `seat ${seat} (Yssaril) draws ${drawn.length} action card(s) (including +1 from Scheming)`
+        : `seat ${seat} draws ${drawn.length} action card(s)`,
+    },
+  ]
+
+  let pendingActionCardDiscards = next.pendingActionCardDiscards ? [...next.pendingActionCardDiscards] : []
+  let pendingSchemingDiscards = next.pendingSchemingDiscards ? [...next.pendingSchemingDiscards] : []
+
+  // Yssaril Crafty: "You have no hand limit for action cards."
+  if (!isYssaril && hand.length > HAND_LIMIT && !pendingActionCardDiscards.includes(seat)) {
+    pendingActionCardDiscards.push(seat)
+  }
+
+  // Yssaril Scheming: choose and discard 1 action card from hand
+  if (isYssaril && count > 0 && !pendingSchemingDiscards.includes(seat)) {
+    pendingSchemingDiscards.push(seat)
+  }
+
+  return {
+    ...next,
+    players,
+    pendingActionCardDiscards: pendingActionCardDiscards.length > 0 ? pendingActionCardDiscards : undefined,
+    pendingSchemingDiscards: pendingSchemingDiscards.length > 0 ? pendingSchemingDiscards : undefined,
+    log: logEntries,
+  }
+}
+
+/**
+ * LRR 112 & 140: Discard a specific action card from hand to satisfy the hand limit of 7,
+ * or to resolve Yssaril's Scheming ability.
+ */
+export function discardActionCard(state: GameState, cardId: string, seat?: Seat): Result<GameState> {
+  const pendingHandLimit = state.pendingActionCardDiscards
+  const pendingScheming = state.pendingSchemingDiscards
+  const targetSeat = seat ?? pendingHandLimit?.[0] ?? pendingScheming?.[0] ?? state.active
+  const player = state.players[targetSeat]
+  if (!player) return { ok: false, error: `unknown seat ${targetSeat}` }
+  const idx = player.actionCards.indexOf(cardId)
+  if (idx === -1) return { ok: false, error: `seat ${targetSeat} does not hold card ${cardId}` }
+
+  const nextCards = [...player.actionCards]
+  nextCards.splice(idx, 1)
+
+  const players = [...state.players] as GameState['players']
+  players[targetSeat] = { ...player, actionCards: nextCards }
+
+  let nextPendingHandLimit = pendingHandLimit ? [...pendingHandLimit] : undefined
+  if (nextPendingHandLimit) {
+    if (nextCards.length <= HAND_LIMIT) {
+      nextPendingHandLimit = nextPendingHandLimit.filter(s => s !== targetSeat)
+      if (nextPendingHandLimit.length === 0) nextPendingHandLimit = undefined
+    }
+  }
+
+  let nextPendingScheming = pendingScheming ? [...pendingScheming] : undefined
+  if (nextPendingScheming && nextPendingScheming.includes(targetSeat)) {
+    nextPendingScheming = nextPendingScheming.filter(s => s !== targetSeat)
+    if (nextPendingScheming.length === 0) nextPendingScheming = undefined
+  }
+
+  const cardName = actionCardName(cardId)
+  const isScheming = pendingScheming?.includes(targetSeat)
+  return {
+    ok: true,
+    value: {
+      ...state,
+      players,
+      actionCardDiscard: [...state.actionCardDiscard, cardId],
+      pendingActionCardDiscards: nextPendingHandLimit,
+      pendingSchemingDiscards: nextPendingScheming,
+      log: [
+        ...state.log,
+        {
+          t: 'info',
+          text: isScheming
+            ? `seat ${targetSeat} (Yssaril) discards action card ${cardName} for Scheming`
+            : `seat ${targetSeat} discards action card ${cardName}`,
+        },
+      ],
+    },
+  }
+}
+
+/**
+ * Yssaril Stall Tactics: "Action: Discard 1 action card from your hand."
+ * Component action during the Action Phase.
+ */
+export function stallTactics(state: GameState, cardId: string, seat?: Seat): Result<GameState> {
+  const targetSeat = seat ?? state.active
+  if (state.phase !== 'action') return { ok: false, error: 'Stall Tactics can only be used during the action phase' }
+  if (state.turnDone) return { ok: false, error: 'ACTION_SPENT: take one action per turn' }
+  if (state.tactical || state.pendingSecondary) return { ok: false, error: 'cannot use Stall Tactics during another action' }
+  const player = state.players[targetSeat]
+  if (!player) return { ok: false, error: `unknown seat ${targetSeat}` }
+  if (player.faction !== 'yssaril') return { ok: false, error: 'only Yssaril can use Stall Tactics' }
+  const idx = player.actionCards.indexOf(cardId)
+  if (idx === -1) return { ok: false, error: `seat ${targetSeat} does not hold card ${cardId}` }
+
+  const nextCards = [...player.actionCards]
+  nextCards.splice(idx, 1)
+
+  const players = [...state.players] as GameState['players']
+  players[targetSeat] = { ...player, actionCards: nextCards }
+
+  const cardName = actionCardName(cardId)
+  return {
+    ok: true,
+    value: {
+      ...state,
+      players,
+      turnDone: true,
+      actionCardDiscard: [...state.actionCardDiscard, cardId],
+      log: [...state.log, { t: 'info', text: `${player.name} (Yssaril) used Stall Tactics, discarding ${cardName}` }],
+    },
+  }
 }
 
 /** Every planet on the board with the system it sits in. */
@@ -257,15 +376,31 @@ function resolve(state: GameState, seat: Seat, cardId: string, params: ActionCar
       if (params.techId === undefined) return { ok: false, error: 'R9: name the technology to research' }
       const player = state.players[seat]
       if (player.tradeGoods < 4) return { ok: false, error: 'R9: Focused Research costs 4 trade goods' }
-      if (!canResearch(player, params.techId, false)) return { ok: false, error: `R5: ${params.techId} cannot be researched` }
-      const players = [...state.players] as GameState['players']
+      if (player.faction === 'nekro') {
+        const players = [...state.players] as GameState['players']
+        players[seat] = {
+          ...player,
+          tradeGoods: player.tradeGoods - 4,
+          tradeGoodsSpentThisRound: player.tradeGoodsSpentThisRound + 4,
+          tokens: { ...player.tokens, strategy: (player.tokens.strategy ?? 0) + 3 },
+        }
+        return { ok: true, value: { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} spends 4 trade goods on Focused Research and gains 3 strategy tokens from Propagation instead of researching ${params.techId}` }] } }
+      }
+      const skipPlanets = params.planets ?? []
+      const exhausted = exhaustTechSkipPlanets(state, seat, skipPlanets)
+      if (!exhausted.ok) return exhausted
+      const skips = exhausted.value.skips
+      if (!canResearch(player, params.techId, false, skips)) return { ok: false, error: `R5: ${params.techId} cannot be researched` }
+      const nextState = exhausted.value.state
+      const players = [...nextState.players] as GameState['players']
       players[seat] = {
         ...player,
         tradeGoods: player.tradeGoods - 4,
         tradeGoodsSpentThisRound: player.tradeGoodsSpentThisRound + 4,
         techs: [...player.techs, params.techId],
       }
-      return { ok: true, value: { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} researches ${params.techId}` }] } }
+      const skipNote = skips.length ? ` (${skips.length} prerequisite${skips.length > 1 ? 's' : ''} skipped)` : ''
+      return { ok: true, value: { ...nextState, players, log: [...nextState.log, { t: 'info', text: `seat ${seat} spends 4 trade goods on Focused Research to research ${params.techId}${skipNote}` }] } }
     }
     case 'war_effort': {
       // "Place 1 cruiser from your reinforcements in a system that contains 1 or more of your ships."
@@ -490,9 +625,17 @@ export function actionCardMoves(state: GameState, seat: Seat): Move[] {
           return player.reinforcements.infantry > 0
             ? controlledPlanetIds(state, seat).map((planetId): Move => ({ type: 'playActionCard', cardId, params: { planetId } }))
             : []
-        case 'focused_research':
+        case 'focused_research': {
           if (player.tradeGoods < 4) return []
-          return researchableTechs(state, seat).map((techId): Move => ({ type: 'playActionCard', cardId, params: { techId } }))
+          const skipColours = techSkipCandidates(state, seat).map(c => c.colour)
+          const baseTechs = researchable(player).map((techId): Move => ({ type: 'playActionCard', cardId, params: { techId, planets: [] } }))
+          const skipTechs = researchableWithSkips(player, skipColours)
+            .flatMap((techId): Move[] => {
+              const planets = skipPlanetsFor(state, seat, techId, player.techs)
+              return planets ? [{ type: 'playActionCard', cardId, params: { techId, planets } }] : []
+            })
+          return [...baseTechs, ...skipTechs]
+        }
         case 'war_effort':
           return player.reinforcements.cruiser > 0
             ? warEffortSystems(state, seat)
@@ -540,9 +683,7 @@ export function actionCardMoves(state: GameState, seat: Seat): Move[] {
 
 /** The card's own name, for interfaces and log lines. */
 export function actionCardName(cardId: string): string {
-  return actionCardDef(cardId).name
+  const card = findActionCard(cardId) ?? findActionCard(`${cardId}_1`)
+  return card?.name ?? cardId
 }
 
-function researchableTechs(state: GameState, seat: Seat): string[] {
-  return researchable(state.players[seat])
-}

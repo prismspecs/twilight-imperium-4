@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
-import { carriedIds, deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
+import { carriedIds, deepFreeze, groundIds, hitsIn, resolveTestSystemId, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Seat, UnitType } from './types'
 
 /** Clears the system, gives the seat ships plus carried infantry and opens the invasion step. */
 function invasion(systemId: string, ships: UnitType[], carried: number, seat: Seat = 0): GameState {
   const base = toActionPhase(1, seat)
-  const cleared: GameState = { ...base, systems: { ...base.systems, [systemId]: { ...base.systems[systemId], space: [] } } }
+  const effSysId = resolveTestSystemId(base, systemId)
+  const cleared: GameState = { ...base, systems: { ...base.systems, [effSysId]: { ...base.systems[effSysId], space: [] } } }
   const troops: UnitType[] = Array.from({ length: carried }, () => 'infantry')
-  const s = withUnits(cleared, systemId, seat, [...ships, ...troops])
-  return withTactical(s, { systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+  const s = withUnits(cleared, effSysId, seat, [...ships, ...troops])
+  return withTactical(s, { systemId: effSysId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
 }
 
 const apply = (state: GameState, move: Move, seed = 5) => {
@@ -20,7 +21,8 @@ const apply = (state: GameState, move: Move, seed = 5) => {
 }
 
 const planet = (state: GameState, systemId: string, planetId: string) => {
-  const p = state.systems[systemId].planets.find(x => x.id === planetId)
+  const effSysId = resolveTestSystemId(state, systemId, planetId)
+  const p = state.systems[effSysId]?.planets.find(x => x.id === planetId)
   if (!p) throw new Error(`no planet ${planetId}`)
   return p
 }
@@ -56,7 +58,7 @@ describe('R4.3 invasion', () => {
     const base = withUnits(invasion('bereg', ['carrier'], 3), 'bereg', 1, ['pds'], 'bereg')
     const after = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0) })
     expect(groundOf(after, 'bereg', 'bereg', 0)).toHaveLength(3 - hitsIn(after, 'space cannon defense on bereg'))
-    expect(after.systems.bereg.space.filter(u => u.type === 'infantry')).toHaveLength(0)
+    expect(after.systems[resolveTestSystemId(after, 'bereg')].space.filter(u => u.type === 'infantry')).toHaveLength(0)
     const letnev = withTechs(withUnits(invasion('bereg', ['carrier'], 3, 1), 'bereg', 0, ['pds'], 'bereg'), 1, ['l4_disruptors'])
     const safe = apply(letnev, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(letnev, 'bereg', 1) })
     expect(groundOf(safe, 'bereg', 'bereg', 1)).toHaveLength(3)
@@ -100,29 +102,36 @@ describe('R4.3 invasion', () => {
   it('Mecatol Rex: landing is blocked while Custodians token remains; removeCustodians unlocks it', () => {
     const base = invasion('mecatol', ['carrier'], 3)
     expect(landablePlanets(base)).toEqual([])
-    expect(applyMove(base, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(base, 'mecatol', 0) }, 5).ok).toBe(false)
+    expect(applyMove(base, { type: 'land', planetId: 'mr', infantryIds: carriedIds(base, 'mecatol', 0) }, 5).ok).toBe(false)
     const withTg: GameState = { ...base, players: [{ ...base.players[0], tradeGoods: 6 }, base.players[1]] }
     const removed = apply(withTg, { type: 'removeCustodians', tradeGoods: 6 })
     expect(removed.custodiansToken).toBe(false)
     expect(removed.players[0].vp).toBe(base.players[0].vp + 1)
     expect(removed.players[0].tradeGoods).toBe(0)
-    expect(landablePlanets(removed).map(p => p.planetId)).toEqual(['mecatol-rex'])
-    const landed = apply(removed, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(removed, 'mecatol', 0) })
-    expect(planet(landed, 'mecatol', 'mecatol-rex').owner).toBe(0)
+    expect(landablePlanets(removed).map(p => p.planetId)).toEqual(['mr'])
+    const landed = apply(removed, { type: 'land', planetId: 'mr', infantryIds: carriedIds(removed, 'mecatol', 0) })
+    expect(planet(landed, 'mecatol', 'mr').owner).toBe(0)
+  })
+  it('LRR 28.2: removeCustodians fails if active player has no ground forces to commit', () => {
+    const noInfantry = invasion('mecatol', ['carrier', 'cruiser'], 0)
+    const withTg: GameState = { ...noInfantry, players: [{ ...noInfantry.players[0], tradeGoods: 6 }, noInfantry.players[1]] }
+    const res = applyMove(withTg, { type: 'removeCustodians', tradeGoods: 6 })
+    expect(res.ok).toBe(false)
+    expect(res.error).toContain('LRR 28.2: must have ground forces in space')
   })
   it('ground combat on Mecatol Rex resolves normally when defending forces are present', () => {
     const base = invasion('mecatol', ['carrier'], 3)
     const open: GameState = { ...base, custodiansToken: false }
-    const defended = withUnits(open, 'mecatol', 1, ['infantry', 'infantry'], 'mecatol-rex')
-    let s = apply(defended, { type: 'land', planetId: 'mecatol-rex', infantryIds: carriedIds(defended, 'mecatol', 0) })
-    expect(groundOf(s, 'mecatol', 'mecatol-rex', 1)).toHaveLength(2)
+    const defended = withUnits(open, 'mecatol', 1, ['infantry', 'infantry'], 'mr')
+    let s = apply(defended, { type: 'land', planetId: 'mr', infantryIds: carriedIds(defended, 'mecatol', 0) })
+    expect(groundOf(s, 'mecatol', 'mr', 1)).toHaveLength(2)
     for (let i = 0; i < 30; i++) {
-      const ground = planet(s, 'mecatol', 'mecatol-rex').ground
+      const ground = planet(s, 'mecatol', 'mr').ground
       if (!ground.some(u => u.owner === 0) || !ground.some(u => u.owner === 1)) break
       s = apply(s, { type: 'groundCombatRound' }, 40 + i)
     }
-    const mine = groundOf(s, 'mecatol', 'mecatol-rex', 0)
-    expect(planet(s, 'mecatol', 'mecatol-rex').owner).toBe(mine.length ? 0 : 1)
+    const mine = groundOf(s, 'mecatol', 'mr', 0)
+    expect(planet(s, 'mecatol', 'mr').owner).toBe(mine.length ? 0 : 1)
   })
   it('HARROW: L1Z1X bombards again after each ground combat round', () => {
     const base = withUnits(invasion('bereg', ['carrier', 'dreadnought'], 2), 'bereg', 1, ['infantry', 'infantry', 'infantry', 'infantry'], 'bereg')
@@ -175,10 +184,10 @@ describe('R4.3 invasion', () => {
   })
   it('R4.3 step 1: the second bombardment of an invasion rolls its own dice, not a replay of the first', () => {
     const one = withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry', 'infantry'], 'bereg')
-    const both = withUnits(one, 'bereg', 1, ['infantry', 'infantry'], 'lirta-iv')
-    const after = apply(apply(both, { type: 'bombard', planetId: 'bereg' }, 5), { type: 'bombard', planetId: 'lirta-iv' }, 5)
+    const both = withUnits(one, 'bereg', 1, ['infantry', 'infantry'], 'lirtaiv')
+    const after = apply(apply(both, { type: 'bombard', planetId: 'bereg' }, 5), { type: 'bombard', planetId: 'lirtaiv' }, 5)
     const rolls = (context: string) => after.log.flatMap(e => e.t === 'roll' && e.context === context ? e.rolls.map(r => r.value) : [])
-    expect(rolls('bombardment of bereg')).not.toEqual(rolls('bombardment of lirta-iv'))
+    expect(rolls('bombardment of bereg')).not.toEqual(rolls('bombardment of lirtaiv'))
   })
   it('R4.3 step 4: no landing at all while a ground combat is running, and the enumerator offers none', () => {
     const base = withUnits(invasion('bereg', ['carrier'], 4), 'bereg', 1, ['infantry', 'infantry', 'infantry'], 'bereg')
@@ -187,7 +196,7 @@ describe('R4.3 invasion', () => {
     expect(landablePlanets(landed)).toEqual([])
     const left = carriedIds(landed, 'bereg', 0)
     expect(applyMove(landed, { type: 'land', planetId: 'bereg', infantryIds: left }, 5).ok).toBe(false)
-    expect(applyMove(landed, { type: 'land', planetId: 'lirta-iv', infantryIds: left }, 5).ok).toBe(false)
+    expect(applyMove(landed, { type: 'land', planetId: 'lirtaiv', infantryIds: left }, 5).ok).toBe(false)
   })
   it('R4.3 step 3: a planet is landed on only once per invasion', () => {
     const base = invasion('bereg', ['carrier'], 4)   // empty planets, so nothing starts a ground combat
@@ -195,8 +204,8 @@ describe('R4.3 invasion', () => {
     expect(landed.tactical?.invasion?.planetId).toBe('bereg')
     const left = carriedIds(landed, 'bereg', 0)
     expect(applyMove(landed, { type: 'land', planetId: 'bereg', infantryIds: left }, 5).ok).toBe(false)
-    expect(landablePlanets(landed).map(l => l.planetId)).toEqual(['lirta-iv'])
-    expect(applyMove(landed, { type: 'land', planetId: 'lirta-iv', infantryIds: left }, 5).ok).toBe(true)
+    expect(landablePlanets(landed).map(l => l.planetId)).toEqual(['lirtaiv'])
+    expect(applyMove(landed, { type: 'land', planetId: 'lirtaiv', infantryIds: left }, 5).ok).toBe(true)
   })
   it('the enumerators mirror the validators exactly: every enumerated move is legal', () => {
     const seed = 7
@@ -227,7 +236,8 @@ describe('R4.3 invasion', () => {
 
 describe('R4.3: the invasion step only opens when there is something to invade', () => {
   const activate = (state: GameState, systemId: string) => {
-    const r = applyMove(state, { type: 'startTactical', systemId }, 0)
+    const effSysId = resolveTestSystemId(state, systemId)
+    const r = applyMove(state, { type: 'startTactical', systemId: effSysId }, 0)
     if (!r.ok) throw new Error(r.error)
     return r.value
   }
@@ -237,36 +247,58 @@ describe('R4.3: the invasion step only opens when there is something to invade',
     return r.value.tactical?.step
   }
   it('skips it when only ships arrive and there is nothing on the ground', () => {
-    const moved = activate(toActionPhase(), 'bereg')
-    const carrier = shipId(moved, 'home-n', 'carrier')
-    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: 'home-n', carrying: [] }] }, 0)
+    const beregSys = resolveTestSystemId(toActionPhase(), 'bereg')
+    const startSys = toActionPhase().systems[beregSys].neighbours[0]
+    const base = withUnits(toActionPhase(), startSys, 0, ['carrier'])
+    const moved = activate(base, 'bereg')
+    const carrier = shipId(moved, startSys, 'carrier')
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: startSys, carrying: [] }] }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(step(r.value)).toBe('done')
   })
   it('opens it when infantry came along', () => {
-    const moved = activate(toActionPhase(), 'bereg')
-    const carrier = shipId(moved, 'home-n', 'carrier')
-    const troops = groundIds(moved, 'home-n', '000').slice(0, 2)
-    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: 'home-n', carrying: troops }] }, 0)
+    const beregSys = resolveTestSystemId(toActionPhase(), 'bereg')
+    const startSys = toActionPhase().systems[beregSys].neighbours[0]
+    const base = withUnits(toActionPhase(), startSys, 0, ['carrier', 'infantry', 'infantry'])
+    const moved = activate(base, 'bereg')
+    const carrier = shipId(moved, startSys, 'carrier')
+    const troops = moved.systems[startSys].space.filter(u => u.type === 'infantry' && u.owner === 0).map(u => u.id)
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: startSys, carrying: troops }] }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(step(r.value)).toBe('invasion')
   })
   it('opens it when an enemy planet in the system can be bombarded', () => {
+    const beregSys = resolveTestSystemId(toActionPhase(), 'bereg')
+    const startSys = toActionPhase().systems[beregSys].neighbours[0]
     const held = withPlanetOwner(withUnits(toActionPhase(), 'bereg', 1, ['infantry'], 'bereg'), 'bereg', 'bereg', 1)
-    const moved = activate(held, 'bereg')
-    const dread = shipId(moved, 'home-n', 'dreadnought')
-    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: dread, from: 'home-n', carrying: [] }] }, 0)
+    const base = withUnits(held, startSys, 0, ['dreadnought'])
+    const moved = activate(base, 'bereg')
+    const dread = shipId(moved, startSys, 'dreadnought')
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: dread, from: startSys, carrying: [] }] }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(step(r.value)).toBe('invasion')
   })
   it('goes to production when the system has a space dock of yours', () => {
-    expect(step(activate(toActionPhase(), 'home-n'))).toBe('production')
+    const homeSys = resolveTestSystemId(toActionPhase(), 'home-n')
+    expect(step(activate(toActionPhase(), homeSys))).toBe('production')
   })
-  it('opens invasion step on Mecatol Rex when Custodians token remains and player arrives with ships', () => {
-    const s = activate(toActionPhase(), 'mecatol')
-    const dread = shipId(s, 'home-n', 'dreadnought')
-    const r = applyMove(s, { type: 'moveShips', moves: [{ unitId: dread, from: 'home-n', carrying: [] }] }, 0)
+  it('opens invasion step on Mecatol Rex when Custodians token remains and player arrives with ground forces (LRR 28.2)', () => {
+    const mecatolAdj = toActionPhase().systems['mecatol'].neighbours[0]
+    const base = withUnits(toActionPhase(), mecatolAdj, 0, ['carrier', 'infantry', 'infantry'])
+    const s = activate(base, 'mecatol')
+    const carrier = shipId(s, mecatolAdj, 'carrier')
+    const troops = s.systems[mecatolAdj].space.filter(u => u.type === 'infantry' && u.owner === 0).map(u => u.id)
+    const r = applyMove(s, { type: 'moveShips', moves: [{ unitId: carrier, from: mecatolAdj, carrying: troops }] }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(step(r.value)).toBe('invasion')
+  })
+  it('skips invasion step on Mecatol Rex when Custodians token remains and player arrives with no ground forces (LRR 28.2)', () => {
+    const mecatolAdj = toActionPhase().systems['mecatol'].neighbours[0]
+    const base = withUnits(toActionPhase(), mecatolAdj, 0, ['dreadnought'])
+    const s = activate(base, 'mecatol')
+    const dread = shipId(s, mecatolAdj, 'dreadnought')
+    const r = applyMove(s, { type: 'moveShips', moves: [{ unitId: dread, from: mecatolAdj, carrying: [] }] }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(step(r.value)).toBe('done')
   })
 })

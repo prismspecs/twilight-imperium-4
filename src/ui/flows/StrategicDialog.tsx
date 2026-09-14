@@ -401,8 +401,8 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
           <>
             <div className="sub">Research 1 technology. Optionally spend 6 resources to research 1 additional technology.</div>
             <Rewards items={[
-              { icon: techId ? techArtUrl(techId) : strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Tech #1' },
-              ...(secondTechEnabled && secondTechId ? [{ icon: techArtUrl(secondTechId), alt: techLabel(secondTechId), count: 1, label: techLabel(secondTechId) }] : []),
+              { icon: (techId ? techArtUrl(techId) : null) ?? strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Tech #1' },
+              ...(secondTechEnabled && secondTechId ? [{ icon: techArtUrl(secondTechId) ?? strategyCardUrl('technology'), alt: techLabel(secondTechId), count: 1, label: techLabel(secondTechId) }] : []),
             ]} />
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px', margin: '10px 0 8px' }}>
