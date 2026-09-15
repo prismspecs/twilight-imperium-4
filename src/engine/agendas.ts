@@ -12,7 +12,7 @@ import { voteOrder } from './strategyPhase'
 import { victoryCheck } from './statusPhase'
 import { isShip } from '../data/units'
 import { neighbours } from './adjacency'
-import type { AgendaRound, GameState, LogEntry, Move, Planet, Result, Seat, UnitType } from './types'
+import type { AgendaRound, GameState, LogEntry, Move, Planet, Result, Seat, Unit, UnitType } from './types'
 
 /** Unit destruction order for automated loss choices (cheapest first). */
 const UNIT_DESTRUCTION_ORDER: readonly UnitType[] = [
@@ -403,27 +403,29 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
   },
   arms_reduction: (state, _agenda, outcome) => {
     let next = state
-    const players = [...state.players] as GameState['players']
     for (const seat of state.players.map((_, i) => i as Seat)) {
       if (outcome === 'For') {
-        // For: destroy all but 2 dreadnoughts and all but 4 cruisers
+        // For: destroy all but 2 dreadnoughts and all but 4 cruisers. destroyUnits (LRR 17.6) returns the
+        // ships to the reinforcements, and trimCargo destroys the fighters or infantry whose capacity
+        // died with them — the same cleanup the end of a combat applies (R4.1 step 4). The resolver
+        // returns `next` itself: a stale players snapshot here would silently discard those returns.
         for (const [sysId, sys] of Object.entries(next.systems)) {
-          const sysObj = { ...sys, space: [...sys.space] }
           let ddsLeft = 2
           let cruisersLeft = 4
-          sysObj.space = sys.space.filter(u => {
-            if (u.owner !== seat) return true
+          const destroyed: Unit[] = []
+          for (const u of sys.space) {
+            if (u.owner !== seat) continue
             if (u.type === 'dreadnought') {
-              if (ddsLeft > 0) { ddsLeft--; return true }
-              return false
+              if (ddsLeft > 0) { ddsLeft--; continue }
+              destroyed.push(u)
+              continue
             }
             if (u.type === 'cruiser') {
-              if (cruisersLeft > 0) { cruisersLeft--; return true }
-              return false
+              if (cruisersLeft > 0) { cruisersLeft--; continue }
+              destroyed.push(u)
             }
-            return true
-          })
-          next = { ...next, systems: { ...next.systems, [sysId]: sysObj } }
+          }
+          if (destroyed.length) next = trimCargo(destroyUnits(next, sysId, destroyed), sysId, seat)
         }
       } else {
         // Against: exhaust planets with tech specialties
@@ -434,7 +436,7 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
         }
       }
     }
-    return { ...next, players }
+    return next
   },
   shard_of_the_throne: (state, _agenda, outcome) => {
     // Elect Player: the elected player gains this card and 1 victory point.

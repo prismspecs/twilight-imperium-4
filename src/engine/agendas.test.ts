@@ -509,6 +509,29 @@ describe('R10 resolvers', () => {
     expect(dds).toHaveLength(2)
   })
 
+  it('Arms Reduction For: the destroyed dreadnoughts return to the reinforcements (LRR 17.6)', () => {
+    const base = toActionPhase()
+    const before = base.players[0].reinforcements.dreadnought
+    const boardBefore = Object.values(base.systems).flatMap(sys => sys.space).filter(u => u.type === 'dreadnought' && u.owner === 0).length + 5
+    const systems = { ...base.systems }
+    const sys0 = systems[homeSystemOf(base, 0)]
+    systems[homeSystemOf(base, 0)] = {
+      ...sys0, space: [
+        ...sys0.space,
+        ...([0, 1, 2, 3, 4] as const).map(i => ({ id: base.nextUnitId + i, type: 'dreadnought' as const, owner: 0 as const, damaged: false })),
+      ],
+    }
+    let s = deepFreeze({ ...base, systems })
+    s = deepFreeze({ ...toAgendaPhase(s, 'arms_reduction'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    const boardAfter = Object.values(s.systems).flatMap(sys => sys.space).filter(u => u.type === 'dreadnought' && u.owner === 0).length
+    // every dreadnought the agenda removed from the board is back in the reinforcements, not vanished
+    expect(s.players[0].reinforcements.dreadnought).toBe(before + (boardBefore - boardAfter))
+    const total = boardAfter + s.players[0].reinforcements.dreadnought
+    expect(total).toBe(before + boardBefore)
+  })
+
   it('Elect-Player law cards (Imperial Arbiter, ministries) record their owner and activate the law', () => {
     let s = deepFreeze({ ...toAgendaPhase(toActionPhase(), 'imperial_arbiter'), agendaDeck: [] as string[] })
     s = value(vote(s, '1', []))
