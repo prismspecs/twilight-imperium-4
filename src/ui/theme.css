@@ -3507,6 +3507,25 @@ button { font-family: inherit; }
   border: 1px solid var(--alpha-frame);
   border-radius: var(--radius-sm);
 }
+/* R9: a system beyond current reach that a held card (Flank Speed, Lost Star Chart, ...) would put in
+   range -- same badge slot as .noreach, but it names the way in instead of closing the door. */
+.canreach {
+  position: absolute;
+  left: 50%; bottom: 6px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-title);
+  line-height: 16px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: #86efac;
+  padding: 0 7px;
+  background: var(--deep-space-surface);
+  border: 1px solid rgba(74, 222, 128, 0.40);
+  border-radius: var(--radius-sm);
+}
 .canproduce {
   position: absolute;
   left: 50%; bottom: 6px;

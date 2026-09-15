@@ -7,7 +7,8 @@ import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
 import { FloatingRightDeck } from '../hud/FloatingRightDeck'
-import { actingSeat, pendingReaction, productionLimit, reactingSeat, shipsThatCanReach } from '../../engine'
+import { actingSeat, pendingReaction, productionLimit, reactingSeat } from '../../engine'
+import { reachPreview } from '../reach'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import { FLOWER_MAP_SIZE, GALAXY_MAP_SIZE } from '../layout'
@@ -306,11 +307,13 @@ export function BoardScreen() {
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
   // R3.2: activating a system your ships cannot enter and where you have no space dock to produce is
-  // legal but usually a mistake, so the board says so before the click
+  // legal but usually a mistake, so the board says so before the click — but only when NO card or
+  // unexhausted tech in hand would put a ship in range: Flank Speed is played into the activation's own
+  // reaction window, so a system in Flank Speed range is exactly the one the player must be able to choose.
   const outOfReach = selectable.filter(id => {
-    const canReach = shipsThatCanReach(state, state.active, id).length > 0
+    const reach = reachPreview(state, state.active, id)
     const canProduce = productionLimit(state, state.active, id) > 0
-    return !canReach && !canProduce
+    return !reach.reachable && reach.via.length === 0 && !canProduce
   })
   const isAiTurn = isAi(session.config, state.active)
   const isMyTurn = humanSeat !== undefined ? state.active === humanSeat : !isAiTurn
@@ -425,11 +428,13 @@ export function BoardScreen() {
             highlightedSystemId={highlightedSystemId}
             onSelect={systemId => {
               const diag = diagnoseMovement(state, state.active, systemId)
+              const reach = reachPreview(state, state.active, systemId)
               logInfo('Tactical', `Tile clicked: ${systemId} in mode=${mode ?? 'idle'} (seat ${state.active})`, {
-                outOfReach: outOfReach.includes(systemId),
+                outOfReach: !reach.reachable && reach.via.length === 0,
+                reachableVia: reach.via.length ? reach.via : undefined,
                 diagnostics: diag,
               })
-              if (outOfReach.includes(systemId)) {
+              if (!reach.reachable && reach.via.length === 0) {
                 logWarn('Tactical', `System ${systemId} has 0 reachable ships for seat ${state.active}`, diag)
               }
               if (apply({ type: 'startTactical', systemId })) setMode(null)

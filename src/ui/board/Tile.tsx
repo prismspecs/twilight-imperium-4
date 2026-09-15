@@ -7,7 +7,8 @@ import {
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import { diagnoseMovement } from '../debugLogger'
-import { productionLimit, shipsThatCanReach } from '../../engine'
+import { productionLimit } from '../../engine'
+import { reachPreview } from '../reach'
 import { FACTIONS } from '../../data/factions'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
@@ -175,7 +176,11 @@ export function Tile({
   const guardians = system.space.some(u => u.owner === 'guardian')
   const reachDiag = selectable && outOfReach ? diagnoseMovement(state, state.active, system.id).join('\n') : undefined
   const canProduce = selectable && productionLimit(state, state.active, system.id) > 0
-  const canReach = selectable && shipsThatCanReach(state, state.active, system.id).length > 0
+  // R9: when no ship reaches as things stand but a held card would extend reach (Flank Speed is played into
+  // this very activation's reaction window), the tile says so instead of claiming there is no ship in range.
+  const reach = selectable ? reachPreview(state, state.active, system.id) : { reachable: false, via: [] }
+  const canReach = selectable && reach.reachable
+  const reachVia = selectable && !reach.reachable ? reach.via : []
   const pointerDown = useRef<{ x: number; y: number } | null>(null)
   const activeColor = state.players[state.active] ? COLOUR_INK[state.players[state.active].color] : undefined
   const tileStyle: CSSProperties = {
@@ -198,9 +203,9 @@ export function Tile({
     ? (activate
       ? (canProduce && !canReach
         ? `Activate ${system.name} to produce`
-        : `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}`)
+        : `Activate ${system.name}${reachVia.length ? `, in range with ${reachVia.join(' or ')}` : outOfReach ? ', no ship in range' : ''}`)
       : `View ${system.name}${isPlayerHome ? ' (Your home system)' : ''}`)
-    : (isPlayerHome ? `Your home system: ${system.name}` : undefined)
+    : (isPlayerHome ? 'Your home system: ' + system.name : undefined)
   const titleText = reachDiag ?? (isPlayerHome ? `Your Home System (${system.name})` : undefined)
   return (
     <div
@@ -344,6 +349,9 @@ export function Tile({
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
       {selectable && outOfReach ? (
         <span className="noreach" data-testid={`noreach-${system.id}`}>No ship in range</span>
+      ) : null}
+      {selectable && reachVia.length ? (
+        <span className="canreach" data-testid={`canreach-${system.id}`}>In range with {reachVia.join(' or ')}</span>
       ) : null}
       {selectable && canProduce && !canReach ? (
         <span className="canproduce" data-testid={`canproduce-${system.id}`}>Produce here</span>
