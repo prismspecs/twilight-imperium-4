@@ -134,7 +134,10 @@ function independentReach(state: GameState, seat: Seat, fromId: string, toId: st
     if (anoms.includes('supernova') && faction !== 'muaat') return false
     if (anoms.includes('asteroid_field') && !antimass) return false
     if (!destination && anoms.includes('nebula') && !sharedResearch) return false
-    if (!destination && !enforcedTravelBan && sys.space.some(u => u.owner !== seat && isShip(u.type))) return false
+    // R9 In The Silence Of Space: the seat's ships starting in the system the card named ignore fleets on
+    // the whole path, so the waypoint block does not apply to this move (effects.ts ignoresFleets).
+    const silence = state.effects.some(e => e.seat === seat && e.effect === 'in_the_silence_of_space' && e.scope === 'tactical' && e.systemId === fromId)
+    if (!destination && !enforcedTravelBan && !silence && sys.space.some(u => u.owner !== seat && isShip(u.type))) return false
     return true
   }
 
@@ -229,12 +232,16 @@ class GameMonitor {
           `seat ${p.seat} (${p.faction}) holds duplicates: ${[...new Set(dupes)].join(', ')} — techs list has ${p.techs.length} entries`)
       }
     }
-    // VP never drops (LRR 25; the only VP loss is losing a Holy Planet of Ixth transfer).
+    // VP never drops (LRR 25) — except the 1 VP a Shard of the Throne / Crown of Emphidia transfer takes
+    // from the previous owner (game-rules.md 9.3; the log line names the transfer).
     for (const p of after.players) {
       const b = before.players[p.seat]
       if (b && p.vp < b.vp) {
-        this.record(p.seat, after.phase, mj, 'vp-decreased', 'LRR 25 (victory points)',
-          `seat ${p.seat} VP went ${b.vp} → ${p.vp}`)
+        const transferred = after.log.slice(before.log.length).some(e => e.t === 'info' && /transfers to /.test(e.text))
+        if (!(transferred && b.vp - p.vp === 1)) {
+          this.record(p.seat, after.phase, mj, 'vp-decreased', 'LRR 25 (victory points)',
+            `seat ${p.seat} VP went ${b.vp} → ${p.vp}`)
+        }
       }
     }
     // Unit identities unique; nextUnitId beyond all of them.
