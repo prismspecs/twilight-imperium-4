@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
+import { destroyUnits } from './board'
+import { capacity } from './economy'
 import { carriedIds, deepFreeze, hitsIn, resolveTestSystemId, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Seat, UnitType } from './types'
 
@@ -302,3 +304,21 @@ describe('R4.3: the invasion step only opens when there is something to invade',
     expect(step(r.value)).toBe('done')
   })
 })
+
+  it('destroying a space dock trims the orphaned fighters its free slots were covering (LRR 91, R4.1 step 4)', () => {
+    const sysId = resolveTestSystemId(toActionPhase(), 'home-0')
+    const s = withUnits(toActionPhase(), 'home-0', 0, ['spacedock', 'fighter', 'fighter', 'fighter', 'fighter'])
+    const fightersBefore = s.systems[sysId].space.filter(u => u.type === 'fighter' && u.owner === 0).length
+    const dock = s.systems[sysId].planets.flatMap(p => p.structures).find(u => u.type === 'spacedock' && u.owner === 0)
+    if (!dock) throw new Error('no dock in the fixture')
+    const after = destroyUnits(s, sysId, [dock])
+    const fighters = after.systems[sysId].space.filter(u => u.type === 'fighter' && u.owner === 0)
+    // without the dock's free slots the survivors fit the remaining ships' capacity exactly
+    const stats = { faction: after.players[0].faction, techs: after.players[0].techs }
+    const capAfter = capacity(after.systems[sysId].space, 0, stats)
+    expect(fighters.length).toBeLessThan(fightersBefore)
+    expect(fighters).toHaveLength(Math.min(fightersBefore, capAfter))
+    // the dock and every trimmed fighter are back in the reinforcements (LRR 17.6)
+    expect(after.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + (fightersBefore - fighters.length))
+    expect(after.players[0].reinforcements.spacedock).toBe(s.players[0].reinforcements.spacedock + 1)
+  })

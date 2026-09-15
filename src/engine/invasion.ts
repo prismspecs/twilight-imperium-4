@@ -2,7 +2,7 @@ import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
 import { transferCrownRoyalLaws } from './agendas'
 import { isDemilitarizedZone } from './lawEffects'
-import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
+import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus, trimCargo } from './board'
 import { cheapestInfluencePlanets, hasOwnDock, payInfluence } from './economy'
 import { moraleBoost } from './effects'
 import { addVp } from './objectives'
@@ -269,7 +269,12 @@ function resolveControl(state: GameState, systemId: string, planetId: string, se
     systems: finalSystems,
     log: [...state.log, ...extraLogs],
   }
-  return prevOwner !== null ? transferCrownRoyalLaws(result, planetId, seat, prevOwner) : result
+  const withLaws = prevOwner !== null ? transferCrownRoyalLaws(result, planetId, seat, prevOwner) : result
+  // R4.1 step 4: the loser's destroyed space dock took its free fighter slots with it — trim every fleet
+  // left in the system against the capacity that is left, the same cleanup the end of a combat applies.
+  let trimmed = withLaws
+  for (let s = 0; s < trimmed.players.length; s++) trimmed = trimCargo(trimmed, systemId, s)
+  return trimmed
 }
 
 export function bombard(state: GameState, planetId: string, seed: number): Result<GameState> {

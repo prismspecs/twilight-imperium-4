@@ -90,7 +90,14 @@ export function returnToReinforcements(state: GameState, units: Unit[]): GameSta
 
 export function destroyUnits(state: GameState, systemId: string, units: Unit[]): GameState {
   if (!units.length) return state
-  return returnToReinforcements(removeUnits(state, systemId, units.map(u => u.id)), units)
+  const removed = removeUnits(state, systemId, units.map(u => u.id))
+  let next = returnToReinforcements(removed, units)
+  // LRR 91: a destroyed space dock took its free fighter slots with it — trim every fleet left in the
+  // system against the capacity that is left, the same cleanup the end of a combat applies (R4.1 step 4).
+  if (units.some(u => u.type === 'spacedock')) {
+    for (let seat = 0; seat < next.players.length; seat++) next = trimCargo(next, systemId, seat)
+  }
+  return next
 }
 
 /** Cheapest-first order for destroying non-fighter ships when a fleet pool shrinks (R4.4 retreat logic). */
