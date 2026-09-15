@@ -3,16 +3,13 @@ import { FACTIONS } from '../data/factions'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { ACTION_SPENT } from './actionPhase'
-import { checkFleet, homeSystemOf, returnToReinforcements, shipsOf } from './board'
-import { cheapestPayment, distributeTokens, exhaustPlanets, fleetPoolLimit, nonFighterShips, payCost } from './economy'
+import { checkFleet, homeSystemOf } from './board'
+import { cheapestPayment, distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch, colourCounts, exhaustTechSkipPlanets } from './research'
 import { techDef } from '../data/techs'
-import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor, UnitType } from './types'
-
-/** The cost order for non-fighter ships, matching the combat module's logic. */
-const NON_FIGHTER_ORDER: readonly UnitType[] = (['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun'] as const).filter(t => t !== 'fighter')
+import type { GameState, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
 
 /** Maps research team IDs to the tech color they ignore. */
 const RESEARCH_TEAM_COLORS: Readonly<Record<string, TechColor>> = {
@@ -271,26 +268,18 @@ function warfarePrimary(state: GameState, seat: Seat, params: StrategicParams): 
 }
 
 /**
- * R4.4/R6: Warfare is the only card that may shrink the fleet pool, so the resulting sheet has to still carry
- * every fleet already on the board. If a system would exceed the fleet pool, the cheapest excess non-fighter
- * ships are destroyed automatically (matching the R3.2 retreat logic).
+ * R4.4/R6: Warfare is the only card that may shrink the fleet pool, so the resulting sheet has to still
+ * carry every fleet already on the board (LRR 27.2). A redistribution that would strand a fleet over its
+ * pool is rejected — the player picks a distribution that supports their fleets, the way the physical game
+ * forces it; the engine never destroys ships the player did not choose to lose.
  */
 function withFleetPoolIntact(result: Result<GameState>, seat: Seat): Result<GameState> {
   if (!result.ok) return result
-  let next = result.value
+  const next = result.value
   for (const sys of Object.values(next.systems)) {
     if (!sys.space.some(u => u.owner === seat)) continue
-    const excess = nonFighterShips(sys.space, seat) - fleetPoolLimit(next.players[seat])
-    if (excess > 0) {
-      // Destroy the cheapest excess non-fighter ships
-      const victims = NON_FIGHTER_ORDER.flatMap(t => shipsOf(sys, seat).filter(u => u.type === t)).slice(0, excess)
-      if (victims.length) {
-        next = { ...next, systems: { ...next.systems, [sys.id]: { ...sys, space: sys.space.filter(u => !victims.find(v => v.id === u.id)) } } }
-        next = returnToReinforcements(next, victims)
-        next = { ...next, log: [...next.log, { t: 'info', text: `${victims.length} ships beyond the fleet pool are destroyed in ${sys.id}` }] }
-      }
-    }
-    if (!checkFleet(next, seat, sys.id).ok) return { ok: false, error: `R4.4: redistribution would exceed the fleet pool in ${sys.id}` }
+    const fleet = checkFleet(next, seat, sys.id)
+    if (!fleet.ok) return { ok: false, error: `R4.4: the redistribution would leave your fleet in ${sys.id} over its pool or capacity` }
   }
   return { ok: true, value: next }
 }
