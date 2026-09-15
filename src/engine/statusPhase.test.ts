@@ -46,17 +46,26 @@ describe('R3.3 status phase', () => {
     expect(done.players[0].vp).toBe(1)                               // the objective (no passive Mecatol VP in base game)
     expect(done.players[0].scoredObjectives).toEqual(['lead_from_the_front'])
     expect(done.players[1].vp).toBe(0)
-    const second = bothSubmit(toStatusPhase({ ...done, phase: 'action' }))
+    // a fresh deck card keeps the next phase's reveal alive (a dry deck would end the game, LRR 2896.8)
+    const second = bothSubmit(toStatusPhase({ ...done, phase: 'action', objectiveOrder: [...done.objectiveOrder, 'expand_borders'] }))
     expect(second.players[0].vp).toBe(1)                             // does not score again
   })
-  it('R3.3 step 2: the next objective off the shuffled pool is revealed, none once it runs out', () => {
+  it('R3.3 step 2: the next objective off the shuffled pool is revealed once at the phase start, and a dry deck ends the game before scoring', () => {
     const start = toActionPhase()
+    // setup revealed order[0] and order[1] (LRR 1785); the phase's first status move reveals order[2]
     const done = bothSubmit(toStatusPhase(start))
-    expect(done.publicObjectives).toEqual([start.objectiveOrder[0], start.objectiveOrder[1]])
+    expect(done.publicObjectives).toEqual([start.objectiveOrder[0], start.objectiveOrder[1], start.objectiveOrder[2]])
     expect(done.round).toBe(2)
-    const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 8, objectiveOrder: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }))
-    expect(late.publicObjectives).toHaveLength(8)
-    expect(late.phase).toBe('ended')
+    // a dry deck: every card revealed — the phase's first status move ends the game with the most-VP
+    // player ahead and scores nothing (LRR 2896.8)
+    const dry = { ...toActionPhase(), round: 8, objectiveOrder: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }
+    const late = toStatusPhase(dry)
+    const lateSeat = late.active
+    const lateTokens = late.players[lateSeat].tokens
+    const ended = value(submit(late, { tokens: { ...lateTokens, tactic: lateTokens.tactic + tokensGained(late, lateSeat) } }))
+    expect(ended.phase).toBe('ended')
+    expect(ended.publicObjectives).toHaveLength(8)
+    expect(ended.players[0].scoredObjectives).toEqual([])
   })
   it('R3.3 step 4/R3.1: planets and cards ready, played cards return at 0, unpicked keep their bonus', () => {
     const base = toActionPhase()
@@ -102,9 +111,13 @@ describe('R3.3 status phase', () => {
     const open = bothSubmit(toStatusPhase(withPlayer(toActionPhase(), 1, { vp: 9 })))
     expect(open.phase).toBe('strategy')
     expect(open.winner).toBeNull()
-    const last = bothSubmit(toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 10, objectiveOrder: toActionPhase().objectiveOrder.slice(0, 10), publicObjectives: toActionPhase().objectiveOrder.slice(0, 10) }))
+    const dryState = toStatusPhase({ ...withPlayer(toActionPhase(), 0, { vp: 2 }), round: 10, objectiveOrder: toActionPhase().objectiveOrder.slice(0, 10), publicObjectives: toActionPhase().objectiveOrder.slice(0, 10) })
+    const drySeat = dryState.active
+    const dryTokens = dryState.players[drySeat].tokens
+    const last = value(submit(dryState, { tokens: { ...dryTokens, tactic: dryTokens.tactic + tokensGained(dryState, drySeat) } }))
     expect(last.phase).toBe('ended')
     expect(last.winner).toBe(0)
+    expect(last.players[0].scoredObjectives).toEqual([])   // the dry phase scores nothing (LRR 2896.8)
   })
   it('R7: the tie-break chain is Mecatol Rex, then planets, then the speaker\'s opponent', () => {
     const tied = withPlayer(withPlayer(toActionPhase(), 0, { vp: 4 }), 1, { vp: 4 })
@@ -119,7 +132,7 @@ describe('R3.3 status phase', () => {
   it('R7: both players reach 10 VP in the same status phase through real submissions, tie-break decides', () => {
     let s = withPlayer(toActionPhase(), 0, { vp: 9, tokensSpentThisRound: 3 })
     s = withPlayer(s, 1, { vp: 9, tokensSpentThisRound: 3 })
-    s = { ...s, publicObjectives: ['lead_from_the_front'], objectiveOrder: ['lead_from_the_front'] }
+    s = { ...s, publicObjectives: ['lead_from_the_front'], objectiveOrder: ['lead_from_the_front', 'corner_the_market'] }
     s = withPlanetOwner(s, 'mecatol', 'mr', 0)                // tie-break will favor Mecatol Rex controller
     const done = bothSubmit(toStatusPhase(s))
     expect(done.players[0].vp).toBe(10)                               // 9 + 1 for lead_from_the_front

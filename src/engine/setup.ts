@@ -124,7 +124,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     version: 5, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft,
-    publicObjectives: [order[0]],
+    publicObjectives: [order[0], order[1]],
     objectiveOrder: order,
     secretObjectiveDeck: secretDeck.slice(config.players.length),
     actionCardDeck: shuffledActionCards(seed),

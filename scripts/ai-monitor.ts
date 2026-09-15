@@ -344,8 +344,7 @@ class GameMonitor {
     if (after.phase === 'ended' && after.winner !== null) {
       const w = after.players[after.winner]
       const deckExhausted = after.objectiveOrder.length > 0 &&
-        after.publicObjectives.length >= after.objectiveOrder.length &&
-        after.objectiveOrder[after.round] === undefined
+        after.publicObjectives.length >= after.objectiveOrder.length
       if (w && w.vp < 10 && !deckExhausted) {
         this.record(after.winner, after.phase, mj, 'win-below-10', 'LRR 2895 (10 VP wins)',
           `game ended with seat ${after.winner} at ${w.vp} VP and the objective deck is not exhausted`)

@@ -434,11 +434,12 @@ describe('scoring and deck setup', () => {
     expect(order1).not.toEqual(order2)
   })
 
-  it('createGame reveals 1 Stage I objective at setup', () => {
+  it('createGame reveals 2 Stage I objectives at setup (LRR 1785: the speaker reveals two at setup)', () => {
     const game = createGame(BASE_CONFIG, 7)
     expect(game.objectiveOrder).toHaveLength(10)
-    expect(game.publicObjectives).toEqual([game.objectiveOrder[0]])
+    expect(game.publicObjectives).toEqual([game.objectiveOrder[0], game.objectiveOrder[1]])
     expect(objectiveDef(game.publicObjectives[0])?.stage).toBe('stage1')
+    expect(objectiveDef(game.publicObjectives[1])?.stage).toBe('stage1')
   })
 
   it('scoreObjective adds 1 VP for Stage I and 2 VP for Stage II', () => {

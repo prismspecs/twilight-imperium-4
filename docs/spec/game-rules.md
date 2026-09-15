@@ -11,7 +11,7 @@ Verified faction, unit, technology and tile data live in `data/reference/*.json`
 - Strategy cards: all 8 base-game cards — Leadership 1, Diplomacy 2, Politics 3, Construction 4, Trade 5, Warfare 6, Technology 7, Imperial 8. Text verified against the AsyncTI4 catalogue (`source: "base"`) with Codex errata applied, recorded in `src/data/strategyCards`/the strategy-phase module.
 - Command tokens: three pools (tactic, fleet, strategy); start 3 / 3 / 2. Fleet pool limits non-fighter ships per system (faction bonuses apply, e.g. Letnev Armada +2).
 - Trade goods and commodities: commodity value per faction sheet; trade goods replenish via the Trade card.
-- Objectives: 20 public objectives — 10 Stage I (1 VP) and 10 Stage II (2 VP) — shuffled from the seed, one revealed per round (rounds 1–5; round 6 reveals none) — plus secret objectives and promissory notes.
+- Objectives: the public objective deck samples 5 Stage I (1 VP) and 5 Stage II (2 VP) from the 20 at setup; two Stage I are revealed at setup (LRR 1785) and one more at the start of every status phase; a dry deck ends the game immediately with the most-VP player the winner (LRR 2896.8) — plus secret objectives and promissory notes.
 - Victory: first to 10 VP wins.
 
 See `docs/spec/lrr.md` for the full glossary of every term used below.
@@ -47,7 +47,7 @@ Component action: an action granted by a card or faction ability played by the p
 
 ### 3.3 Status phase
 1. Score: each player may score each public objective they fulfil (once per objective per game) and 1 VP for controlling Mecatol Rex.
-2. Reveal the next public objective (rounds 1 to 5; round 6 has none).
+2. Reveal the next facedown public objective (stage I before stage II, LRR 1789); if every public objective is already revealed the game ends immediately with the most-VP player the winner (LRR 2896.8).
 3. Each player gains two command tokens (Hyper Metabolism: three) and may redistribute their entire command sheet.
 4. Ready all cards and planets, return strategy cards, remove command tokens from the map.
 5. If Mecatol Rex is uncontrolled, roll a new guardian fleet.
@@ -85,7 +85,7 @@ Research via the Technology strategy card (and faction/component actions). Prere
 Each of the 17 base factions has its abilities per its faction sheet (`data/reference/factions.json`, `data/reference/techs.json` for faction techs, and the faction-clarification notes in `docs/spec/lrr-factions.md`). Faction abilities, starting fleets, faction technologies, promissory notes and flagships are implemented per the sheet; the engine applies the printed modifiers (e.g. combat-roll modifiers, fleet-pool bonuses, production bonuses).
 
 ## 7. Objectives and victory
-- Public objectives: 20 total (10 Stage I worth 1 VP, 10 Stage II worth 2 VP), shuffled at setup, one revealed per round (rounds 1–5; round 6 reveals none). Fully listed in `src/data/objectives.ts` and `docs/spec/lrr-components.md` (Objectives).
+- Public objectives: 20 total (10 Stage I worth 1 VP, 10 Stage II worth 2 VP); the deck samples 5 + 5 at setup, reveals two Stage I at setup and one per status phase (LRR 1785, 1787), and a dry deck ends the game with the most-VP player winning (LRR 2896.8). Fully listed in `src/data/objectives.ts` and `docs/spec/lrr-components.md` (Objectives).
 - Secret objectives: dealt at setup, scored once per player, worth 1 VP.
 - Mecatol Rex: 1 VP per status phase in which you control it; Imperial primary gives 1 VP immediately when you control it.
 - Promissory notes: Support For The Throne grants 1 VP to its holder while unresolved.

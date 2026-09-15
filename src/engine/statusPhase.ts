@@ -58,26 +58,16 @@ function seatAfter(state: GameState, seat: Seat): number {
 export function victoryCheck(state: GameState): Seat | null {
   const targetVp = 10
   if (state.players.some(p => p.vp >= targetVp)) return decideWinner(state)
-  const deckExhausted = state.objectiveOrder.length > 0 &&
-    state.publicObjectives.length >= state.objectiveOrder.length &&
-    state.objectiveOrder[state.round] === undefined
-  if (deckExhausted) return decideWinner(state)
+  // LRR 2896.8 (a dry objective deck ends the game with the most-VP player ahead) is decided at the
+  // status phase's reveal in `status()` — before any scoring — so nothing to check again here.
   return null
 }
 
 /** R3.3 steps 2 and 4 to 6: score-adjacent bookkeeping that runs whether or not the agenda phase follows. */
 function endOfRoundCleanup(state: GameState, seed: number): GameState {
   let next = state
-  // One objective off the shuffled pool per round
-  const nextId = state.objectiveOrder[state.round]
-  const revealed = nextId === undefined ? undefined : objectiveDef(nextId)
-  if (revealed && !next.publicObjectives.includes(revealed.id)) {
-    next = {
-      ...next,
-      publicObjectives: [...next.publicObjectives, revealed.id],
-      log: [...next.log, { t: 'info', text: `objective revealed: ${revealed.text}` }],
-    }
-  }
+  // (the round's public objective is revealed at the START of the status phase, in `status()` — LRR
+  // Status Phase step 1 — so the phase's scoring can use it)
   // R3.3 step 3: each player draws 1 action card, in turn order from the speaker
   for (let i = 0; i < next.players.length; i++) {
     next = drawActionCards(next, (next.speaker + i) % next.players.length, 1, deriveSeed(seed, 110 + i))
@@ -185,7 +175,32 @@ function applyBioplasmosis(before: GameState, state: GameState, seat: Seat, move
 // `statusSubmitted`, not by comparing the active seat against the speaker: a state that entered the phase on
 // the other seat still needs two moves, and no seat may submit twice.
 export function status(state: GameState, params: StatusParams, seed: number): Result<GameState> {
+  // (reassigned below with the phase's objective reveal, before any scoring)
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
+  // LRR Status Phase step 1: the speaker reveals the next facedown public objective BEFORE anyone scores,
+  // so the new objective is scoreable this same phase. It happens once, on the phase's first status move.
+  // LRR 2896.8 / Objectives 14: when every public objective card is already revealed the speaker cannot
+  // reveal and the game ends immediately — the player with the most victory points wins, and this status
+  // phase scores nothing.
+  if (state.statusSubmitted.length === 0) {
+    const nextReveal = state.objectiveOrder.find(id => !state.publicObjectives.includes(id))
+    if (nextReveal === undefined) {
+      const winner = decideWinner(state)
+      return {
+        ok: true,
+        value: {
+          ...state, phase: 'ended', winner, draft: [],
+          log: [...state.log, { t: 'info', text: `the objective deck is exhausted — ${state.players[winner].name} wins with ${state.players[winner].vp} VP` }],
+        },
+      }
+    }
+    const revealedDef = objectiveDef(nextReveal)
+    state = {
+      ...state,
+      publicObjectives: [...state.publicObjectives, nextReveal],
+      log: [...state.log, { t: 'info', text: `objective revealed: ${revealedDef?.text ?? nextReveal}` }],
+    }
+  }
   const seat = state.active
   if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
   // R3.3/Arborec Mitosis: "at the start of the status phase, place 1 infantry from your reinforcements
