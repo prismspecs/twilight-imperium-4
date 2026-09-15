@@ -101,3 +101,44 @@ Pre-existing on `main` (commit `7b0a667`), independent of the audit:
 
 All 12 games (seeds 1–12, three 6-faction sets) run to completion within the move budget. The only
 monitor findings left are the two half-wired laws above, which the engine states in its own log.
+
+## Follow-up session — 2026-09-15 (afternoon)
+
+The monitor kept running as the regression gate for new work; every fix below was verified against it
+(12–24 full games, zero findings after each).
+
+### Fixed
+
+- **Objective deck did not follow the LRR** — one objective revealed at setup instead of two (LRR 1785),
+  and the reveal at the end of the status phase instead of the start, so the deck dried two rounds late
+  and games ran to round 10: a player won with 9 VP through the "most victory points" end (LRR 2896.8)
+  two scoring rounds after the LRR says the game ends. Now: two Stage I revealed at setup, the reveal at
+  the status phase's start (scoreable the same phase), and a dry deck ends the game immediately before
+  scoring. Games last 8 scoring rounds and end during round 9's status phase.
+- **Losing a space dock stranded the orphaned fighters** — an invasion that took a home planet returned
+  the dock to the loser's reinforcements without trimming the fighters its free slots were covering; the
+  board then sat failing checkFleet for the rest of the game (339 flagged moves in one batch). Any dock
+  destruction now trims the fleets in its system (LRR 91, R4.1 step 4).
+- **Fleet Regulations For left over-pool fleets standing** — every fleet must fit the new pool before any
+  other effect resolves (lrr-components.md 2317); the cheapest excess ships are now destroyed and trimmed.
+- **Shard/Crown transfers drove VP negative** (LRR 25) — clamped at zero.
+- **The activation step closed doors a held card opens** — tiles in Flank Speed / Lost Star Chart /
+  In The Silence Of Space range were dimmed "No ship in range" because the warning ignored the seat's
+  hand; those cards are played into the activation's own reaction window, so the far system is exactly
+  the one the player must be able to choose. The board now says "In range with Flank Speed" instead.
+
+### Wired (were display-only)
+
+- **Xxcha Peace Accords** — after resolving Diplomacy, take control of an empty planet adjacent to one
+  you control (gained exhausted; Mecatol excluded while the custodians token stands; the FAQ's
+  explore-on-gain is not implemented and the log says so).
+- **Xxcha Transit Diodes** — component action relocating up to 4 ground forces from systems holding the
+  seat's command token (planet or space area) to planets they control; readies in the status phase.
+
+### UX
+
+- Seat manifest rebalanced (the commander column no longer hogs the row; faction dropdown fits its
+  longest name; fleet/techs get the room) and hovering a seat's faction shows the faction's full card
+  (17 faction sheets vendored from the TI4 wiki).
+- The Ixthian Artifact's Speaker die roll is now its own ceremonial block in the agenda result (large
+  value, glowing on a 6+, "the Artifact is silent" on a miss) instead of a line buried in the log box.

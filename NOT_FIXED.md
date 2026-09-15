@@ -10,6 +10,13 @@ Remaining (alphabetical by faction):
 - yin: indoctrination, devotion
 
 Known limitations of current wirings (rulings taken during execution, need design passes):
+- xxcha peace_accords: the Diplomacy takeover is wired (empty adjacent planet, gained exhausted, Mecatol
+  excluded while the custodians token stands); the FAQ's explore-on-gain is not — exploration cards are
+  not implemented, and the resolution log says so.
+- xxcha transit_diodes (faction tech) is wired end to end: component action, up to 4 ground forces from
+  systems holding the seat's command token (planet or space area) to planets the seat controls, readies
+  in the status phase. Placement beyond "planets you control" (the card's printed text) is untested against
+  the Codex wording, which may additionally require the destination in/near a tokened system.
 - arborec: the Letani Warriors' PRODUCTION ability (pooled, can build infantry without a dock,
   lrr-factions.md 39-43) is not implemented; neither are mechs (the dock-producible Letani Behemoth,
   lrr-factions.md 76). Mitosis itself (no dock-built infantry, mandatory status-phase placement) is wired.
