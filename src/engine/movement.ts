@@ -327,6 +327,9 @@ export function moveShips(state: GameState, specs: MoveSpec[], seed: number): Re
   }
   // Notes 3: removed ships (LRR Gravity Rift 2.3) go back to reinforcements, not to the destination.
   next = returnToReinforcements(next, removed)
+  // LRR 17.6: the blockaded Floating Factory was destroyed too, so it also returns to the reinforcements
+  // (the Saar may place it again later, e.g. through Construction).
+  if (abandoned) next = returnToReinforcements(next, [abandoned])
   // R3.2/16.2: fighters or infantry left behind by a departing ship are excess if the origin's remaining
   // ships can no longer carry them; trim them the same way a combat or retreat does.
   for (const from of new Set(specs.map(s => s.from))) next = trimCargo(next, from, seat)
