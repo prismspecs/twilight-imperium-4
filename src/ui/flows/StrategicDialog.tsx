@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { agendaDef } from '../../data/agendas'
 import { objectiveDef } from '../../data/objectives'
-import { cheapestPayment, constructionPlanets, controlsMecatol, isAi, readyResources, researchable } from '../../engine'
+import { cheapestPayment, constructionPlanets, controlsMecatol, isAi, peaceAccordsTargets, readyResources, researchable } from '../../engine'
 import { BADGE, MISC, spriteUrl, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
@@ -38,6 +38,8 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [dock, setDock] = useState<string | null>(null)
   const [firstPds, setFirstPds] = useState<string | null>(null)
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  // Xxcha Peace Accords: the empty planet this Diplomacy resolution takes over, or null to skip the ability
+  const [accordsPlanet, setAccordsPlanet] = useState<string | null>(null)
   useEscape(onClose)
   if (!session) return null
   const state = session.state
@@ -77,7 +79,10 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   function params(): StrategicParams {
     switch (card) {
       case 'leadership': return { planets, tradeGoods, tokens: sheet }
-      case 'diplomacy': return systemId ? { systemId, planets } : { planets }
+      case 'diplomacy': {
+        const accords = accordsPlanet ?? undefined
+        return systemId ? { systemId, planets, peaceAccordsPlanet: accords } : { planets, peaceAccordsPlanet: accords }
+      }
       case 'politics': return {
         speakerTo: speakerTo ?? undefined,
         agendaTop: peekOrder.filter(id => !agendaBottom.includes(id)),
@@ -198,6 +203,22 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
                 </button>
               ))}
             </div>
+            {player.faction === 'xxcha' && peaceAccordsTargets(state, seat).length > 0 ? (
+              <>
+                <div className="sub">Peace Accords: take control of an empty planet adjacent to one you control (gained exhausted).</div>
+                <div className="rowline">
+                  <button type="button" className={`pay${accordsPlanet === null ? ' on' : ''}`} data-testid="accords-none" onClick={() => setAccordsPlanet(null)}>
+                    Skip
+                  </button>
+                  {peaceAccordsTargets(state, seat).map(planetId => (
+                    <button key={planetId} type="button" className={`pay${accordsPlanet === planetId ? ' on' : ''}`}
+                      data-testid={`accords-${planetId}`} onClick={() => setAccordsPlanet(planetId)}>
+                      Accords: {planetLabel(state, planetId)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </>
         ) : null}
 

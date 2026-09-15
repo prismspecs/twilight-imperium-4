@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
-import { warfareTokenSystems } from './strategicActions'
+import { diplomacySystems, peaceAccordsTargets, warfareTokenSystems } from './strategicActions'
 import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withThirdSeat, withUnits } from './testUtils'
 import type { GameState, Result, StrategicParams, StrategyCardId } from './types'
 
@@ -279,5 +279,63 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(after2.pendingSecondary).toBeNull()
     expect(after2.active).toBe(0)
     expect(after2.turnDone).toBe(true)
+  })
+})
+
+describe('Xxcha Peace Accords (Diplomacy primary)', () => {
+  function xxchaHolder(): GameState {
+    return withCards(withPlayer(toActionPhase(), 0, { faction: 'xxcha' }), 0, ['diplomacy'])
+  }
+  it('after resolving Diplomacy the Xxcha take control of an empty adjacent planet, gained exhausted', () => {
+    const s = xxchaHolder()
+    const targets = peaceAccordsTargets(s, 0)
+    expect(targets.length).toBeGreaterThan(0)
+    const systems = diplomacySystems(s, 0)
+    const params: StrategicParams = systems.length
+      ? { systemId: systems[0], planets: [], peaceAccordsPlanet: targets[0] }
+      : { planets: [], peaceAccordsPlanet: targets[0] }
+    const done = value(play(s, 'diplomacy', params))
+    const sysId = Object.keys(done.systems).find(id => done.systems[id].planets.some(p => p.id === targets[0]))
+    const taken = done.systems[sysId as string].planets.find(p => p.id === targets[0])
+    expect(taken?.owner).toBe(0)
+    expect(taken?.exhausted).toBe(true)
+    expect(done.log.some(e => e.t === 'info' && e.text.includes('Peace Accords'))).toBe(true)
+  })
+  it('cannot take a controlled planet ("empty" means uncontrolled)', () => {
+    const s = xxchaHolder()
+    const enemyPlanet = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === 1)
+    if (!enemyPlanet) throw new Error('no enemy planet in the fixture')
+    const systems = diplomacySystems(s, 0)
+    const params: StrategicParams = systems.length
+      ? { systemId: systems[0], peaceAccordsPlanet: enemyPlanet.id }
+      : { peaceAccordsPlanet: enemyPlanet.id }
+    const r = play(s, 'diplomacy', params)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('not empty')
+  })
+  it('cannot take a planet that is not adjacent to one you control', () => {
+    const s = xxchaHolder()
+    const targets = peaceAccordsTargets(s, 0)
+    const far = Object.values(s.systems).flatMap(sys => sys.planets).find(p => p.owner === null && !targets.includes(p.id))
+    if (!far) throw new Error('no distant empty planet in the fixture')
+    const systems = diplomacySystems(s, 0)
+    const params: StrategicParams = systems.length
+      ? { systemId: systems[0], peaceAccordsPlanet: far.id }
+      : { peaceAccordsPlanet: far.id }
+    const r = play(s, 'diplomacy', params)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('not adjacent')
+  })
+  it('is an Xxcha ability — another faction cannot name the takeover', () => {
+    const s = withCards(toActionPhase(), 0, ['diplomacy'])
+    const targets = peaceAccordsTargets(withPlayer(s, 0, { faction: 'xxcha' }), 0)
+    if (!targets.length) throw new Error('no accords target in the fixture')
+    const systems = diplomacySystems(s, 0)
+    const params: StrategicParams = systems.length
+      ? { systemId: systems[0], peaceAccordsPlanet: targets[0] }
+      : { peaceAccordsPlanet: targets[0] }
+    const r = play(s, 'diplomacy', params)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('Xxcha')
   })
 })

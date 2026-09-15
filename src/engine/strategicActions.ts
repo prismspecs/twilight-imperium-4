@@ -235,7 +235,11 @@ function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams)
   const systemId = params.systemId
   if (systemId === undefined) {
     if (diplomacySystems(state, seat).length > 0) return { ok: false, error: 'R6: Diplomacy needs a system' }
-    return readyPlanets(state, seat, params.planets ?? [], 2)
+    // Xxcha Peace Accords works even when there is no Diplomacy system to choose: the card resolves bare
+    // (readying nothing), then the takeover applies.
+    const bare = readyPlanets(state, seat, params.planets ?? [], 2)
+    if (!bare.ok) return bare
+    return applyPeaceAccords(bare.value, seat, params.peaceAccordsPlanet)
   }
   const sys = state.systems[systemId]
   if (!sys) return { ok: false, error: `unknown system ${systemId}` }
@@ -246,8 +250,67 @@ function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams)
   const activatedBy = [...sys.activatedBy]
   for (const other of otherSeatsInOrder(state, seat)) if (!activatedBy.includes(other)) activatedBy.push(other)
   const systems = { ...state.systems, [systemId]: { ...sys, activatedBy } }
-  return readyPlanets({ ...state, systems }, seat, params.planets ?? [], 2)
+  const readied = readyPlanets({ ...state, systems }, seat, params.planets ?? [], 2)
+  if (!readied.ok) return readied
+  return applyPeaceAccords(readied.value, seat, params.peaceAccordsPlanet)
 }
+
+/**
+ * Xxcha Peace Accords: "After resolving the Diplomacy strategy card, you may take control of an empty
+ * planet adjacent to one you already control." (lrr-factions.md, Peace Accords: a planet is adjacent to
+ * the system it is in and every system adjacent to that; the planet is gained exhausted; an uncontrolled
+ * planet would be explored — exploration is not implemented in this engine, and the log says so.)
+ */
+function applyPeaceAccords(state: GameState, seat: Seat, planetId: string | undefined): Result<GameState> {
+  if (planetId === undefined) return { ok: true, value: state }
+  if (!FACTIONS[state.players[seat].faction].abilities.includes('peace_accords')) {
+    return { ok: false, error: 'Peace Accords is an Xxcha Kingdom ability' }
+  }
+  const sysId = Object.keys(state.systems).find(id => state.systems[id].planets.some(p => p.id === planetId))
+  const planet = sysId === undefined ? undefined : state.systems[sysId].planets.find(p => p.id === planetId)
+  if (!planet || sysId === undefined) return { ok: false, error: `unknown planet ${planetId}` }
+  if (planet.owner !== null) return { ok: false, error: `Peace Accords: ${planet.name} is not empty` }
+  if (!peaceAccordsTargets(state, seat).includes(planetId)) {
+    return { ok: false, error: `Peace Accords: ${planet.name} is not adjacent to a planet you control` }
+  }
+  const sys = state.systems[sysId]
+  const systems = { ...state.systems, [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, owner: seat, exhausted: true } : p) } }
+  return {
+    ok: true,
+    value: {
+      ...state, systems,
+      log: [...state.log, { t: 'info', text: `Peace Accords: seat ${String(seat)} takes control of ${planet.name}, gained exhausted${hasExploration ? '' : ' (exploration is not implemented yet — no exploration card is drawn)'}` }],
+    },
+  }
+}
+
+/**
+ * Xxcha Peace Accords: every empty planet adjacent (same or neighbouring system, lrr-factions.md 2487.1)
+ * to a planet the seat controls.
+ */
+export function peaceAccordsTargets(state: GameState, seat: Seat): string[] {
+  if (!FACTIONS[state.players[seat]?.faction]?.abilities.includes('peace_accords')) return []
+  const controlledSystems = new Set<string>()
+  for (const sys of Object.values(state.systems)) {
+    if (sys.planets.some(p => p.owner === seat)) controlledSystems.add(sys.id)
+  }
+  const adjacentSystemIds = new Set<string>(controlledSystems)
+  for (const id of controlledSystems) {
+    for (const n of neighbours(state.systems, id, state.players[seat]?.faction, false, state)) adjacentSystemIds.add(n)
+  }
+  const out: string[] = []
+  for (const sys of Object.values(state.systems)) {
+    if (!adjacentSystemIds.has(sys.id)) continue
+    for (const p of sys.planets) {
+      // the custodians token safeguards Mecatol Rex: no takeover through Peace Accords while it remains
+      if (p.owner === null && !(state.custodiansToken && p.id === 'mecatol-rex') && !out.includes(p.id)) out.push(p.id)
+    }
+  }
+  return out
+}
+
+/** Exploration cards are not implemented in this engine yet — Peace Accords' explore-on-gain says so in its log. */
+const hasExploration = false
 
 /**
  * R6 Warfare: one of your command tokens leaves the board and you gain one, then you may move any of them.

@@ -8,6 +8,7 @@ import { cheapestPayment, cheapestPlanets, hasOwnDock, productionCost, productio
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
+import { peaceAccordsTargets } from './strategicActions'
 import { fulfils } from './objectives'
 import { researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { FACTIONS } from '../data/factions'
@@ -95,8 +96,15 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
     case 'diplomacy': {
       // R6: with no eligible system the card is played bare, which is what the handler allows
       const systems = diplomacySystems(state, seat)
-      if (!systems.length) return [{ type: 'strategic', card, params: {} }]
-      return systems.map((systemId): Move => ({ type: 'strategic', card, params: { systemId, planets: [] } }))
+      const base: Move[] = systems.length
+        ? systems.map((systemId): Move => ({ type: 'strategic', card, params: { systemId, planets: [] } }))
+        : [{ type: 'strategic', card, params: {} }]
+      // Xxcha Peace Accords: each empty planet adjacent to one the seat controls is offered alongside
+      // (lrr-factions.md, Peace Accords — taken exhausted after the card resolves)
+      const targets = peaceAccordsTargets(state, seat)
+      if (!targets.length) return base
+      const anchor = systems[0]
+      return [...base, ...targets.map((planetId): Move => ({ type: 'strategic', card, params: anchor !== undefined ? { systemId: anchor, planets: [], peaceAccordsPlanet: planetId } : { peaceAccordsPlanet: planetId } }))]
     }
     case 'warfare': {
       // R6: a token on the board must be named, so the bare variant is offered only when there is none

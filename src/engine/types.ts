@@ -198,6 +198,9 @@ export interface StrategicParams {
   // secondary up to one, always on a planet you control.
   structures?: { planetId: string; type: 'pds' | 'spacedock' }[]
   groundTo?: string                 // Warfare secondary: where produced ground forces land with Floating Factory
+  // Xxcha Peace Accords: an empty planet adjacent to one you control, taken exhausted after the Diplomacy
+  // primary resolves (lrr-factions.md, Peace Accords)
+  peaceAccordsPlanet?: string
 }
 export interface StatusParams {
   tokens: { tactic: number; fleet: number; strategy: number }
