@@ -9,15 +9,13 @@ import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
-import { canResearch, researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
+import { researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { FACTIONS } from '../data/factions'
-import { techDef } from '../data/techs'
 import { hasTech, homeSystemOf, maxFightersAllowed } from './board'
-import { isShip } from '../data/units'
 import { constructionPlanets, diplomacySystems, otherSeatsInOrder, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { MECATOL_ID } from '../data/map'
 import { tokensGained } from './statusPhase'
-import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId, TechColor } from './types'
+import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
 
 
 /** `cheapestPayment`, but treating `avoid` as already exhausted first — so a resource payment never lands
@@ -246,11 +244,15 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId, isFr
     case 'warfare': {
       // R6: the secondary is the space dock's full PRODUCTION ability, so the window opens as soon as any one
       // unit is affordable; the responder picks the units and the payment, the handler checks them.
+      // Mitosis (lrr-factions.md): the Arborec's space docks cannot produce infantry — it arrives in the
+      // status phase — so the enumeration never offers it, or the offer would be refused by its own handler.
+      const arborec = player.faction === 'arborec'
       const home = state.systems[homeSystemOf(state, seat)]
       const dock = hasOwnDock(home, seat)
       if (!dock || productionLimit(state, seat, home.id) < 1) return []
       const stats = { faction: player.faction, techs: player.techs }
       for (const type of PRODUCIBLE) {
+        if (arborec && type === 'infantry') continue
         if (player.reinforcements[type] < 1) continue
         if (type === 'fighter' && maxFightersAllowed(state, seat, home.id) < 1) continue
         const cost = productionCost({ [type]: 1 }, stats, player.techs.includes('sarween_tools'), state)

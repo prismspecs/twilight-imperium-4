@@ -285,7 +285,7 @@ export function fillProduce(state: GameState, seat: Seat, systemId: string): Pro
     if (remainingUnitsCount >= 1 && remainingFleetRoom > 0 && (remainingPlastic.destroyer ?? 0) > 0) {
       tryAdd('destroyer', 1)
     }
-    if (Object.keys(units).length === 0 && remainingUnitsCount >= 2 && (remainingPlastic.infantry ?? 0) >= 2) {
+    if (Object.keys(units).length === 0 && remainingUnitsCount >= 2 && (remainingPlastic.infantry ?? 0) >= 2 && !arborec) {
       tryAdd('infantry', 2)
     }
   }
