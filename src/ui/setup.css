@@ -1316,7 +1316,7 @@
 
 /* ---------- the manifest ---------- */
 .preflight .pf-manifest {
-  --pf-grid: 68px minmax(190px, 1fr) 196px 168px 116px 216px minmax(170px, 1fr) 52px;
+  --pf-grid: 64px minmax(180px, 0.9fr) 236px 150px 116px minmax(260px, 1.3fr) minmax(200px, 1.4fr) 64px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1756,6 +1756,26 @@
   color: var(--ink-muted);
   background: var(--graphite-socket);
   border-top: 1px solid var(--alpha-separator);
+}
+
+/* ---------- faction card hover ---------- */
+/* Hovering a seat's faction shows the faction's full card. Fixed-position portal above everything, with
+   pointer-events none so the card never steals the hover that is showing it. */
+.pf-card-pop {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  padding: 6px;
+  background: var(--deep-space-surface);
+  border: 1px solid var(--alpha-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+.pf-card-pop img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
 }
 
 /* ---------- narrower windows ---------- */

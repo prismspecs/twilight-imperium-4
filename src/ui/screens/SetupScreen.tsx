@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { FACTIONS } from '../../data/factions'
 import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
@@ -226,6 +227,27 @@ function FactionPortrait({ factionId, name }: { factionId: FactionId; name: stri
   )
 }
 
+/**
+ * Hovering a seat's faction shows the faction's full card (the faction sheet, public art via the TI4
+ * wiki). Rendered through a portal so the manifest's scroll container cannot clip it, and with
+ * `pointer-events: none` so the card itself never steals the hover.
+ */
+interface FactionCardAnchor { factionId: FactionId; name: string; x: number; y: number }
+function FactionCardPreview({ card }: { card: FactionCardAnchor | null }) {
+  if (!card) return null
+  const width = Math.min(540, window.innerWidth - 48)
+  const height = width * (878 / 1291)
+  let left = card.x + 16
+  if (left + width > window.innerWidth - 16) left = Math.max(16, card.x - width - 16)
+  const top = Math.max(12, Math.min(card.y - 48, window.innerHeight - height - 12))
+  return createPortal(
+    <div className="pf-card-pop" data-testid="faction-card-pop" style={{ left, top, width }}>
+      <img src={`/assets/factions/sheets/${card.factionId}.webp`} alt={`${card.name} faction card`} />
+    </div>,
+    document.body,
+  )
+}
+
 export function SetupScreen() {
   const { start } = useGame()
   const { style: modelStyle } = useModelStyle()
@@ -245,6 +267,8 @@ export function SetupScreen() {
   const [draftSeed, setDraftSeed] = useState(0)
   // the seat the pointer or the keyboard is in, so its home system flares on the plot
   const [litSeat, setLitSeat] = useState<number | null>(null)
+  // the faction card a seat's faction is hovering (see FactionCardPreview)
+  const [factionCard, setFactionCard] = useState<FactionCardAnchor | null>(null)
 
   function setName(seat: number, value: string) {
     setNames(prev => {
@@ -579,11 +603,19 @@ export function SetupScreen() {
                         className="pf-name" data-testid={`seat-name-${seat}`} value={names[seat]}
                         aria-label={`Name of seat ${String(seat + 1)}`} onChange={e => { setName(seat, e.target.value) }}
                       />
-                      <div className="pf-faction" data-testid={`seat-faction-${seat}`}>{factionTitle(faction.name)}</div>
+                      <div
+                        className="pf-faction" data-testid={`seat-faction-${seat}`}
+                        onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setFactionCard({ factionId, name: faction.name, x: r.right, y: r.top }) }}
+                        onMouseLeave={() => { setFactionCard(null) }}
+                      >{factionTitle(faction.name)}</div>
                     </div>
                   </div>
 
-                  <div className="pf-cell">
+                  <div
+                    className="pf-cell" data-testid={`faction-cell-${String(seat)}`}
+                    onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setFactionCard({ factionId, name: faction.name, x: r.right, y: r.top }) }}
+                    onMouseLeave={() => { setFactionCard(null) }}
+                  >
                     <img
                       className="pf-sigil" src={`/assets/factions/${factionId}.png`} alt="" data-testid={`seat-symbol-${seat}`}
                       onError={e => { e.currentTarget.style.visibility = 'hidden' }}
@@ -760,6 +792,8 @@ export function SetupScreen() {
           <span className="pf-set-sub">{startSub}</span>
         </div>
       </footer>
+
+      <FactionCardPreview card={factionCard} />
 
       <p className="pf-legal" data-testid="setup-legal">
         Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.

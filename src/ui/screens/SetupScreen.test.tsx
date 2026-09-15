@@ -281,5 +281,17 @@ describe('the setup screen', () => {
     fireEvent.click(screen.getByTestId('btn-back-to-setup'))
     expect(screen.getByTestId('setup-screen')).toBeTruthy()
   })
-})
 
+  it('hovering a seat\'s faction shows the faction card and leaving hides it', () => {
+    renderApp()
+    const cell = screen.getByTestId('faction-cell-0')
+    fireEvent.mouseEnter(cell)
+    const pop = document.querySelector('[data-testid="faction-card-pop"] img')
+    expect(pop).not.toBeNull()
+    const seat0Faction = (screen.getByTestId('select-faction-0') as HTMLSelectElement).value
+    expect(pop?.getAttribute('src')).toContain(`/assets/factions/sheets/${seat0Faction}.webp`)
+    fireEvent.mouseLeave(cell)
+    expect(document.querySelector('[data-testid="faction-card-pop"]')).toBeNull()
+  })
+
+})
