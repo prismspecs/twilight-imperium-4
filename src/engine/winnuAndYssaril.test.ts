@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { drawActionCards, discardActionCard, stallTactics } from './actionCards'
-import { removeCustodians, land } from './invasion'
+import { land } from './invasion'
 import { legalMoves } from './legalMoves'
 import { createGame } from './setup'
 import type { GameConfig, GameState } from './types'
@@ -25,7 +25,6 @@ describe('Winnu: Blood Ties and Reclamation', () => {
       const sys = s.systems[id]
       return sys.planets.some(p => p.id === 'mecatol-rex' || p.id === 'mecatolrex' || p.id === 'mr' || p.name === 'Mecatol Rex')
     })!
-    const mecatolPlanet = s.systems[mecatolSysId].planets.find(p => p.name === 'Mecatol Rex')!
 
     const withInfantry: GameState = {
       ...s,
@@ -180,15 +179,6 @@ describe('Yssaril: Crafty, Scheming, and Stall Tactics', () => {
     }
 
     // Draw 1 card (count 0 draw won't trigger, count 1 triggers +1 from Scheming)
-    // For pure hand limit test: set 9 cards in hand and verify no pendingActionCardDiscards
-    const nineCards: GameState = {
-      ...fullState,
-      players: [
-        { ...fullState.players[0], actionCards: [...initialHand, 'ghost_ship', 'parley'] },
-        fullState.players[1],
-      ],
-    }
-
     // Non-Yssaril drawing with 9 cards would have pendingActionCardDiscards
     const nonYssaril = makeTestGame('sol')
     const drawnSol = drawActionCards({
@@ -265,6 +255,6 @@ describe('Yssaril: Crafty, Scheming, and Stall Tactics', () => {
 
     const res = stallTactics(withCards, 'sabotage', 0)
     expect(res.ok).toBe(false)
-    expect(res.error).toContain('only Yssaril')
+    if (!res.ok) expect(res.error).toContain('only Yssaril')
   })
 })

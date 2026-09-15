@@ -218,6 +218,7 @@ export interface ActionCardParams {
   planetId?: string      // Frontline Deployment, Mining Initiative, Uprising, Unstable Planet, Cripple Defenses, Reactor Meltdown
   systemId?: string      // War Effort, Ghost Ship, Unexpected Action; In The Silence Of Space's chosen system
   techId?: string        // Focused Research
+  planets?: string[]     // Focused Research tech specialty planets
   seat?: Seat            // Insubordination: whose tactic pool loses a token
   unitId?: number        // Lucky Shot: which ship to destroy
 }

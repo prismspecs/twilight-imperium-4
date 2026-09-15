@@ -54,6 +54,7 @@ export function InvasionPanel() {
   const split = suggestedSplit(pool, landings.length, deriveSeed(session.seed, moveCount(state)))
   const countOf = (planetId: string, index: number) => counts[planetId] ?? split[index] ?? 0
 
+  const seat = state.active
   const isWinnu = state.players[seat]?.faction === 'winnu'
   const isMecatolSystem = state.tactical?.systemId === 'mecatol' || state.tactical?.systemId === MECATOL_ID || state.tactical?.systemId === '18'
   const readyInf = readyInfluence(state, seat)

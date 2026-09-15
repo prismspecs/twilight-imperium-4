@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
-import { carriedIds, deepFreeze, groundIds, hitsIn, resolveTestSystemId, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
+import { carriedIds, deepFreeze, hitsIn, resolveTestSystemId, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Seat, UnitType } from './types'
 
 /** Clears the system, gives the seat ships plus carried infantry and opens the invasion step. */
@@ -115,9 +115,9 @@ describe('R4.3 invasion', () => {
   it('LRR 28.2: removeCustodians fails if active player has no ground forces to commit', () => {
     const noInfantry = invasion('mecatol', ['carrier', 'cruiser'], 0)
     const withTg: GameState = { ...noInfantry, players: [{ ...noInfantry.players[0], tradeGoods: 6 }, noInfantry.players[1]] }
-    const res = applyMove(withTg, { type: 'removeCustodians', tradeGoods: 6 })
+    const res = applyMove(withTg, { type: 'removeCustodians', tradeGoods: 6 }, 0)
     expect(res.ok).toBe(false)
-    expect(res.error).toContain('LRR 28.2: must have ground forces in space')
+    if (!res.ok) expect(res.error).toContain('LRR 28.2: must have ground forces in space')
   })
   it('ground combat on Mecatol Rex resolves normally when defending forces are present', () => {
     const base = invasion('mecatol', ['carrier'], 3)

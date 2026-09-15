@@ -406,7 +406,7 @@ export function FloatingRightDeck({
         <div className="unitcard" data-testid={`frd-unitcard-${safeSeat}-${shownForce}`}>
           {shownForce === 'flagship'
             ? <FlagshipCard faction={myPlayer.faction} colour={myPlayer.color} />
-            : <img src={unitCardUrl(shownForce, myPlayer.faction)} alt={unitLabel(shownForce, myPlayer)} />}
+            : <img src={unitCardUrl(shownForce, myPlayer.faction) ?? undefined} alt={unitLabel(shownForce, myPlayer)} />}
         </div>,
         document.body,
       ) : null}

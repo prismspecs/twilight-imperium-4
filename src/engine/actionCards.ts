@@ -1,4 +1,4 @@
-import { actionCardDef, findActionCard } from '../data/actionCards'
+import { findActionCard } from '../data/actionCards'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, destroyUnits, trimCargo } from './board'
 import { canResearch, exhaustTechSkipPlanets, researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'

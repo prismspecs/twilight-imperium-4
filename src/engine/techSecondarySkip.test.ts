@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { toActionPhase, SAAR_CONFIG } from './testUtils'
-import type { GameState } from './types'
 
 describe('Technology secondary and tech specialty skips', () => {
   it('allows Saar with 2 yellow and 0 red to research PDS II using Meer as red tech skip', () => {
@@ -61,7 +60,7 @@ describe('Technology secondary and tech specialty skips', () => {
         planets: [],
         tradeGoods: 4,
       },
-    })
+    }, 0)
     expect(failedResult.ok).toBe(false)
     if (!failedResult.ok) {
       expect(failedResult.error).toBe('R5: pds_ii cannot be researched')
@@ -78,7 +77,7 @@ describe('Technology secondary and tech specialty skips', () => {
         planets: [],
         tradeGoods: 4,
       },
-    })
+    }, 0)
     expect(successResult.ok).toBe(true)
     if (successResult.ok) {
       const nextState = successResult.value

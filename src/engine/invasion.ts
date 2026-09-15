@@ -6,7 +6,7 @@ import { cheapestInfluencePlanets, hasOwnDock, payInfluence } from './economy'
 import { moraleBoost } from './effects'
 import { addVp } from './objectives'
 import { deriveSeed, mulberry32, type Rng } from './rng'
-import type { DieRoll, GameState, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
+import type { DieRoll, GameState, LogEntry, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
 
 /**
  * All dice draws in an invasion use mulberry32(deriveSeed(seed, salt)) with disjoint salts, so a single seed

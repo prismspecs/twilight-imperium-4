@@ -210,7 +210,7 @@ export function SidePanel({
         <div className="unitcard" data-testid={`unitcard-${seat}-${shown}`}>
           {shown === 'flagship'
             ? <FlagshipCard faction={player.faction} colour={player.color} />
-            : <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />}
+            : <img src={unitCardUrl(shown, player.faction) ?? undefined} alt={unitLabel(shown, player)} />}
         </div>,
         document.body,
       ) : null}

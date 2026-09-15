@@ -2,7 +2,7 @@ import { isShip, type StatsOwner } from '../data/units'
 import { checkFleet, maxFightersAllowed } from './board'
 import { payCost, productionCost, productionLimit } from './economy'
 import { unitsOf } from './setup'
-import type { GameState, Result, Seat, Unit, UnitType } from './types'
+import type { FactionId, GameState, Result, Seat, Unit, UnitType } from './types'
 
 export const PRODUCIBLE: readonly UnitType[] = ['infantry', 'fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 

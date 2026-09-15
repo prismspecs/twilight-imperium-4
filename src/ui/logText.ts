@@ -57,7 +57,10 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
       }
       return `${name} casts ${totalInf} vote${totalInf === 1 ? '' : 's'} for ${formatted}`
     }
+    case 'discardActionCard': return `${name} discards an action card (${actionCardName(move.cardId)})`
+    case 'stallTactics': return `${name} discards ${actionCardName(move.cardId)} for Stall Tactics`
     case 'declineReaction': return `${name} declines the reaction window`
+    default: return `${name} acts`
   }
 }
 
