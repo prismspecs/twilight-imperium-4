@@ -3,7 +3,7 @@ import { objectiveDef } from '../data/objectives'
 import { findTech, techDef } from '../data/techs'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
-import { destroyUnits, readyAllPlanets, returnToReinforcements, trimCargo } from './board'
+import { destroyUnits, readyAllPlanets, returnToReinforcements, trimCargo, trimToFleetPool } from './board'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { researchable } from './research'
@@ -48,7 +48,8 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
     const shardOwner = next.lawOwners?.shard_of_the_throne
     if (shardOwner !== undefined && shardOwner === prevOwner && newOwnsHome()) {
       const players = [...next.players] as GameState['players']
-      players[prevOwner] = { ...players[prevOwner], vp: players[prevOwner].vp - 1 }
+      // LRR 25: victory points never go below zero — an owner holding the law at 0 VP simply loses it at 0.
+      players[prevOwner] = { ...players[prevOwner], vp: Math.max(0, players[prevOwner].vp - 1) }
       players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
       next = {
         ...next, players, lawOwners: { ...(next.lawOwners ?? {}), shard_of_the_throne: newOwner },
@@ -58,7 +59,7 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
     const crownOwner = next.lawOwners?.the_crown_of_emphidia
     if (crownOwner !== undefined && crownOwner === prevOwner && newOwnsHome()) {
       const players = [...next.players] as GameState['players']
-      players[prevOwner] = { ...players[prevOwner], vp: players[prevOwner].vp - 1 }
+      players[prevOwner] = { ...players[prevOwner], vp: Math.max(0, players[prevOwner].vp - 1) }
       players[newOwner] = { ...players[newOwner], vp: players[newOwner].vp + 1 }
       next = {
         ...next, players, lawOwners: { ...(next.lawOwners ?? {}), the_crown_of_emphidia: newOwner },
@@ -321,7 +322,10 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
         ...p, tokens: { ...p.tokens, fleetPoolOverride: limit }
       })) as GameState['players']
       const activeAgendas = [...(state.activeAgendas ?? []).filter(a => a !== 'fleet_regulations'), 'fleet_regulations']
-      return { ...state, players, activeAgendas, log: [...state.log, { t: 'info', text: 'Fleet Regulations: fleet pool capped at 4' }] }
+      // LRR 27.2 via lrr-components.md 2317: every fleet already on the board must fit the new pool before
+      // any other effect resolves, so the cheapest excess ships are destroyed and their cargo trimmed.
+      const next = trimToFleetPool({ ...state, players })
+      return { ...next, activeAgendas, log: [...next.log, { t: 'info', text: 'Fleet Regulations: fleet pool capped at 4' }] }
     }
     // Against: each player places 1 command token from their reinforcements in their fleet pool
     const players = state.players.map(p => ({

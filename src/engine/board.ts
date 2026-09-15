@@ -93,6 +93,36 @@ export function destroyUnits(state: GameState, systemId: string, units: Unit[]):
   return returnToReinforcements(removeUnits(state, systemId, units.map(u => u.id)), units)
 }
 
+/** Cheapest-first order for destroying non-fighter ships when a fleet pool shrinks (R4.4 retreat logic). */
+const NON_FIGHTER_DESTRUCTION_ORDER: readonly UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun']
+
+/**
+ * R4.4: when fleet pools shrink below fleets already on the board (Fleet Regulations For), every fleet must
+ * fit the new pool before any other effect resolves (lrr-components.md 2317), so the cheapest excess
+ * non-fighter ships in each system are destroyed automatically — the same loss the end of a retreat
+ * applies (LRR 27.2) — returned to the reinforcements (LRR 17.6), and the survivors' cargo is trimmed
+ * against the capacity that is left (R4.1 step 4).
+ */
+export function trimToFleetPool(state: GameState): GameState {
+  let next = state
+  for (const p of state.players) {
+    for (const [sysId, sys] of Object.entries(state.systems)) {
+      const excess = nonFighterShips(sys.space, p.seat) - fleetPoolLimit(next.players[p.seat])
+      if (excess <= 0) continue
+      const victims = NON_FIGHTER_DESTRUCTION_ORDER
+        .flatMap(t => sys.space.filter(u => u.owner === p.seat && u.type === t))
+        .slice(0, excess)
+      if (!victims.length) continue
+      next = returnToReinforcements(removeUnits(next, sysId, victims.map(v => v.id)), victims)
+      next = { ...next, log: [...next.log, { t: 'info', text: `${String(victims.length)} ship(s) beyond the fleet pool are destroyed in ${sysId}` }] }
+    }
+  }
+  for (const p of state.players) {
+    for (const sysId of Object.keys(state.systems)) next = trimCargo(next, sysId, p.seat)
+  }
+  return next
+}
+
 /**
  * R4.3 step 4: every destroyed infantry of a player with Infantry II (or a faction's own equivalent, which
  * may return on a better roll: Sol's Spec Ops II returns on a 5) rolls once, making it return at the start of

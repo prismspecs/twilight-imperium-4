@@ -7,7 +7,7 @@ import { startNextRound } from './statusPhase'
 import { createGame } from './setup'
 import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from './testUtils'
 import { constructionPlanets } from './strategicActions'
-import { homeSystemOf } from './board'
+import { checkFleet, homeSystemOf } from './board'
 import type { GameConfig, GameState, Planet, Result, Seat } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -358,6 +358,34 @@ describe('R10 resolvers', () => {
     s = value(vote(s, 'For', []))
     for (const p of s.players) expect(p.tokens.fleetPoolOverride).toBe(4)
     expect(s.activeAgendas).toContain('fleet_regulations')
+  })
+
+  it('Fleet Regulations For: fleets already over the new pool lose their excess ships (lrr-components.md 2317)', () => {
+    const base = toActionPhase()
+    const systems = { ...base.systems }
+    const sys0 = systems[homeSystemOf(base, 0)]
+    // five destroyers in the home system: with the starting dreadnought and carrier that is more
+    // non-fighter ships than the seat's fleet pool allows once the law caps it at 4
+    systems[homeSystemOf(base, 0)] = {
+      ...sys0, space: [
+        ...sys0.space,
+        ...([0, 1, 2, 3, 4] as const).map(i => ({ id: base.nextUnitId + i, type: 'destroyer' as const, owner: 0 as const, damaged: false })),
+      ],
+    }
+    const ddBefore = base.players[0].reinforcements.destroyer
+    const boardDdBefore = 5
+    let s = deepFreeze({ ...base, systems })
+    s = deepFreeze({ ...toAgendaPhase(s, 'fleet_regulations'), agendaDeck: [] as string[] })
+    s = value(vote(s, 'For', []))
+    s = value(vote(s, 'For', []))
+    const home = s.systems[homeSystemOf(base, 0)]
+    // whatever the seat's own fleet tokens allow, the fleet now fits it (LRR 27.2)
+    const fleet = checkFleet(s, 0, homeSystemOf(base, 0))
+    expect(fleet.ok).toBe(true)
+    // the destroyed destroyers are back in the reinforcements (LRR 17.6), not vanished
+    const ddAfter = home.space.filter(u => u.owner === 0 && u.type === 'destroyer').length
+    expect(ddAfter).toBeLessThan(boardDdBefore)
+    expect(s.players[0].reinforcements.destroyer - ddBefore).toBe(boardDdBefore - ddAfter)
   })
 
   it('Fleet Regulations Against: no fleet pool limit is applied', () => {
