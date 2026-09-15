@@ -1,4 +1,5 @@
 import { NON_FIGHTER_SHIPS, isMovable, unitStats, type StatsOwner } from '../data/units'
+import { isDemilitarizedZone, isHolyPlanet } from './lawEffects'
 import type { GameState, Owner, Player, Result, Seat, System, Unit, UnitType } from './types'
 
 /** A seat's own producing structure in a system: a planet-bound space dock, or Saar's Floating Factory in
@@ -149,6 +150,10 @@ export function productionLimit(state: GameState, seat: Seat, systemId: string):
   if (!sys) return 0
   let total = 0
   for (const p of sys.planets) {
+    // Holy Planet of Ixth: units ON the planet cannot use PRODUCTION, so its space dock contributes
+    // nothing (the planet's resources may still be spent, and a Floating Factory in space is not on the
+    // planet). Demilitarized Zone bans production there outright — and no dock may be placed on one.
+    if (isHolyPlanet(state, p.id) || isDemilitarizedZone(state, p.id)) continue
     const dock = p.structures.find(u => u.type === 'spacedock' && u.owner === seat)
     if (dock) total += p.resources + (unitStats('spacedock', { faction: player.faction, techs: player.techs }).production ?? 0)
   }
@@ -156,7 +161,7 @@ export function productionLimit(state: GameState, seat: Seat, systemId: string):
   // in the system rather than one dock planet's own.
   if (sys.space.some(u => u.type === 'floating_factory' && u.owner === seat)) {
     total += (unitStats('floating_factory', { faction: player.faction, techs: player.techs }).production ?? 0)
-      + sys.planets.filter(p => p.owner === seat).reduce((sum, p) => sum + p.resources, 0)
+      + sys.planets.filter(p => p.owner === seat && !isDemilitarizedZone(state, p.id)).reduce((sum, p) => sum + p.resources, 0)
   }
   return total
 }

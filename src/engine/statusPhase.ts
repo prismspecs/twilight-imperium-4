@@ -4,6 +4,7 @@ import { neighbours } from './adjacency'
 import { enterAgendaOrNextRound } from './agendas'
 import { readyAllPlanets } from './board'
 import { distributeTokens } from './economy'
+import { isDemilitarizedZone } from './lawEffects'
 import { controlledPlanets, controlsMecatol, payObjective, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS } from './setup'
@@ -228,10 +229,15 @@ export function applyMitosis(state: GameState, seat: Seat, planetId?: string): R
   if (state.players[seat].faction !== 'arborec') return { ok: true, value: state }
   const player = state.players[seat]
   if (player.reinforcements.infantry < 1) return { ok: true, value: state }   // nothing to place
-  const controlledIds = controlledPlanets(state, seat).map(c => c.planetId)
+  // Demilitarized Zone: units cannot be placed on the planet, so such planets are not legal targets.
+  const controlledIds = controlledPlanets(state, seat).map(c => c.planetId).filter(id => !isDemilitarizedZone(state, id))
   if (!controlledIds.length) return { ok: true, value: state }  // skip silently if no planets
   const target = planetId ?? controlledIds[0]
-  if (!controlledIds.includes(target)) return { ok: false, error: `Mitosis: you do not control ${target}` }
+  if (!controlledIds.includes(target)) {
+    return { ok: false, error: isDemilitarizedZone(state, target)
+      ? `Mitosis: ${target} is a Demilitarized Zone — units cannot be placed there`
+      : `Mitosis: you do not control ${target}` }
+  }
   const sysId = Object.entries(state.systems).find(([, sys]) => sys.planets.some(p => p.id === target))?.[0]
   if (!sysId) return { ok: false, error: `Mitosis: ${target} is not on the board` }
   const sys = state.systems[sysId]

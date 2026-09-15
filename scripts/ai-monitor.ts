@@ -237,7 +237,8 @@ class GameMonitor {
     for (const p of after.players) {
       const b = before.players[p.seat]
       if (b && p.vp < b.vp) {
-        const transferred = after.log.slice(before.log.length).some(e => e.t === 'info' && /transfers to /.test(e.text))
+        const newLog = after.log.slice(before.log.length)
+        const transferred = newLog.some(e => e.t === 'info' && (/transfers to /.test(e.text) || /Holy Planet of Ixth: .* loses 1 VP/.test(e.text)))
         if (!(transferred && b.vp - p.vp === 1)) {
           this.record(p.seat, after.phase, mj, 'vp-decreased', 'LRR 25 (victory points)',
             `seat ${p.seat} VP went ${b.vp} → ${p.vp}`)

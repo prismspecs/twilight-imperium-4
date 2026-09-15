@@ -1,13 +1,15 @@
 // src/engine/agendas.test.ts
 import { describe, expect, it } from 'vitest'
-import { agendaMoves, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets, transferCrownRoyalLaws } from './agendas'
+import { agendaMoves, discardLaw, enterAgendaOrNextRound, legalOutcomes, readyInfluencePlanets, transferCrownRoyalLaws } from './agendas'
 import { fighterBonus } from './effects'
 import { applyMove, legalMoves } from './index'
-import { startNextRound } from './statusPhase'
+import { applyMitosis, startNextRound } from './statusPhase'
 import { createGame } from './setup'
-import { deepFreeze, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from './testUtils'
+import { deepFreeze, SAAR_CONFIG, toActionPhase, toAgendaPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from './testUtils'
 import { constructionPlanets } from './strategicActions'
 import { checkFleet, homeSystemOf } from './board'
+import { productionLimit } from './economy'
+import { landablePlanets } from './invasion'
 import type { GameConfig, GameState, Planet, Result, Seat } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -717,6 +719,108 @@ describe('R10 resolvers', () => {
       expect(r1.value.lawOwners?.prophecy_of_ixth).toBeUndefined()
       expect(fighterBonus(r1.value, 0)).toBe(0)
       expect(r1.value.log.some(e => e.t === 'info' && e.text.includes('Prophecy of Ixth is discarded'))).toBe(true)
+    }
+  })
+})
+
+describe('R10 Elect-Planet laws with teeth: Holy Planet of Ixth and Demilitarized Zone', () => {
+  /** seat 0's home planet that carries their starting space dock. */
+  function dockPlanetOf(s: GameState): { sysId: string; planetId: string } {
+    const sysId = homeSystemOf(s, 0)
+    const planet = s.systems[sysId].planets.find(p => p.structures.some(u => u.type === 'spacedock' && u.owner === 0))
+    if (!planet) throw new Error('no dock planet in the fixture')
+    return { sysId, planetId: planet.id }
+  }
+
+  it('Holy Planet of Ixth: the planet\'s own space dock produces nothing (units there cannot use PRODUCTION)', () => {
+    const s = toActionPhase()
+    const { sysId, planetId } = dockPlanetOf(s)
+    const before = productionLimit(s, 0, sysId)
+    expect(before).toBeGreaterThan(0)
+    const withLaw = withPlanetAttachment(s, planetId, 'holy_planet_of_ixth')
+    expect(productionLimit(withLaw, 0, sysId)).toBe(0)
+  })
+
+  it('Holy Planet of Ixth: control of the planet swings 1 VP, clamped at zero (LRR 25)', () => {
+    let s = toActionPhase()
+    const { sysId, planetId } = dockPlanetOf(s)
+    s = withPlanetAttachment(s, planetId, 'holy_planet_of_ixth')
+    // the owner loses the planet with 1 VP: they drop to 0 while the taker gains 1
+    const rich = { ...s, players: s.players.map((p, i) => i === 0 ? { ...p, vp: 1 } : p) }
+    const swung = transferCrownRoyalLaws(rich, planetId, 1, 0)
+    expect(swung.players[0].vp).toBe(0)
+    expect(swung.players[1].vp).toBe(1)
+    // the owner loses the planet at 0 VP: they stay at 0, VP never goes negative
+    const swung2 = transferCrownRoyalLaws(s, planetId, 1, 0)
+    expect(swung2.players[0].vp).toBe(0)
+    expect(swung2.players[1].vp).toBe(1)
+  })
+
+  it('Holy Planet of Ixth: discarding the law takes no victory point back (lrr-components.md, Holy Planet 1)', () => {
+    let s = toActionPhase()
+    const { planetId } = dockPlanetOf(s)
+    s = withPlanetAttachment(s, planetId, 'holy_planet_of_ixth')
+    s = { ...s, players: s.players.map((p, i) => i === 0 ? { ...p, vp: 3 } : p) }
+    const after = discardLaw(s, 'holy_planet_of_ixth')
+    expect(after.players[0].vp).toBe(3)
+    expect(planetByIdOf(after, planetId)?.attachments ?? []).not.toContain('holy_planet_of_ixth')
+  })
+
+  it('Demilitarized Zone: units cannot land there (handler and enumeration agree)', () => {
+    let s = toActionPhase()
+    const sysId = homeSystemOf(s, 1)   // the enemy home system, activated for an invasion
+    const planetId = s.systems[sysId].planets[0].id
+    s = withPlanetAttachment(s, planetId, 'demilitarized_zone')
+    const staged = withTactical(withUnits(s, sysId, 0, ['carrier', 'infantry']), {
+      systemId: sysId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 },
+    })
+    expect(landablePlanets(staged).map(l => l.planetId)).not.toContain(planetId)
+    const infantry = staged.systems[sysId].space.filter(u => u.owner === 0 && u.type === 'infantry').map(u => u.id)
+    const r = applyMove(staged, { type: 'land', planetId, infantryIds: infantry }, 0)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('Demilitarized Zone')
+  })
+
+  it('Demilitarized Zone: no structure may be placed there', () => {
+    let s = toActionPhase()
+    const { sysId, planetId } = dockPlanetOf(s)
+    s = withPlanetAttachment(s, planetId, 'demilitarized_zone')
+    expect(constructionPlanets(s, 0, 'pds', sysId)).not.toContain(planetId)
+    expect(constructionPlanets(s, 0, 'spacedock', sysId)).not.toContain(planetId)
+  })
+
+  it('Demilitarized Zone: produced ground forces cannot be placed there, not even by a Floating Factory', () => {
+    let s = toActionPhase(1, 0, SAAR_CONFIG)
+    const sysId = homeSystemOf(s, 0)
+    const planetId = s.systems[sysId].planets.find(p => p.owner === 0)?.id
+    if (!planetId) throw new Error('no controlled planet in the fixture')
+    s = withPlanetAttachment(s, planetId, 'demilitarized_zone')
+    const staged = withTactical(withUnits(s, sysId, 0, ['floating_factory']), { systemId: sysId, step: 'production' })
+    const r = applyMove(staged, { type: 'produce', units: { infantry: 1 }, planets: [planetId], tradeGoods: 0, groundTo: planetId }, 0)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('Demilitarized Zone')
+  })
+
+  it('Demilitarized Zone: Mitosis cannot place infantry there', () => {
+    let s = withPlayer(toActionPhase(), 0, { faction: 'arborec' })
+    const { sysId, planetId } = dockPlanetOf(s)
+    // a second controlled planet so the default Mitosis target has somewhere legal to go
+    const otherSys = Object.values(s.systems).find(sys => sys.planets.some(p => p.owner === null && p.id !== planetId))
+    const other = otherSys?.planets.find(p => p.owner === null)
+    if (!otherSys || !other) throw new Error('no unowned planet in the fixture')
+    s = withPlanetOwner(s, otherSys.id, other.id, 0)
+    s = withPlanetAttachment(s, planetId, 'demilitarized_zone')
+    const groundBefore = planetByIdOf(s, planetId)?.ground.length ?? 0
+    // the explicit DMZ target is refused
+    const r = applyMitosis(s, 0, planetId)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('Demilitarized Zone')
+    // and the default placement goes to the legal planet, never the DMZ one
+    const placed = applyMitosis(s, 0)
+    expect(placed.ok).toBe(true)
+    if (placed.ok) {
+      expect(planetByIdOf(placed.value, planetId)?.ground.length).toBe(groundBefore)
+      expect(planetByIdOf(placed.value, other.id)?.ground.length).toBe((planetByIdOf(s, other.id)?.ground.length ?? 0) + 1)
     }
   })
 })

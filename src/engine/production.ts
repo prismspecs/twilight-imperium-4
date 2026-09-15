@@ -1,6 +1,7 @@
 import { isShip, type StatsOwner } from '../data/units'
 import { checkFleet, maxFightersAllowed } from './board'
 import { payCost, productionCost, productionLimit } from './economy'
+import { isDemilitarizedZone } from './lawEffects'
 import { unitsOf } from './setup'
 import type { FactionId, GameState, Result, Seat, Unit, UnitType } from './types'
 
@@ -39,6 +40,11 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     ? (groundTo ? sysBefore.planets.find(p => p.id === groundTo && p.owner === seat) : undefined)
     : dockPlanet
   if (floatingFactory && groundTo && !groundPlanet) return { ok: false, error: `R4.4: you do not control ${groundTo} in this system` }
+  // Demilitarized Zone: ground forces cannot be produced onto the planet (lrr-factions.md 2108 lets the
+  // Floating Factory name any controlled planet in the system — a DMZ planet is not a legal name).
+  if (groundPlanet && isDemilitarizedZone(state, groundPlanet.id)) {
+    return { ok: false, error: `Demilitarized Zone: units cannot be produced on ${groundPlanet.id}` }
+  }
   const blockaded = isBlockaded(state, seat, tac.systemId)
   for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
     if (n === 0) continue

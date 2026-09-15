@@ -72,17 +72,19 @@ audit's problem list: what was found, what it violated, and what was done about 
 - **Rule**: LRR 2611.1 (a player owns each technology once).
 - **Fix**: `SecondaryPanel.tsx` dedupes the tech options before rendering.
 
-## Remaining open problems (not fixed by this audit)
+## Remaining open problems
 
 ### A. Laws the engine attaches but does not enforce
-The engine itself logs these honestly during play; the monitor collects them:
 
-- **Holy Planet of Ixth** — attached, but the control-change VP swings and the PRODUCTION ban are not
-  enforced.
-- **Demilitarized Zone** — attached, but the landing/production ban is not enforced.
+~~Holy Planet of Ixth~~ and ~~Demilitarized Zone~~ — both are now enforced (see below); the
+`law-not-enforced` monitor category is empty as of the 24-seed rerun.
 
-Both are recorded in the game log at resolution time (no silent stubs), but a player can currently break
-these two laws without the engine noticing.
+- **Holy Planet of Ixth** — enforced: the planet's own space dock produces nothing (`productionLimit`
+  skips it), and every control change of the planet swings 1 VP (`holyPlanetControlSwing`, clamped at
+  zero per LRR 25). Discarding the law takes no VP back (lrr-components.md, Holy Planet 1).
+- **Demilitarized Zone** — enforced: units cannot land there (`land` + `landablePlanets`), cannot be
+  produced onto it (`produce`, `productionLimit`), and nothing may be placed there (Construction,
+  Mitosis, Colonial Redistribution all refuse it).
 
 ### B. The main branch is committed red
 Pre-existing on `main` (commit `7b0a667`), independent of the audit:

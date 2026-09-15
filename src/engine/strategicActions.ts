@@ -5,6 +5,7 @@ import { drawActionCards } from './actionCards'
 import { ACTION_SPENT } from './actionPhase'
 import { checkFleet, homeSystemOf } from './board'
 import { cheapestPayment, distributeTokens, exhaustPlanets, payCost } from './economy'
+import { isDemilitarizedZone } from './lawEffects'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
 import { canResearch, colourCounts, exhaustTechSkipPlanets } from './research'
@@ -357,6 +358,9 @@ export function constructionPlanets(state: GameState, seat: Seat, type: 'pds' | 
       continue
     }
     for (const planet of sys.planets) {
+      // Demilitarized Zone: "Player's units cannot land, be produced, or be placed on this planet" — a
+      // PDS or space dock is a unit, so none may be placed there.
+      if (isDemilitarizedZone(state, planet.id)) continue
       if (planet.owner === seat && structureRoom(state, planet, type) > 0) out.push(planet.id)
     }
   }
@@ -399,6 +403,10 @@ function placeStructure(state: GameState, seat: Seat, planetId: string, type: 'p
   const sys = state.systems[systemId]
   const planet = sys.planets.find(p => p.id === planetId)
   if (!planet || planet.owner !== seat) return { ok: false, error: `R6: you do not control ${planetId}` }
+  // Demilitarized Zone: units cannot be placed on the planet.
+  if (isDemilitarizedZone(state, planetId)) {
+    return { ok: false, error: `Demilitarized Zone: units cannot be placed on ${planetId}` }
+  }
   if (structureRoom(state, planet, type) < 1) {
     return { ok: false, error: type === 'spacedock' ? `R6: ${planetId} already has a space dock` : `R6: ${planetId} already has two PDS` }
   }

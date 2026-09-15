@@ -1,6 +1,7 @@
 import { MECATOL_ID } from '../data/map'
 import { isShip, unitStats } from '../data/units'
 import { transferCrownRoyalLaws } from './agendas'
+import { isDemilitarizedZone } from './lawEffects'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner, combatBonus } from './board'
 import { cheapestInfluencePlanets, hasOwnDock, payInfluence } from './economy'
 import { moraleBoost } from './effects'
@@ -123,6 +124,7 @@ export function landablePlanets(state: GameState): { planetId: string; infantryI
   return state.systems[tac.systemId].planets
     .filter(p => p.id !== inv.planetId)       // R4.3 step 3: one landing per planet per invasion
     .filter(p => !(state.custodiansToken && (p.id === 'mecatol-rex' || p.id === 'mecatolrex' || p.id === 'mr' || p.name === 'Mecatol Rex')))
+    .filter(p => !isDemilitarizedZone(state, p.id))   // Demilitarized Zone: units cannot land there
     .map(p => ({ planetId: p.id, infantryIds }))
 }
 
@@ -304,6 +306,10 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
   if (!planet) return { ok: false, error: `planet ${planetId} is not in the active system` }
   if (state.custodiansToken && (planetId === 'mecatol-rex' || planetId === 'mecatolrex' || planetId === 'mr' || planet.name === 'Mecatol Rex')) {
     return { ok: false, error: 'cannot land on Mecatol Rex while the Custodians token remains' }
+  }
+  // Demilitarized Zone: "Player's units cannot land, be produced, or be placed on this planet."
+  if (isDemilitarizedZone(state, planetId)) {
+    return { ok: false, error: `Demilitarized Zone: units cannot land on ${planet.name}` }
   }
   if (!infantryIds.length) return { ok: false, error: 'no infantry to land' }
   if (groundCombatPending(state)) return { ok: false, error: 'R4.3 step 4: finish the running ground combat first' }

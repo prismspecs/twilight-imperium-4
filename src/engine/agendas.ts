@@ -4,6 +4,7 @@ import { findTech, techDef } from '../data/techs'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { destroyUnits, readyAllPlanets, returnToReinforcements, trimCargo, trimToFleetPool } from './board'
+import { holyPlanetControlSwing, isDemilitarizedZone } from './lawEffects'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { researchable } from './research'
@@ -67,7 +68,9 @@ export function transferCrownRoyalLaws(state: GameState, planetId: string, newOw
       }
     }
   }
-  return next
+  // Holy Planet of Ixth swings on ANY control change of its planet, not just home systems: the new owner
+  // gains 1 VP and the previous owner loses 1 (clamped at zero, LRR 25).
+  return holyPlanetControlSwing(next, planetId, newOwner, prevOwner)
 }
 
 /**
@@ -182,9 +185,8 @@ export function discardLaw(state: GameState, lawId: string): GameState {
     const planets = sys.planets.map(p => {
       if (p.attachments?.includes(lawId)) {
         changed = true
-        if (lawId === 'holy_planet_of_ixth' && p.owner !== null) {
-          next = addVp(next, p.owner, -1, 'Holy Planet of Ixth')
-        }
+        // lrr-components.md, Holy Planet of Ixth 1: "If the Holy Planet of Ixth law is discarded, no player
+        // loses a victory point" — the +1s already gained stay.
         return { ...p, attachments: p.attachments.filter(a => a !== lawId) }
       }
       return p
@@ -289,12 +291,6 @@ export function winningOutcome(state: GameState, agenda: AgendaRound): WinningOu
 }
 
 type Resolver = (state: GameState, agenda: AgendaRound, outcome: string, seed?: number) => GameState
-
-/** The law attached and its value change (if any) applied, but the ongoing effect needs engine support
- * that does not exist yet — say so in the log instead of pretending. */
-function notEnforced(state: GameState, name: string, what: string): GameState {
-  return { ...state, log: [...state.log, { t: 'info', text: `${name}: the law is attached, but ${what} is not enforced by the engine yet` }] }
-}
 
 /** Grants an Elect-Player law card to the elected seat: records ownership and marks the law active. */
 function grantLawTo(state: GameState, outcome: string, lawId: string): GameState {
@@ -489,14 +485,20 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     const seats = next.players.map((_, i) => i as Seat)
     const fewest = seats.reduce((best, s) => next.players[s].vp < next.players[best].vp ? s : best, seats[0])
     if (next.players[fewest].reinforcements.infantry < 1) return next
+    // Demilitarized Zone on the elected planet: the infantry may not be placed (the law outlives the
+    // destruction it just caused), but control still passes.
+    const dmz = isDemilitarizedZone(state, outcome)
     const players = [...next.players] as GameState['players']
-    players[fewest] = { ...players[fewest], reinforcements: { ...players[fewest].reinforcements, infantry: players[fewest].reinforcements.infantry - 1 } }
+    if (!dmz) players[fewest] = { ...players[fewest], reinforcements: { ...players[fewest].reinforcements, infantry: players[fewest].reinforcements.infantry - 1 } }
     const infantry = { id: next.nextUnitId, type: 'infantry' as const, owner: fewest, damaged: false }
     next = {
-      ...withPlanet({ ...next, players, nextUnitId: next.nextUnitId + 1 }, outcome, p => ({ ...p, owner: fewest, ground: [...p.ground, infantry] })),
-      log: [...next.log, { t: 'info', text: `Colonial Redistribution: ${next.players[fewest].name} (fewest VP) places 1 infantry on ${planet.name}` }],
+      ...withPlanet({ ...next, players, ...(dmz ? {} : { nextUnitId: next.nextUnitId + 1 }) }, outcome, p => ({ ...p, owner: fewest, ...(dmz ? {} : { ground: [...p.ground, infantry] }) })),
+      log: [...next.log, dmz
+        ? { t: 'info' as const, text: `Colonial Redistribution: ${planet.name} is a Demilitarized Zone — no infantry is placed` }
+        : { t: 'info' as const, text: `Colonial Redistribution: ${next.players[fewest].name} (fewest VP) places 1 infantry on ${planet.name}` }],
     }
-    return next
+    // Holy Planet of Ixth on the elected planet: the control change swings 1 VP.
+    return controller !== null ? holyPlanetControlSwing(next, outcome, fewest, controller) : next
   },
   // Elect-Player law cards granted to a seat. The elected seat becomes the card's owner, recorded in
   // `lawOwners` and the law is marked active in `activeAgendas`. `imperial_arbiter` and the ministries
@@ -712,13 +714,18 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     const sysId = systemOfPlanet(state, outcome)
     const units = planet ? [...planet.ground, ...planet.structures] : []
     const destroyed = sysId && units.length > 0 ? destroyUnits(state, sysId, units) : state
-    return notEnforced(attachLaw(destroyed, 'demilitarized_zone', outcome), 'Demilitarized Zone', 'the landing/production ban')
+    // The landing / production / placement ban is enforced by `isDemilitarizedZone` at every path that
+    // lands, produces onto, or places a structure or ground force on the planet.
+    const attached = attachLaw(destroyed, 'demilitarized_zone', outcome)
+    return { ...attached, log: [...attached.log, { t: 'info', text: 'Demilitarized Zone: units cannot land on, be produced on, or be placed on this planet' }] }
   },
   holy_planet_of_ixth: (state, _agenda, outcome) => {
     const planet = planetById(state, outcome)
     let next = attachLaw(state, 'holy_planet_of_ixth', outcome)
     if (planet && planet.owner !== null) next = addVp(next, planet.owner, 1, 'Holy Planet of Ixth')
-    return notEnforced(next, 'Holy Planet of Ixth', 'the control-change VP swings and the PRODUCTION ban')
+    // The control-change VP swings are enforced by `holyPlanetControlSwing` at every control change, and
+    // the PRODUCTION ban by `productionLimit` skipping the planet's own dock.
+    return { ...next, log: [...next.log, { t: 'info', text: 'Holy Planet of Ixth: its dock cannot produce; control of the planet swings 1 VP' }] }
   },
   ixthian_artifact: (state, _agenda, outcome, seed) => {
     if (outcome !== 'For') {
