@@ -11,7 +11,7 @@ import { Rewards } from './Rewards'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
-import type { Player, StrategicParams, UnitType } from '../../engine/types'
+import type { Move, Player, StrategicParams, UnitType } from '../../engine/types'
 
 export function SecondaryPanel() {
   const { session, legal, apply } = useGame()
@@ -36,17 +36,18 @@ export function SecondaryPanel() {
   const offer = secondaryOffer(legal)
   const template: StrategicParams = offer.accept ?? {}
   const chosenTech = techId ?? template.techId
-  const techMatch = legal.find(m => m.type === 'secondary' && m.card === 'technology' && m.accept && m.params?.techId === chosenTech)
-  const techSkips = techMatch?.params?.techSkipPlanets ?? (chosenTech ? (skipPlanetsFor(state, seat, chosenTech, player.techs) ?? undefined) : undefined)
-  const pay = planets ?? (card === 'technology' && techMatch?.params?.planets ? techMatch.params.planets : template.planets ?? [])
-  const influence = pay.reduce((sum, id) => {
+  const techMatch = legal.find((m): m is Extract<Move, { type: 'secondary' }> => m.type === 'secondary' && m.card === 'technology' && m.accept && m.params?.techId === chosenTech)
+  const techSkips: string[] | undefined = techMatch?.params?.techSkipPlanets ?? (chosenTech ? (skipPlanetsFor(state, seat, chosenTech, player.techs) ?? undefined) : undefined)
+  const pay: string[] = planets ?? (card === 'technology' && techMatch?.params?.planets ? techMatch.params.planets : template.planets ?? [])
+  const influence = pay.reduce((sum: number, id: string) => {
     const planet = ownedPlanets(state, seat).find(p => p.id === id)
     return sum + (planet ? planet.influence : 0)
   }, 0) + tradeGoods
   const gained = card === 'leadership' ? Math.floor(influence / 3) : 0
   // auto-allocate newly gained tokens so the user doesn't hit a blocking tokensPending error by default
   const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
-  const techOptions = legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : [])
+  // the same tech can appear twice (once plain, once via a tech-skip planet); the drawer must show it once
+  const techOptions = [...new Set(legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : []))]
   // R6 Construction secondary: the enumerator offers one entry per placement the seat can actually make
   const buildOffers = legal.flatMap(m => {
     if (m.type !== 'secondary' || !m.accept) return []
