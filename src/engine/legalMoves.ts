@@ -9,6 +9,7 @@ import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { peaceAccordsTargets } from './strategicActions'
+import { canTransitDiodes, relocatableGroundForces } from './componentActions'
 import { fulfils } from './objectives'
 import { researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { FACTIONS } from '../data/factions'
@@ -373,6 +374,12 @@ export function legalMoves(state: GameState): Move[] {
   if (canProductionBiomes(state, seat)) {
     for (const target of productionBiomesTargets(state, seat)) out.push({ type: 'productionBiomes', target })
   }
+  // Xxcha Transit Diodes: offered with a concrete default relocation plan (up to 4 ground forces from
+  // systems holding the seat's token to controlled planets) so the offer is always playable as-is
+  if (canTransitDiodes(state, seat)) {
+    const plan = defaultTransitPlan(state, seat)
+    if (plan.length > 0) out.push({ type: 'transitDiodes', moves: plan })
+  }
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
 }
@@ -438,4 +445,25 @@ export function validateMove(state: GameState, move: Move): Result<true> {
     return { ok: false, error: ACTION_SPENT }
   }
   return { ok: false, error: `illegal move ${move.type}` }
+}
+
+/** Transit Diodes' default relocation plan: up to 4 ground forces from tokened systems to the nearest
+ * other planet the seat controls, so the enumerated offer is always playable as-is. */
+function defaultTransitPlan(state: GameState, seat: Seat): { infantryId: number; to: string }[] {
+  const sources = relocatableGroundForces(state, seat)
+  const destinations: { planetId: string }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat) destinations.push({ planetId: p.id })
+  }
+  const plan: { infantryId: number; to: string }[] = []
+  for (const spot of sources) {
+    const dest = destinations.find(d => {
+      const sourcePlanetId = spot.planetId
+      return d.planetId !== sourcePlanetId
+    })
+    if (!dest) continue
+    plan.push({ infantryId: spot.unit.id, to: dest.planetId })
+    if (plan.length >= 4) break
+  }
+  return plan
 }

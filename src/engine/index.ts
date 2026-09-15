@@ -3,7 +3,7 @@ import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { castVote } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
-import { productionBiomes, research } from './componentActions'
+import { productionBiomes, research, transitDiodes } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land, removeCustodians } from './invasion'
 import { endMovement, exhaustSpatialConduit, moveShips } from './movement'
 import { produce } from './production'
@@ -63,6 +63,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'stallTactics': result = stallTactics(logged, move.cardId); break
       case 'research': result = research(logged, move.techId); break
       case 'productionBiomes': result = productionBiomes(logged, move.target); break
+      case 'transitDiodes': result = transitDiodes(logged, move.moves); break
       case 'status': result = status(logged, move.params, seed); break
       case 'castVote': result = castVote(logged, move.outcome, move.planets, seed, startNextRound); break
       case 'declineReaction': result = declineReaction(logged); break
@@ -100,7 +101,7 @@ export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPh
 export { homeSystemOf } from './board'
 export { checkFleet } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
-export { canInheritance, canProductionBiomes, inheritanceTechs, productionBiomesTargets } from './componentActions'
+export { canInheritance, canProductionBiomes, canTransitDiodes, inheritanceTechs, productionBiomesTargets, relocatableGroundForces, transitDiodes } from './componentActions'
 export { capacity, cheapestInfluencePlanets, cheapestPayment, cheapestPlanets, fleetPoolLimit, hasOwnDock, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets, removeCustodians } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'

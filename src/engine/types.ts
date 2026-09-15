@@ -64,6 +64,7 @@ export interface Player {
   spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
   inheritanceExhausted: boolean
   productionBiomesExhausted: boolean   // Hacan faction tech: readies with every other exhausted card
+  transitDiodesExhausted: boolean      // Xxcha faction tech: readies with every other exhausted card
   spatialConduitExhausted: boolean     // Jol-Nar faction tech: readies with every other exhausted card
   pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
   reinforcements: Record<UnitType, number>
@@ -172,6 +173,9 @@ export type Move =
   | { type: 'exhaustSpatialConduit' }
   // Hacan faction tech Production Biomes: exhaust + 1 strategy token for 4 trade goods, `target` gets 2
   | { type: 'productionBiomes'; target: Seat }
+  // Xxcha faction tech Transit Diodes: relocate up to 4 ground forces from systems holding the seat's
+  // command token to planets the seat controls (lrr-components.md, Transit Diodes 1-4)
+  | { type: 'transitDiodes'; moves: { infantryId: number; to: string }[] }
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
   // R10: one seat's vote on the revealed agenda. `outcome` is 'For'/'Against', or the elected target's id

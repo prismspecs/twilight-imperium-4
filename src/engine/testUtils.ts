@@ -97,10 +97,10 @@ export function thirdSeat(): Player {
   return {
     seat: 2, faction: 'l1z1x', color: 'green', name: 'C', vp: 0,
     tokens: { tactic: 3, fleet: 3, strategy: 2 }, tradeGoods: 0, commodities: 2, techs: [],
-    actionCards: [], strategyCards: [], passed: false, scoredObjectives: [], secretObjectives: [],
+    actionCards: [], strategyCards: [], passed: false, scoredObjectives: [], secretObjectives: [], inheritanceExhausted: false, productionBiomesExhausted: false, spatialConduitExhausted: false, transitDiodesExhausted: false,
     resourcesSpentThisRound: 0, influenceSpentThisRound: 0, tradeGoodsSpentThisRound: 0, tokensSpentThisRound: 0,
     spaceCombatWins: 0,
-    inheritanceExhausted: false, productionBiomesExhausted: false, spatialConduitExhausted: false, pendingInfantry: 0,
+    pendingInfantry: 0,
     reinforcements: { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3, floating_factory: 3 },
   }
 }

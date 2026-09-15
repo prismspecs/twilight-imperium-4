@@ -4,7 +4,7 @@ import { cheapestPlanets, payCost } from './economy'
 import { canResearch } from './research'
 import { grantTech } from './strategicActions'
 import { produce } from './production'
-import type { GameState, Result, Seat } from './types'
+import type { GameState, Result, Seat, Unit } from './types'
 
 const INHERITANCE_COST = 2
 
@@ -171,6 +171,87 @@ export function orbitalDrop(state: GameState, seat: Seat, planetId: string): Res
       nextUnitId: state.nextUnitId + 2,
       turnDone: true,
       log: [...state.log, { t: 'info', text: `seat ${seat} uses Orbital Drop to place 2 infantry on ${planetId}` }],
+    },
+  }
+}
+
+/**
+ * Xxcha faction tech Transit Diodes: "Exhaust at the start of your turn to remove up to 4 ground forces
+ * from the board and place them on planets you control." Resolved as a component action (LRR Component
+ * Action). lrr-components.md clarifications: ground forces are removed from a system containing the
+ * player's command token — on a planet or in the space area — and may come from different systems and be
+ * placed on different planets; a damaged mech stays damaged when placed (the unit object carries over).
+ */
+export function canTransitDiodes(state: GameState, seat: Seat): boolean {
+  const player = state.players[seat]
+  return player.techs.includes('transit_diodes') && !player.transitDiodesExhausted
+    && relocatableGroundForces(state, seat).length > 0 && controlledPlanetsFor(state, seat).length > 0
+}
+
+/** The seat's ground forces standing in a system that contains their command token (planet or space area). */
+export function relocatableGroundForces(state: GameState, seat: Seat): { unit: Unit; systemId: string; planetId: string | null }[] {
+  const out: { unit: Unit; systemId: string; planetId: string | null }[] = []
+  for (const sys of Object.values(state.systems)) {
+    if (!sys.activatedBy.includes(seat)) continue
+    for (const u of sys.space) if (u.owner === seat && u.type === 'infantry') out.push({ unit: u, systemId: sys.id, planetId: null })
+    for (const p of sys.planets) for (const u of p.ground) if (u.owner === seat && u.type === 'infantry') out.push({ unit: u, systemId: sys.id, planetId: p.id })
+  }
+  return out
+}
+
+function controlledPlanetsFor(state: GameState, seat: Seat): { planetId: string; systemId: string }[] {
+  const out: { planetId: string; systemId: string }[] = []
+  for (const [sysId, sys] of Object.entries(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat) out.push({ planetId: p.id, systemId: sysId })
+  }
+  return out
+}
+
+export function transitDiodes(state: GameState, moves: { infantryId: number; to: string }[]): Result<GameState> {
+  const ready = actionReady(state)
+  if (!ready.ok) return ready
+  const seat = ready.value
+  const player = state.players[seat]
+  if (!player.techs.includes('transit_diodes')) return { ok: false, error: 'Transit Diodes is not owned' }
+  if (player.transitDiodesExhausted) return { ok: false, error: 'Transit Diodes is exhausted' }
+  if (!Array.isArray(moves) || moves.length < 1 || moves.length > 4) {
+    return { ok: false, error: 'Transit Diodes: name 1 to 4 ground forces to relocate' }
+  }
+  const relocatable = relocatableGroundForces(state, seat)
+  const destinations = controlledPlanetsFor(state, seat)
+  const moved = new Set<number>()
+  let next = state
+  const placed: string[] = []
+  for (const m of moves) {
+    const spot = relocatable.find(r => r.unit.id === m.infantryId)
+    if (!spot) return { ok: false, error: `Transit Diodes: no ground force ${String(m.infantryId)} in a system with your command token` }
+    if (moved.has(m.infantryId)) return { ok: false, error: 'Transit Diodes: a ground force cannot be moved twice' }
+    const dest = destinations.find(d => d.planetId === m.to)
+    if (!dest) return { ok: false, error: `Transit Diodes: you do not control ${m.to}` }
+    moved.add(m.infantryId)
+    // remove from the source (planet ground or the system's space area)
+    const sys = next.systems[spot.systemId]
+    const planets = spot.planetId === null
+      ? sys.planets
+      : sys.planets.map(p => p.id === spot.planetId ? { ...p, ground: p.ground.filter(u => u.id !== m.infantryId) } : p)
+    next = { ...next, systems: { ...next.systems, [spot.systemId]: { ...sys, space: sys.space.filter(u => u.id !== m.infantryId), planets } } }
+    // place on the destination planet, damaged state carried over
+    const destSys = next.systems[dest.systemId]
+    const unit: Unit = { ...spot.unit }
+    next = {
+      ...next,
+      systems: { ...next.systems, [dest.systemId]: { ...destSys, planets: destSys.planets.map(p => p.id === m.to ? { ...p, ground: [...p.ground, unit] } : p) } },
+    }
+    placed.push(`${unit.type} ${String(unit.id)} to ${m.to}`)
+  }
+  const players = [...next.players] as GameState['players']
+  players[seat] = { ...players[seat], transitDiodesExhausted: true }
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
+  return {
+    ok: true,
+    value: {
+      ...next, players, turnDone: true,
+      log: [...next.log, { t: 'info', text: `Transit Diodes: seat ${String(seat)} relocates ${placed.join(', ')}` }],
     },
   }
 }
