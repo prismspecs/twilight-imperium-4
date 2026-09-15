@@ -400,13 +400,17 @@ function preCombat(state: GameState, from: 'ambush' | 'assault cannon' | 'anti-f
 /**
  * R4.1 step 1 without a combat: `endMovement` fires the defending PDS at an arriving fleet that meets no ships.
  * R3.2/16.2: a cannon hit can destroy the carrier of arriving cargo, so the cargo is trimmed the way the end of
- * a space combat trims it — there is no combat here to do it later. The combat holder that carried the queue is
+ * a space combat trims it — there is no combat here to do it later. The DEFENDER's fleet is trimmed too: the
+ * cannon volley may have destroyed its capacity ships (a deep-space-cannon hit against a home fleet), and the
+ * same R4.1 step 4 cleanup applies to whoever lost the capacity. The combat holder that carried the queue is
  * dropped again on the way to the invasion.
  */
 export function afterSpaceCannonOnly(state: GameState, systemId: string, seat: Seat): GameState {
   const tac = state.tactical
   if (!tac) return state
-  const trimmed = trimCargo(state, systemId, seat)
+  let trimmed = trimCargo(state, systemId, seat)
+  const defender = tac.combat?.defender
+  if (defender !== undefined && defender !== seat) trimmed = trimCargo(trimmed, systemId, defender)
   return {
     ...trimmed,
     tactical: afterSpaceStep(trimmed, tac.systemId, seat),
@@ -484,9 +488,12 @@ export function eligibleSpaceCannonUnits(state: GameState, systemId: string, own
     deepPds = adjacentIds.flatMap(adjId => {
       const adjSys = state.systems[adjId]
       if (!adjSys) return []
-      return adjSys.planets.flatMap(p => p.structures.filter(u =>
-        u.owner === owner && u.type === 'pds' && unitStats(u.type, sOwner).spaceCannon
-      ))
+      return [
+        ...adjSys.planets.flatMap(p => p.structures.filter(u =>
+          u.owner === owner && u.type === 'pds' && unitStats(u.type, sOwner).spaceCannon
+        )),
+        ...adjSys.space.filter(u => u.owner === owner && u.type === 'pds' && unitStats(u.type, sOwner).spaceCannon)
+      ]
     })
   }
   return [...activeUnits, ...deepPds]
