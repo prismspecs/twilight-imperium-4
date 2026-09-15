@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "ai:match": "tsx scripts/ai-match.ts",
     "ai:stress": "tsx scripts/ai-stress.ts",
+    "ai:monitor": "tsx scripts/ai-monitor.ts",
     "ai:calibrate": "tsx scripts/calibrate-asyncti4.ts",
     "dataset:extract": "tsx tools/ti4dataset/run.ts",
     "test:dataset": "vitest run --config tools/ti4dataset/vitest.config.ts"
