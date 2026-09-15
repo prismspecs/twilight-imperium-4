@@ -79,6 +79,8 @@ export interface AgendaResultData {
   tally: Record<string, number>
   votes: AgendaVoteSummary[]
   logs: LogEntry[]
+  /** Ixthian Artifact ceremony: the Speaker's 1d10 roll when this agenda passed (undefined otherwise). */
+  artifactRoll?: number
 }
 
 /** R10: the structured outcome and log entries an agenda's resolution just added — reveal, outcome,
@@ -147,6 +149,16 @@ function agendaResultFor(config: GameConfig | undefined, prevState: GameState, n
     }
   })
 
+  // Ixthian Artifact ceremony: surface the Speaker's 1d10 roll as first-class result data
+  let artifactRoll: number | undefined
+  if (prevAgenda.revealed === 'ixthian_artifact' && outcome === 'For') {
+    for (const entry of filteredLogs) {
+      if (entry.t !== 'info') continue
+      const m = entry.text.match(/Ixthian Artifact: Speaker rolls a (\d+) on 1d10/)
+      if (m) { artifactRoll = Number.parseInt(m[1], 10); break }
+    }
+  }
+
   const def = findAgenda(prevAgenda.revealed)
   const agendaName = def?.name ?? prevAgenda.revealed
   const agendaKind = def?.kind ?? 'directive'
@@ -168,6 +180,7 @@ function agendaResultFor(config: GameConfig | undefined, prevState: GameState, n
     tally: tallyMap,
     votes: votesSummary,
     logs: filteredLogs,
+    artifactRoll,
   }
 }
 

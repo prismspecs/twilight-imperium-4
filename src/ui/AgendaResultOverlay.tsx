@@ -126,6 +126,43 @@ export function AgendaResultOverlay() {
         )}
       </div>
 
+      {/* Ixthian Artifact ceremony: the Speaker's 1d10 reveal, front and centre */}
+      {result.artifactRoll !== undefined ? (
+        <div
+          data-testid="artifact-roll"
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: 8,
+            marginBottom: 14,
+            textAlign: 'center',
+            background: result.artifactRoll >= 6 ? 'rgba(234, 179, 8, 0.14)' : 'rgba(100, 116, 139, 0.14)',
+            border: `1px solid ${result.artifactRoll >= 6 ? '#eab308' : '#64748b'}`,
+          }}
+        >
+          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8 }}>
+            The Speaker rolls the Ixthian Artifact die
+          </div>
+          <div
+            style={{
+              fontSize: '3rem',
+              fontWeight: 900,
+              lineHeight: 1.1,
+              marginTop: 4,
+              color: result.artifactRoll >= 6 ? '#fde047' : '#94a3b8',
+              textShadow: result.artifactRoll >= 6 ? '0 0 24px rgba(234, 179, 8, 0.45)' : 'none',
+            }}
+          >
+            {result.artifactRoll}
+          </div>
+          <div style={{ fontSize: '0.85rem', marginTop: 4, color: result.artifactRoll >= 6 ? '#fde047' : '#94a3b8' }}>
+            {result.artifactRoll >= 6
+              ? '6 or higher — each player, in speaker order, researches 2 technologies'
+              : '5 or lower — the Artifact is silent. Nothing happens.'}
+          </div>
+        </div>
+      ) : null}
+
       {/* Vote Tally Section */}
       <div style={{ width: '100%', marginBottom: 12 }}>
         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted, #94a3b8)', textAlign: 'left', marginBottom: 6 }}>
