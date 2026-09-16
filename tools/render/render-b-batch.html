@@ -56,6 +56,7 @@ if(style==='a'){
   cam.position.set(-Math.sin(az)*Math.cos(elv)*R, Math.sin(elv)*R, -Math.cos(az)*Math.cos(elv)*R); cam.lookAt(0,0,0);
 }
 const grid=document.getElementById('grid');
-for(const [name,hex] of COLORS){ mat.color.setHex(hex); renderer.render(scene,cam); const img=document.createElement('img'); img.src=canvas.toDataURL('image/png'); img.dataset.color=name; grid.appendChild(img); }
+const want=q.get('color');
+for(const [name,hex] of COLORS){ if(want&&want!==name) continue; mat.color.setHex(hex); renderer.render(scene,cam); const img=document.createElement('img'); img.src=canvas.toDataURL('image/png'); img.dataset.color=name; grid.appendChild(img); }
 document.title=JSON.stringify({unit,style,modelLength:size.x,modelWidth:size.z,modelHeight:size.y,R,frustum,pxPerModelUnit:(SIZE*DPR)/frustum});
 </script></body></html>
