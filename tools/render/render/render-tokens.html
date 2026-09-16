@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:transparent;overflow:hidden}#grid{position:absolute;left:0;top:0;display:grid;grid-template-columns:repeat(3,1024px);grid-auto-rows:1024px}#grid img{display:block;width:1024px;height:1024px}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body><div id="grid"></div>
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q=new URLSearchParams(location.search); const faction=q.get('faction')||'l1z1x'; const elevDeg=+(q.get('elev')||89);   // straight down: the tokens lie flat on the table, unlike the ships
+const SIZE=512, DPR=2;
+const canvas=document.createElement('canvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(DPR); renderer.setSize(SIZE,SIZE,false);
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0; renderer.setClearColor(0x000000,0);
+const scene=new THREE.Scene(); const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+const tex=await new Promise(res=>new THREE.TextureLoader().load(`models/token-tex-${faction}.png`,res)); tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=true;
+const mat=new THREE.MeshStandardMaterial({map:tex,metalness:0.05,roughness:0.7,envMapIntensity:0.6});
+scene.add(new THREE.HemisphereLight(0xdfe8ff,0x1a2140,0.7));
+const key=new THREE.DirectionalLight(0xfff4e0,1.5); key.position.set(-3,6,-3); scene.add(key);
+const rim=new THREE.DirectionalLight(0xe0b45a,1.2); rim.position.set(4,2.2,5); scene.add(rim);
+const fill=new THREE.DirectionalLight(0x6f8ee0,0.4); fill.position.set(3,-1,-4); scene.add(fill);
+const cam=new THREE.PerspectiveCamera(30,1,0.1,200);
+const grid=document.getElementById('grid');
+const variants=[['command',false],['command',true],['control',false]];
+for(const [kind,flip] of variants){
+  const obj=await new Promise((res,rej)=>new OBJLoader().load(`models/token-${kind}.obj`,res,undefined,rej));
+  const box=new THREE.Box3().setFromObject(obj); const size=box.getSize(new THREE.Vector3()); const c=box.getCenter(new THREE.Vector3()); obj.position.sub(c);
+  obj.traverse(m=>{ if(m.isMesh){ m.material=mat; m.geometry.computeVertexNormals(); }});
+  const g=new THREE.Group(); g.add(obj); if(flip) g.rotation.x=Math.PI; else if(kind==='command') g.rotation.y=Math.PI; scene.add(g);
+  const r=box.getBoundingSphere(new THREE.Sphere()).radius; const R=r/Math.sin(THREE.MathUtils.degToRad(15))*1.08;
+  const el=THREE.MathUtils.degToRad(elevDeg), az=THREE.MathUtils.degToRad(0);
+  cam.position.set(-Math.sin(az)*Math.cos(el)*R, Math.sin(el)*R, -Math.cos(az)*Math.cos(el)*R); cam.lookAt(0,0,0);
+  renderer.render(scene,cam); const img=document.createElement('img'); img.src=canvas.toDataURL('image/png'); grid.appendChild(img);
+  scene.remove(g);
+}
+document.title='done';
+</script></body></html>

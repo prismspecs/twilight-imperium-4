@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Mecatol Duel — social card</title>
+<!-- The 1200x630 link preview. Same sky as the lobby (theme.css .space), re-tuned for the wide crop:
+     the planet limb has to sweep the bottom right of a 1200x630 frame, not of a browser viewport. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#c9a24d;--gold-hi:#e8cf8a;--hud:"Barlow Condensed",sans-serif;--display:"Cinzel",serif}
+html,body{margin:0;background:#05070f}
+.card{position:relative;width:1200px;height:630px;overflow:hidden;background:#05070f}
+
+/* sky */
+.base{position:absolute;inset:0;background:linear-gradient(180deg,#05070f 0%,#060a18 40%,#08102a 100%)}
+.stars{position:absolute;inset:0;opacity:.62;mix-blend-mode:screen;
+  background:url(../../public/assets/misc/starfield.png) center 42%/cover no-repeat}
+.veil{position:absolute;inset:0;background:
+  radial-gradient(ellipse 520px 300px at 14% 26%,rgba(70,110,220,.11),transparent 70%),
+  radial-gradient(ellipse 600px 340px at 82% 20%,rgba(122,72,196,.10),transparent 70%),
+  radial-gradient(ellipse 840px 240px at 48% 70%,rgba(46,72,160,.06),transparent 70%)}
+.galaxy{position:absolute;border-radius:50%;opacity:.16;filter:blur(2px)}
+.galaxy.a{left:-300px;top:60px;width:900px;height:320px;transform:rotate(-16deg);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(170,190,255,.24) 0%,rgba(110,130,220,.10) 35%,transparent 70%)}
+.galaxy.b{right:-200px;top:-110px;width:720px;height:250px;transform:rotate(22deg);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(200,170,255,.18) 0%,rgba(140,100,220,.08) 40%,transparent 70%)}
+.dust{position:absolute;inset:0;background-image:
+  radial-gradient(1px 1px at 120px 80px,rgba(255,255,255,.7),transparent 60%),
+  radial-gradient(1px 1px at 300px 540px,rgba(255,255,255,.55),transparent 60%),
+  radial-gradient(1.5px 1.5px at 980px 120px,rgba(255,255,255,.75),transparent 60%),
+  radial-gradient(1px 1px at 1120px 300px,rgba(255,255,255,.6),transparent 60%),
+  radial-gradient(1px 1px at 60px 420px,rgba(255,255,255,.5),transparent 60%),
+  radial-gradient(1.5px 1.5px at 720px 40px,rgba(255,255,255,.8),transparent 60%),
+  radial-gradient(1px 1px at 1060px 560px,rgba(255,255,255,.5),transparent 60%),
+  radial-gradient(1px 1px at 420px 600px,rgba(255,255,255,.6),transparent 60%),
+  radial-gradient(1px 1px at 880px 470px,rgba(255,255,255,.45),transparent 60%),
+  radial-gradient(1px 1px at 200px 210px,rgba(255,255,255,.5),transparent 60%)}
+.bigplanet{position:absolute;left:-215px;bottom:-300px;width:520px;height:520px;
+  opacity:.55;filter:saturate(1.05) brightness(.62) blur(.6px);object-fit:contain}
+.farplanet{position:absolute;right:6%;top:-105px;width:210px;height:210px;
+  opacity:.42;filter:saturate(1.1) brightness(.66) blur(.8px);object-fit:contain}
+/* the limb: same construction as the app, sized so its terminator crosses the bottom right corner */
+.limb{position:absolute;right:-788px;bottom:-1192px;width:1400px;height:1400px;border-radius:50%;
+  background:
+    repeating-linear-gradient(-24deg,rgba(255,255,255,.012) 0 9px,transparent 9px 22px),
+    radial-gradient(circle at 27% 23%,#3d4a6b 0%,#1e2842 14%,#111730 34%,#070a16 58%,#04060d 78%);
+  box-shadow:
+    inset 26px 26px 70px rgba(160,185,245,.20),inset 10px 10px 30px rgba(201,162,77,.09),
+    inset -70px -70px 140px rgba(0,0,0,.75),
+    0 0 120px rgba(70,110,220,.16),
+    0 0 1px rgba(210,225,255,.55)}
+.limb::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:1px solid rgba(215,222,255,.62);
+  -webkit-mask:linear-gradient(135deg,#000 0%,#000 30%,transparent 52%)}
+.limb::before{content:"";position:absolute;inset:-10px;border-radius:50%;
+  background:radial-gradient(circle at 27% 23%,rgba(130,165,255,.30) 0%,rgba(120,160,255,.08) 30%,transparent 55%);
+  -webkit-mask:radial-gradient(circle,transparent 61.5%,#000 62%)}
+/* the dreadnought sits behind the title, almost a silhouette: it reads as shape and scale, never as
+   something competing with the words in front of it */
+.ship{position:absolute;left:50%;top:52%;width:880px;transform:translate(-50%,-50%) rotate(40deg);
+  opacity:.6;filter:brightness(.38) saturate(.5) contrast(1.2) drop-shadow(0 0 50px rgba(0,0,0,.85))}
+.shipveil{position:absolute;inset:0;background:radial-gradient(ellipse 60% 46% at 50% 46%,rgba(4,6,14,.5),transparent 70%)}
+.vig{position:absolute;inset:0;background:
+  radial-gradient(ellipse 70% 72% at 50% 46%,transparent 30%,rgba(3,5,12,.62) 72%,rgba(2,3,9,.9) 100%)}
+
+/* hero */
+.hero{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding-bottom:6px}
+h1{margin:0;font:900 96px/1 var(--display);letter-spacing:.085em;text-transform:uppercase;
+  text-indent:.085em; /* the tracking hangs off the last letter; nudge back to keep the line optically centred */
+  background:linear-gradient(180deg,#f6e7b4 0%,#d9b55e 42%,#9a7428 56%,#e8cf8a 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 0 rgba(0,0,0,.65)) drop-shadow(0 0 26px rgba(201,162,77,.22))}
+.rule{display:flex;align-items:center;gap:14px;width:660px;margin:20px auto 0}
+.rule span{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.rule span:last-child{background:linear-gradient(90deg,var(--gold),transparent)}
+.rule i{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);flex:none}
+.tagline{margin:18px 0 0;font:600 24px/1 var(--hud);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--gold);opacity:.9}
+/* the two factions, small enough to read as a footnote under the title */
+.vs{display:flex;align-items:center;gap:34px;margin-top:34px}
+.vs img{width:104px;height:104px;object-fit:contain;filter:drop-shadow(0 3px 10px rgba(0,0,0,.7))}
+.vs b{font:700 24px/1 var(--hud);letter-spacing:.24em;color:rgba(233,228,214,.7)}
+</style></head>
+<body><div class="card">
+  <div class="base"></div><div class="stars"></div>
+  <div class="galaxy a"></div><div class="galaxy b"></div>
+  <div class="veil"></div><div class="dust"></div>
+  <img class="bigplanet" src="../../public/assets/tiles/planet_Sakulag.png" alt="">
+  <img class="farplanet" src="../../public/assets/tiles/planet_Quann.png" alt="">
+  <div class="limb"></div>
+  <img class="ship" src="../../public/assets/sprites/black_dreadnought.png" alt="">
+  <div class="shipveil"></div>
+  <div class="vig"></div>
+  <div class="hero">
+    <h1>Mecatol Duel</h1>
+    <div class="rule"><span></span><i></i><span></span></div>
+    <p class="tagline">Twilight Imperium for two players, thirty minutes</p>
+    <div class="vs">
+      <img src="../../public/assets/factions/l1z1x.png" alt="">
+      <b>VS</b>
+      <img src="../../public/assets/factions/letnev.png" alt="">
+    </div>
+  </div>
+</div></body></html>

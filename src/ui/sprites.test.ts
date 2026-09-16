@@ -5,7 +5,7 @@ import { SPRITE_FOLDER, SPRITE_SETS, iconFitSize, spriteSize } from './sprites'
 import type { ModelStyle } from './modelStyle'
 import type { UnitType } from '../engine/types'
 
-const MODEL_STYLE_IDS: ModelStyle[] = ['models', 'topdown', 'counters']
+const MODEL_STYLE_IDS: ModelStyle[] = ['models', 'topdown', 'counters', 'studio']
 
 interface Manifest { units: Record<string, { pxPerModelUnit: number; spriteW: number; spriteH: number }> }
 

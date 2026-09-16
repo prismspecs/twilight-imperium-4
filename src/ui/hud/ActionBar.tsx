@@ -3,6 +3,7 @@ import { navigate } from '../route'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
 import { MusicButton } from '../music'
+import { useModelStyle } from '../modelStyle'
 import { isAi } from '../../engine'
 import { FACTIONS } from '../../data/factions'
 import type { Seat } from '../../engine/types'
@@ -20,6 +21,7 @@ export interface ActionBarProps {
 
 export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: isMyTurnProp }: ActionBarProps) {
   const { session, legal, apply, canUndo, undo, error } = useGame()
+  const { style, setStyle } = useModelStyle()
   const [menu, setMenu] = useState(false)
   useEscape(() => { setMenu(false) })
   if (!session) return null
@@ -57,6 +59,17 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
                 <button type="button" className="btn quiet" data-testid="btn-menu-lobby"
                   onClick={() => { navigate('#/') }}>Back to the lobby</button>
                 <MusicButton className="btn quiet" />
+                <div className="rowline" style={{ alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span className="lbl dim">Unit art</span>
+                  {(['models', 'topdown', 'counters', 'studio'] as const).map(styleOption => (
+                    <button key={styleOption} type="button"
+                      className={`btn quiet small${style === styleOption ? ' on' : ''}`}
+                      data-testid={`btn-style-${styleOption}`}
+                      onClick={() => { setStyle(styleOption) }}>
+                      {styleOption}
+                    </button>
+                  ))}
+                </div>
                 <button type="button" className="btn quiet" data-testid="btn-menu-close"
                   onClick={() => { setMenu(false) }}>Close</button>
               </div>
