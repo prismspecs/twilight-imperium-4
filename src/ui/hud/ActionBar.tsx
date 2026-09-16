@@ -20,9 +20,10 @@ export interface ActionBarProps {
 }
 
 export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: isMyTurnProp }: ActionBarProps) {
-  const { session, legal, apply, canUndo, undo, error } = useGame()
+  const { session, legal, apply, canUndo, undo, rewind, error } = useGame()
   const { style, setStyle } = useModelStyle()
   const [menu, setMenu] = useState(false)
+  const [rewindN, setRewindN] = useState(11)
   useEscape(() => { setMenu(false) })
   if (!session) return null
   const state = session.state
@@ -47,6 +48,20 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
     <div className="bottombar">
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn quiet" data-testid="btn-undo" disabled={!canUndo} onClick={undo}>Undo</button>
+        <span className="rewindgroup" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+          <input
+            type="number" min={1} max={400} value={rewindN}
+            data-testid="rewind-count"
+            onChange={e => setRewindN(Math.max(1, Math.min(400, Number(e.target.value) || 1)))}
+            style={{ width: 52 }} className="btn quiet"
+            title="How many moves to rewind"
+          />
+          <button
+            type="button" className="btn quiet" data-testid="btn-rewind"
+            onClick={() => rewind(rewindN)}
+            title={`Replay the game back ${rewindN} moves — works across phase boundaries (dice re-roll)`}
+          >Rewind</button>
+        </span>
         <button type="button" className="btn quiet" data-testid="btn-log" onClick={onLog}>Log</button>
         <div className="menuwrap">
           <button type="button" className="btn quiet" data-testid="btn-menu" aria-expanded={menu}

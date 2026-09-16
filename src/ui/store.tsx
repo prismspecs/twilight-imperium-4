@@ -298,6 +298,9 @@ export interface GameStore {
   resume(session: Session): void
   apply(move: Move): boolean
   undo(): void
+  /** Replays the whole game from creation minus the last `n` logged moves — the true rewind for going
+   * back across phase boundaries (the stepwise `undo` never crosses one by design). */
+  rewind(n: number): boolean
   dismissHandoff(): void
   dismissAgendaResult(): void
   abandon(): void
@@ -464,6 +467,35 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setSession(reverted)
   }, [session])
 
+  const rewind = useCallback((n: number) => {
+    if (!session || n < 1 || session.config === undefined) return false
+    // Every applied move is logged with its own seed, so the state n moves back is reproducible: create
+    // the game afresh and replay the log minus the last n entries. Diverges only if an earlier save was
+    // taken mid-game from a different build — in that case the replay fails loudly and nothing changes.
+    const moves = session.state.log.filter((e): e is Extract<LogEntry, { t: 'move' }> => e.t === 'move')
+    const target = moves.length - n
+    if (target < 0) return false
+    if (aiTimerRef.current !== null) { clearTimeout(aiTimerRef.current); aiTimerRef.current = null }
+    let state: GameState
+    try {
+      state = createGame(session.config, session.seed)
+      for (const entry of moves.slice(0, target)) {
+        const r = applyMove(state, entry.move, entry.seed)
+        if (!r.ok) { setError(`rewind failed replaying a move: ${r.error}`); return false }
+        state = r.value
+      }
+    } catch (err) {
+      setError(`rewind failed: ${err instanceof Error ? err.message : String(err)}`)
+      return false
+    }
+    setError(null)
+    // One history snapshot so a single Undo can still step back over the rewind itself.
+    const reverted: Session = { ...session, state, history: [session.state], handoff: null, agendaResult: null }
+    sessionRef.current = reverted
+    setSession(reverted)
+    return true
+  }, [session])
+
   const dismissHandoff = useCallback(() => {
     setSession(prev => prev ? { ...prev, handoff: null } : prev)
   }, [])
@@ -540,8 +572,8 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
 
   const store: GameStore = useMemo(() => ({
     session, legal, error, canUndo: session !== null && session.history.length > 0, clockRunning: running,
-    start, resume, apply, undo, dismissHandoff, dismissAgendaResult, abandon,
-  }), [session, legal, error, running, start, resume, apply, undo, dismissHandoff, dismissAgendaResult, abandon])
+    start, resume, apply, undo, rewind, dismissHandoff, dismissAgendaResult, abandon,
+  }), [session, legal, error, running, start, resume, apply, undo, rewind, dismissHandoff, dismissAgendaResult, abandon])
 
   return <GameContext.Provider value={store}>{children}</GameContext.Provider>
 }
