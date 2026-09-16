@@ -7,7 +7,7 @@ import { deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
 import { MISC, spriteUrl, techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
-import { useModelStyle } from '../modelStyle'
+import { MODEL_STYLES, useModelStyle } from '../modelStyle'
 import type { ModelStyle } from '../modelStyle'
 import { useGame } from '../store'
 import '../setup.css'
@@ -250,7 +250,7 @@ function FactionCardPreview({ card }: { card: FactionCardAnchor | null }) {
 
 export function SetupScreen() {
   const { start } = useGame()
-  const { style: modelStyle } = useModelStyle()
+  const { style: modelStyle, setStyle } = useModelStyle()
   const route = useHashRoute()
   // the games this browser holds, read once per visit to the lobby
   const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
@@ -551,6 +551,17 @@ export function SetupScreen() {
                   ? <>Human versus AI<i /> {playerCount} of {playerCount} seats taken</>
                   : <><b className="pf-live" />All {playerCount} seats on this device<i /> {playerCount} of {playerCount} seats taken</>}
             </span>
+            <div className="rowline" style={{ alignItems: 'center', gap: 6, flexWrap: 'wrap', marginRight: 'auto' }}>
+              <span className="lbl">Unit art</span>
+              {MODEL_STYLES.map(styleOption => (
+                <button key={styleOption} type="button"
+                  className={`pf-btn sm${modelStyle === styleOption ? ' on' : ''}`}
+                  data-testid={`btn-style-${styleOption}`}
+                  onClick={() => { setStyle(styleOption) }}>
+                  {styleOption}
+                </button>
+              ))}
+            </div>
             <button
               type="button" className="pf-btn sm" data-testid="btn-swap-factions"
               onClick={() => { setFactions(prev => { const next = [...prev]; [next[0], next[1]] = [next[1], next[0]]; return next }) }}
