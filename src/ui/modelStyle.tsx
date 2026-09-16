@@ -5,8 +5,9 @@ import { useSyncExternalStore } from 'react'
 export type ModelStyle = 'models' | 'topdown' | 'counters' | 'studio'
 
 const STORAGE_KEY = 'md:modelStyle'
-export const MODEL_STYLES: ModelStyle[] = ['models', 'topdown', 'counters', 'studio', 'orthographic-34']
-const DEFAULT_STYLE: ModelStyle = 'counters'
+export const MODEL_STYLES: ModelStyle[] = ['models', 'topdown', 'counters', 'studio']
+/** The studio isometric renders are the default look; pick another in the menu to switch. */
+const DEFAULT_STYLE: ModelStyle = 'studio'
 
 /** Module-level store: every surface (board, panels, menu, setup screen) shares one live choice. */
 let current: ModelStyle = readStored()
