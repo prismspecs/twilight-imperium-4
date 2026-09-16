@@ -53,7 +53,7 @@ export function ActionBar({ mode, onMode, hint, onLog, viewingSeat, isMyTurn: is
             type="number" min={1} max={400} value={rewindN}
             data-testid="rewind-count"
             onChange={e => setRewindN(Math.max(1, Math.min(400, Number(e.target.value) || 1)))}
-            style={{ width: 52 }} className="btn quiet"
+            className="rewind-count"
             title="How many moves to rewind"
           />
           <button
