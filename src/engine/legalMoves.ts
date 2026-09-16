@@ -1,6 +1,6 @@
 import { actionCardMoves } from './actionCards'
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
-import { agendaMoves } from './agendas'
+import { agendaMoves, artifactTechMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
 import { canInheritance, canProductionBiomes, inheritanceTechs, productionBiomesTargets } from './componentActions'
@@ -317,6 +317,10 @@ export function legalMoves(state: GameState): Move[] {
     const seat = state.pendingSchemingDiscards[0]
     return state.players[seat].actionCards.map(cardId => ({ type: 'discardActionCard', cardId }))
   }
+  // Ixthian Artifact roll 6-10: the queued seat's research picks block everything else
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) {
+    return artifactTechMoves(state)
+  }
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
   if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
   // R9: an open reaction window blocks everything else too; the seat it is waiting on may play a matching
@@ -436,6 +440,9 @@ function matches(candidate: Move, move: Move): boolean {
 export function validateMove(state: GameState, move: Move): Result<true> {
   if ((state.pendingActionCardDiscards?.length || state.pendingSchemingDiscards?.length) && move.type !== 'discardActionCard') {
     return { ok: false, error: 'excess action cards or Scheming discard must be resolved first' }
+  }
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0 && move.type !== 'artifactTechs') {
+    return { ok: false, error: 'the Ixthian Artifact research picks must be resolved first' }
   }
   if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   const ok = legalMoves(state).some(candidate => matches(candidate, move))

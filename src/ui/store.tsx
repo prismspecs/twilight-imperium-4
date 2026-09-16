@@ -192,6 +192,9 @@ export function seatToAct(state: GameState): Seat {
   if (state.pendingSchemingDiscards?.length) {
     return state.pendingSchemingDiscards[0]
   }
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) {
+    return state.pendingArtifactTechs.order[0]
+  }
   const pending = pendingFor(state)
   if (pending) return pending.owner
   if (state.pendingSecondary !== null && state.pendingSecondary.queue.length > 0) {
@@ -213,6 +216,9 @@ export function shouldAiStep(config: GameConfig | undefined, state: GameState): 
   }
   if (state.pendingSchemingDiscards?.length) {
     return isAi(config, state.pendingSchemingDiscards[0])
+  }
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) {
+    return isAi(config, state.pendingArtifactTechs.order[0])
   }
 
   // 1. Pending hits: only the owner of the fleet taking hits may assign them

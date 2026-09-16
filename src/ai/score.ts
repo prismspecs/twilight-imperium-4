@@ -88,6 +88,9 @@ export function scoreMove(view: GameStateView, move: Move, seat: Seat, w: Readon
     case 'pass': return scorePass(view, seat, w)
     case 'status': return w.priority // keep the engine's default distribution
     case 'discardActionCard': return 1
+    // Ixthian Artifact roll 6-10: more technologies is strictly better; the pair options the enumerator
+    // offers are the ranked best pairs, so the top-scoring pick is the strongest legal pair
+    case 'artifactTechs': return move.secondTechId !== undefined ? w.economy + 2 : (move.techId !== undefined ? w.economy : 0)
     case 'stallTactics': {
       const oppsActive = view.players.some((p, i) => i !== seat && !p.passed)
       const hand = view.players[seat]?.actionCards ?? []

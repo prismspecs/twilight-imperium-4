@@ -28,6 +28,7 @@ import { ActionCardPanel } from '../flows/ActionCardPanel'
 import { AgendaDialog } from '../flows/AgendaDialog'
 import { ComponentPanel } from '../flows/ComponentPanel'
 import { DiscardActionCardDialog } from '../flows/DiscardActionCardDialog'
+import { ArtifactTechDialog } from '../flows/ArtifactTechDialog'
 import { ReactionPanel } from '../flows/ReactionPanel'
 import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
@@ -136,6 +137,7 @@ function ActiveTurnBanner({ state, config }: { state: GameState; config?: GameCo
 function currentActor(state: GameState): Seat {
   if (state.pendingActionCardDiscards?.length) return state.pendingActionCardDiscards[0]
   if (state.pendingSchemingDiscards?.length) return state.pendingSchemingDiscards[0]
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) return state.pendingArtifactTechs.order[0]
   const reacting = reactingSeat(state)
   if (reacting !== null) return reacting
   if (state.pendingSecondary !== null) return state.pendingSecondary.queue[0] ?? state.pendingSecondary.owner
@@ -155,6 +157,8 @@ function FaintCenterTurnAlert({ state, mode, humanSeat, config }: { state: GameS
     instruction = 'Discard action cards to meet the hand limit (7).'
   } else if (state.pendingSchemingDiscards?.length) {
     instruction = 'Choose and discard 1 action card for Scheming.'
+  } else if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) {
+    instruction = 'Ixthian Artifact: pick up to 2 technologies to research.'
   } else if (state.pendingReactions.length > 0) {
     instruction = 'Play or decline reaction card.'
   } else if (state.phase === 'strategy') {
@@ -345,6 +349,7 @@ export function BoardScreen() {
     pendingReaction(state) !== null ||
     Boolean(state.pendingActionCardDiscards?.length) ||
     Boolean(state.pendingSchemingDiscards?.length) ||
+    Boolean(state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0) ||
     mode === 'strategic' ||
     mode === 'component' ||
     mode === 'actionCard' ||
@@ -538,6 +543,7 @@ export function BoardScreen() {
       ) : null}
       <ReactionPanel />
       <DiscardActionCardDialog />
+      <ArtifactTechDialog key={`artifact-${String(state.pendingArtifactTechs?.order[0] ?? '')}`} />
       <HandoffOverlay />
       <AgendaResultOverlay />
     </>

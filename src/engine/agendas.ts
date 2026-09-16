@@ -1,6 +1,6 @@
 import { agendaDef, findAgenda } from '../data/agendas'
 import { objectiveDef } from '../data/objectives'
-import { findTech, techDef } from '../data/techs'
+import { findTech } from '../data/techs'
 import { MECATOL_ID } from '../data/map'
 import { drawActionCards } from './actionCards'
 import { destroyUnits, readyAllPlanets, returnToReinforcements, trimCargo, trimToFleetPool } from './board'
@@ -8,6 +8,7 @@ import { holyPlanetControlSwing, isDemilitarizedZone } from './lawEffects'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
 import { researchable } from './research'
+import { grantTech } from './strategicActions'
 import { deriveSeed, mulberry32 } from './rng'
 import { voteOrder } from './strategyPhase'
 import { victoryCheck } from './statusPhase'
@@ -727,7 +728,7 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     // the PRODUCTION ban by `productionLimit` skipping the planet's own dock.
     return { ...next, log: [...next.log, { t: 'info', text: 'Holy Planet of Ixth: its dock cannot produce; control of the planet swings 1 VP' }] }
   },
-  ixthian_artifact: (state, _agenda, outcome, seed) => {
+  ixthian_artifact: (state, agenda, outcome, seed) => {
     if (outcome !== 'For') {
       return {
         ...state,
@@ -748,46 +749,18 @@ export const AGENDA_RESOLVERS: Readonly<Partial<Record<string, Resolver>>> = {
     }
 
     if (roll >= 6) {
-      // 6-10: each player may research 2 technologies in speaker order
+      // 6-10: each player, in speaker order, MAY research up to 2 technologies — a player choice, so the
+      // engine queues the picks instead of choosing for the table (lrr-components.md, Ixthian Artifact 1:
+      // prerequisites still apply, the first tech can satisfy the second's). The Nekro Virus cannot
+      // research (they only assimilate), so the seat is skipped entirely.
       const n = next.players.length
       const speakerOrder: Seat[] = Array.from({ length: n }, (_, i) => ((next.speaker + i) % n) as Seat)
-      const players = [...next.players] as GameState['players']
-
-      for (const seat of speakerOrder) {
-        let p = players[seat]
-        const researched: string[] = []
-        for (let step = 0; step < 2; step++) {
-          const options = researchable(p)
-          if (!options.length) break
-          // Pick best tech: faction techs first, then unit upgrades, then most prereqs, then alphabetical
-          const best = [...options].sort((a, b) => {
-            const da = techDef(a)
-            const db = techDef(b)
-            const aFaction = da.faction !== undefined ? 1 : 0
-            const bFaction = db.faction !== undefined ? 1 : 0
-            if (aFaction !== bFaction) return bFaction - aFaction
-            const aUpgrade = da.kind === 'upgrade' ? 1 : 0
-            const bUpgrade = db.kind === 'upgrade' ? 1 : 0
-            if (aUpgrade !== bUpgrade) return bUpgrade - aUpgrade
-            const aPrereq = Object.values(da.prereq ?? {}).reduce((s, c) => s + c, 0)
-            const bPrereq = Object.values(db.prereq ?? {}).reduce((s, c) => s + c, 0)
-            if (aPrereq !== bPrereq) return bPrereq - aPrereq
-            return a.localeCompare(b)
-          })[0]
-          p = { ...p, techs: [...p.techs, best] }
-          researched.push(best)
-        }
-        players[seat] = p
-        if (researched.length > 0) {
-          const names = researched.map(id => techDef(id).name).join(', ')
-          next = {
-            ...next,
-            players,
-            log: [...next.log, { t: 'info', text: `Ixthian Artifact: seat ${seat} researches ${researched.length} technolog${researched.length === 1 ? 'y' : 'ies'}: ${names}` }],
-          }
-        }
+      const order = speakerOrder.filter(seat => next.players[seat].faction !== 'nekro')
+      return {
+        ...next,
+        pendingArtifactTechs: { order, slot: agenda.slot },
+        log: [...next.log, { t: 'info', text: 'Ixthian Artifact: each player, in speaker order, may research 2 technologies' }],
       }
-      return { ...next, players }
     }
 
     // 1-5: destroy all units in Mecatol Rex's system, and each player with units in systems adjacent
@@ -1149,6 +1122,11 @@ function resolveAgendaRound(state: GameState, seed: number, startNextRound: (s: 
   }
 
   next = { ...next, agenda: null }
+  // Ixthian Artifact roll 6-10: the research picks pause the phase — no second-agenda reveal and no next
+  // round until every queued seat has picked (or passed). resolveArtifactTechs resumes this continuation.
+  if (next.pendingArtifactTechs && next.pendingArtifactTechs.order.length > 0) {
+    return { ...next, phase: 'agenda', active: next.pendingArtifactTechs.order[0] }
+  }
   const winner = victoryCheck(next)
   if (winner !== null) {
     return { ...next, phase: 'ended', winner, log: [...next.log, { t: 'info', text: `${next.players[winner].name} wins with ${next.players[winner].vp} VP` }] }
@@ -1180,4 +1158,84 @@ export function castVote(state: GameState, outcome: string, planets: string[], s
   const withVote: GameState = { ...paid.value.state, agenda: { ...agenda, votes, order }, active: order[0] ?? seat }
   if (order.length > 0) return { ok: true, value: withVote }
   return { ok: true, value: resolveAgendaRound(withVote, seed, startNextRound) }
+}
+
+/** Ixthian Artifact roll 6-10: the queued seat submits its picks — 0, 1, or 2 technologies, prerequisites
+ * validated sequentially (the first tech can satisfy the second's), each skip planet exhausted for one
+ * matching prerequisite symbol (lrr-components.md, Ixthian Artifact 1). When the queue drains the agenda
+ * phase resumes exactly where resolveAgendaRound paused it. */
+export function resolveArtifactTechs(state: GameState, move: Extract<Move, { type: 'artifactTechs' }>, startNextRound: (s: GameState) => GameState): Result<GameState> {
+  const pending = state.pendingArtifactTechs
+  if (state.phase !== 'agenda' || !pending || pending.order.length === 0) return { ok: false, error: 'no Ixthian Artifact research is pending' }
+  const seat = pending.order[0]
+  if (seat !== state.active) return { ok: false, error: 'not this seat\'s Ixthian Artifact research pick' }
+
+  if (move.techId === undefined && (move.secondTechId !== undefined || (move.techSkipPlanets?.length ?? 0) > 0)) {
+    return { ok: false, error: 'a second technology cannot be picked without a first' }
+  }
+  let next: GameState = state
+  if (move.techId !== undefined) {
+    // The same grantTech path the Technology card uses: skip planets are validated and exhausted there,
+    // research-team attachments apply, and prerequisites are checked against the techs owned so far — so
+    // the second pick legally satisfies its prerequisites with the first (lrr-components.md IA 1.1).
+    const first = grantTech(next, seat, move.techId, false, move.techSkipPlanets ?? [])
+    if (!first.ok) return first
+    next = first.value
+    if (move.secondTechId !== undefined) {
+      const second = grantTech(next, seat, move.secondTechId, false, move.secondTechSkipPlanets ?? [])
+      if (!second.ok) return second
+      next = second.value
+    }
+  }
+
+  const order = pending.order.slice(1)
+  if (order.length > 0) {
+    return { ok: true, value: { ...next, pendingArtifactTechs: { ...pending, order }, active: order[0] } }
+  }
+  // The queue drains: the agenda phase resumes — same continuation resolveAgendaRound paused on.
+  const cleared = { ...next, pendingArtifactTechs: undefined, active: next.speaker }
+  const winner = victoryCheck(cleared)
+  if (winner !== null) {
+    return { ok: true, value: { ...cleared, phase: 'ended', winner, log: [...cleared.log, { t: 'info', text: `${cleared.players[winner].name} wins with ${cleared.players[winner].vp} VP` }] } }
+  }
+  if (pending.slot === 1 && cleared.agendaDeck.length > 0) {
+    return { ok: true, value: { ...revealAgenda(cleared, 2, []), phase: 'agenda' } }
+  }
+  return { ok: true, value: startNextRound(readyAllPlanets(cleared)) }
+}
+
+/** The Ixthian Artifact pick options for the queued seat: pass (pick nothing — "may"), every single
+ * researchable technology, and the ranked best-tech pairs so an AI seat plays the strongest legal pair
+ * without the human picker. Skip-planet variants are the human picker's job; they are validated by
+ * grantTech, not enumerated. */
+export function artifactTechMoves(state: GameState): Move[] {
+  const pending = state.pendingArtifactTechs
+  const seat = pending?.order[0]
+  if (!pending || seat === undefined) return []
+  const player = state.players[seat]
+  const options = researchable(player)
+  const rank = (a: string, b: string): number => {
+    const da = findTech(a)
+    const db = findTech(b)
+    const aFaction = da?.faction !== undefined ? 1 : 0
+    const bFaction = db?.faction !== undefined ? 1 : 0
+    if (aFaction !== bFaction) return bFaction - aFaction
+    const aUpgrade = da?.kind === 'upgrade' ? 1 : 0
+    const bUpgrade = db?.kind === 'upgrade' ? 1 : 0
+    if (aUpgrade !== bUpgrade) return bUpgrade - aUpgrade
+    const aPrereq = Object.values(da?.prereq ?? {}).reduce((s, c) => s + c, 0)
+    const bPrereq = Object.values(db?.prereq ?? {}).reduce((s, c) => s + c, 0)
+    if (aPrereq !== bPrereq) return bPrereq - aPrereq
+    return a.localeCompare(b)
+  }
+  const moves: Move[] = [{ type: 'artifactTechs' }]
+  for (const tech of options) moves.push({ type: 'artifactTechs', techId: tech })
+  const best = [...options].sort(rank)[0]
+  if (best !== undefined) {
+    const after = { ...player, techs: [...player.techs, best] }
+    for (const second of researchable(after)) {
+      moves.push({ type: 'artifactTechs', techId: best, secondTechId: second })
+    }
+  }
+  return moves
 }

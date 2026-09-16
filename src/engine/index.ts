@@ -1,6 +1,6 @@
 import { discardActionCard, playActionCard, stallTactics } from './actionCards'
 import { endTactical, endTurn, pass, startTactical } from './actionPhase'
-import { castVote } from './agendas'
+import { castVote, resolveArtifactTechs } from './agendas'
 import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { declineReaction, openActivationWindow, openCombatWindows, pendingReaction, playReactionCard } from './reactions'
 import { productionBiomes, research, transitDiodes } from './componentActions'
@@ -17,6 +17,10 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
   // LRR 112 & 140: excess action cards must be discarded immediately
   if ((state.pendingActionCardDiscards?.length || state.pendingSchemingDiscards?.length) && move.type !== 'discardActionCard') {
     return { ok: false, error: 'excess action cards / Scheming discard must be resolved first' }
+  }
+  // Ixthian Artifact roll 6-10: the queued seat's research picks block everything else
+  if (state.pendingArtifactTechs && state.pendingArtifactTechs.order.length > 0 && move.type !== 'artifactTechs') {
+    return { ok: false, error: 'the Ixthian Artifact research picks must be resolved first' }
   }
   // R4.1 step 4: while hits wait to be assigned, assigning them is the only thing anybody may do
   if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
@@ -66,6 +70,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'transitDiodes': result = transitDiodes(logged, move.moves); break
       case 'status': result = status(logged, move.params, seed); break
       case 'castVote': result = castVote(logged, move.outcome, move.planets, seed, startNextRound); break
+      case 'artifactTechs': result = resolveArtifactTechs(logged, move, startNextRound); break
       case 'declineReaction': result = declineReaction(logged); break
       default: {
         // every Move kind is dispatched above; this only runs for a malformed move from outside the type system

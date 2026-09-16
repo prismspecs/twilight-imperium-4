@@ -135,6 +135,11 @@ export interface GameState {
   lawOwners: Partial<Record<string, Seat>>  // Elect-Player law owner per agenda id (Shard of the Throne, Crown of Emphidia, ministers)
   pendingActionCardDiscards?: Seat[] // R9/LRR 112 & 140: seats that exceed hand limit of 7 and must discard
   pendingSchemingDiscards?: Seat[] // Yssaril Scheming: seats that must choose and discard 1 action card after drawing
+  // Ixthian Artifact, roll 6-10 (lrr-components.md): each player, in speaker order, may research up to 2
+  // technologies (prerequisites apply, the first can satisfy the second's, specialty skips exhaust a
+  // planet that readies at the end of the agenda phase). The agenda phase pauses on this queue; `slot`
+  // and the deck tell the drained queue whether to reveal agenda 2 or start the next round.
+  pendingArtifactTechs?: { order: Seat[]; slot: 1 | 2 }
   winner: Seat | null
   log: LogEntry[]
 }
@@ -181,6 +186,10 @@ export type Move =
   // R10: one seat's vote on the revealed agenda. `outcome` is 'For'/'Against', or the elected target's id
   // (a seat number as a string, or a planet id) for an Elect agenda. Empty `planets` is a legal abstain.
   | { type: 'castVote'; outcome: string; planets: string[] }
+  // Ixthian Artifact roll 6-10: the queued seat's picks. One move carries both techs; `may` means 0 or 1
+  // picks are legal (omit the fields). Prerequisites are validated sequentially and skip planets are
+  // exhausted for their technology specialty (LRR "Technology Specialties" 12).
+  | { type: 'artifactTechs'; techId?: string; techSkipPlanets?: string[]; secondTechId?: string; secondTechSkipPlanets?: string[] }
 export interface StrategicParams {
   systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
   planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)
