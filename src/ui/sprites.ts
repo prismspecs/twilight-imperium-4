@@ -71,12 +71,26 @@ const STUDIO: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
   pds: { pxPerModelUnit: 304.85, spriteW: 622, spriteH: 448 },
 }
 
+/** Orthographic 3/4: classic isometric (elev 30, az 45) without studio lighting, same dimensions as studio. */
+const ORTHO_34: Record<Exclude<UnitType, 'floating_factory'>, SpriteDef> = {
+  dreadnought: { pxPerModelUnit: 144.4, spriteW: 542, spriteH: 488 },
+  carrier: { pxPerModelUnit: 188.59, spriteW: 602, spriteH: 581 },
+  cruiser: { pxPerModelUnit: 198.59, spriteW: 547, spriteH: 566 },
+  destroyer: { pxPerModelUnit: 222.68, spriteW: 564, spriteH: 453 },
+  fighter: { pxPerModelUnit: 357.26, spriteW: 820, spriteH: 508 },
+  flagship: { pxPerModelUnit: 130.02, spriteW: 564, spriteH: 491 },
+  warsun: { pxPerModelUnit: 156.33, spriteW: 505, spriteH: 615 },
+  infantry: { pxPerModelUnit: 255.99, spriteW: 544, spriteH: 640 },
+  spacedock: { pxPerModelUnit: 238.5, spriteW: 545, spriteH: 655 },
+  pds: { pxPerModelUnit: 304.85, spriteW: 622, spriteH: 448 },
+}
+
 export const SPRITE_SETS: Record<ModelStyle, Record<Exclude<UnitType, 'floating_factory'>, SpriteDef>> = {
-  models: MINIATURES, topdown: TOP_DOWN, counters: COUNTERS, studio: STUDIO,
+  models: MINIATURES, topdown: TOP_DOWN, counters: COUNTERS, studio: STUDIO, 'orthographic-34': ORTHO_34,
 }
 
 /** The folder each style's files live in; the miniatures kept the original flat path. */
-export const SPRITE_FOLDER: Record<ModelStyle, string> = { models: '', topdown: 'topdown/', counters: 'counters/', studio: 'studio/' }
+export const SPRITE_FOLDER: Record<ModelStyle, string> = { models: '', topdown: 'topdown/', counters: 'counters/', studio: 'studio/', 'orthographic-34': 'orthographic-34/' }
 
 /** Board pixels per model unit. The manifest's scale is what makes a fighter small next to a dreadnought. */
 export const BOARD_SCALE = 11.6

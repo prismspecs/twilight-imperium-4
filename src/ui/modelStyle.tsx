@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 export type ModelStyle = 'models' | 'topdown' | 'counters' | 'studio'
 
 const STORAGE_KEY = 'md:modelStyle'
-export const MODEL_STYLES: ModelStyle[] = ['models', 'topdown', 'counters', 'studio']
+export const MODEL_STYLES: ModelStyle[] = ['models', 'topdown', 'counters', 'studio', 'orthographic-34']
 const DEFAULT_STYLE: ModelStyle = 'counters'
 
 /** Module-level store: every surface (board, panels, menu, setup screen) shares one live choice. */

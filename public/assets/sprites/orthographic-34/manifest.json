@@ -1,0 +1,106 @@
+{
+ "style": "D orthographic 3/4 (elev 30, az 45)",
+ "colors": [
+  "red",
+  "blue",
+  "green",
+  "yellow",
+  "purple",
+  "black",
+  "orange",
+  "pink",
+  "grey"
+ ],
+ "units": {
+  "dreadnought": {
+   "modelLength": 5.505199909210205,
+   "modelWidth": 2.7037999629974365,
+   "modelHeight": 1.6145999431610107,
+   "boundingRadius": 13.232560848859176,
+   "pxPerModelUnit": 144.4,
+   "spriteW": 542,
+   "spriteH": 488
+  },
+  "flagship": {
+   "modelLength": 6.180799961090088,
+   "modelWidth": 2.9888999462127686,
+   "modelHeight": 1.5743999481201172,
+   "boundingRadius": 14.696098060545317,
+   "pxPerModelUnit": 130.02,
+   "spriteW": 564,
+   "spriteH": 491
+  },
+  "carrier": {
+   "modelLength": 4.434000015258789,
+   "modelWidth": 1.6620000004768372,
+   "modelHeight": 1.0776000022888184,
+   "boundingRadius": 10.132220268246174,
+   "pxPerModelUnit": 188.59,
+   "spriteW": 602,
+   "spriteH": 581
+  },
+  "cruiser": {
+   "modelLength": 4.25600004196167,
+   "modelWidth": 1.4319000244140625,
+   "modelHeight": 1.0507999658584595,
+   "boundingRadius": 9.62191270850411,
+   "pxPerModelUnit": 198.59,
+   "spriteW": 547,
+   "spriteH": 566
+  },
+  "destroyer": {
+   "modelLength": 3.240999937057495,
+   "modelWidth": 2.345900058746338,
+   "modelHeight": 0.9531999826431274,
+   "boundingRadius": 8.5811464396126,
+   "pxPerModelUnit": 222.68,
+   "spriteW": 564,
+   "spriteH": 453
+  },
+  "fighter": {
+   "modelLength": 1.710800051689148,
+   "modelWidth": 1.8447999954223633,
+   "modelHeight": 0.49140000343322754,
+   "boundingRadius": 5.348512524741429,
+   "pxPerModelUnit": 357.26,
+   "spriteW": 820,
+   "spriteH": 508
+  },
+  "warsun": {
+   "modelLength": 3.196500062942505,
+   "modelWidth": 3.159899950027466,
+   "modelHeight": 3.7574000358581543,
+   "boundingRadius": 12.222926181511559,
+   "pxPerModelUnit": 156.33,
+   "spriteW": 505,
+   "spriteH": 615
+  },
+  "infantry": {
+   "modelLength": 1.6904000043869019,
+   "modelWidth": 2.128899931907654,
+   "modelHeight": 2.3259999752044678,
+   "boundingRadius": 7.46451416900695,
+   "pxPerModelUnit": 255.99,
+   "spriteW": 544,
+   "spriteH": 640
+  },
+  "spacedock": {
+   "modelLength": 2.25439989566803,
+   "modelWidth": 2.2770999670028687,
+   "modelHeight": 2.1161999702453613,
+   "boundingRadius": 8.011830990923137,
+   "pxPerModelUnit": 238.5,
+   "spriteW": 545,
+   "spriteH": 655
+  },
+  "pds": {
+   "modelLength": 1.5880000591278076,
+   "modelWidth": 2.059599995613098,
+   "modelHeight": 1.503999948501587,
+   "boundingRadius": 6.268133956901723,
+   "pxPerModelUnit": 304.85,
+   "spriteW": 622,
+   "spriteH": 448
+  }
+ }
+}
