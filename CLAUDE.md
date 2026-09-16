@@ -20,6 +20,12 @@ Full Twilight Imperium 4 (base game plus Codices), for 2-6 players (primarily 6)
 - The generated galaxy (3-6 players, the primary mode) uses the AsyncTI4 catalog tile art (`public/assets/tiles/NN_Name.png`), which prints the planet's name, resources and influence directly into the image — no separate nameplate overlay for it. The (legacy, to-be-removed) fixed 2-player map composes a plain background plus a rendered planet per planet plus its own nameplate. Either way, live game state (control, structures, ground forces, command tokens) is always drawn on top, never baked into art.
 - Units are shown as the models on the board, in the player's colour, everywhere they are named: the panels, the movement picker, the production picker, the technology list.
 
+## Working defaults (per user, 2025-05: keep replies fast)
+
+- Fast path by default: make the change, run only the targeted test file, commit and push. No full-suite runs, no monitor batches, no replays unless asked or unless the change touches core rules.
+- Long verifications (ai:monitor batches, full vitest, HCBJK3-style replays) run in the background and are reported when done, never blocking the reply.
+- Read narrowly: targeted grep and line ranges over full-file reads. Say "thorough" is not required to get the deep pass; the user asks when they want it.
+
 ## Diagnostics
 
 - The dev server appends every `debugLogger` entry — AI move choices, rejected moves, crashes — to `debug.log` in the repo root (`GET /api/debug-log`, clear with `POST /api/debug-log/clear`). It survives page reloads, so it is the first place to look when a game stalls or an AI seat stops moving. Browser `error`/`unhandledrejection` events and ErrorBoundary catches land there too.
