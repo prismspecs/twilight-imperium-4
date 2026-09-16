@@ -208,7 +208,9 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   // seat's token distribution, so the placement is part of the start-of-phase bookkeeping.
   const mitosis = applyMitosis(state, seat, params.mitosisPlanet)
   if (!mitosis.ok) return mitosis
-  let scored = scoreAll(mitosis.value, seat)
+  const withWormhole = applyWormholeGenerator(mitosis.value, seat, params.wormholeSystem)
+  if (!withWormhole.ok) return withWormhole
+  let scored = scoreAll(withWormhole.value, seat)
   // The status-phase-only spend objectives (SPEND_OBJECTIVES) are never auto-scored; each one this seat
   // chose to pay for is paid and scored here, in the order given.
   for (const [objectiveId, payment] of Object.entries(params.objectivePayments ?? {})) {
@@ -270,4 +272,41 @@ export function applyMitosis(state: GameState, seat: Seat, planetId?: string): R
     log: [...state.log, { t: 'info', text: `Arborec Mitosis: seat ${seat} places 1 infantry on ${target}` }],
   }
   return { ok: true, value: next }
+}
+
+/**
+ * R3.3/Wormhole Generator (Creuss): "At the start of status phase, place or move a Creuss wormhole token
+ * into a non-home system without enemy ships." The effect is mandatory after the tech is researched.
+ */
+export function applyWormholeGenerator(state: GameState, seat: Seat, systemId?: string): Result<GameState> {
+  const player = state.players[seat]
+  if (player.faction !== 'creuss') return { ok: true, value: state }  // not Creuss — no effect
+  if (!player.techs.includes('wormhole_generator')) return { ok: true, value: state }  // tech not researched
+
+  // The wormhole generator is mandatory — if the tech is owned, the Creuss player must place/move a wormhole
+  // on every status-phase submit. If they don't specify a system, that's an error.
+  if (!systemId) {
+    return { ok: false, error: 'Wormhole Generator: you must specify a system to place or move your wormhole' }
+  }
+
+  const targetSys = state.systems[systemId]
+  if (!targetSys) return { ok: false, error: `Wormhole Generator: ${systemId} is not a valid system` }
+  if (targetSys.home !== null) return { ok: false, error: `Wormhole Generator: ${systemId} is a home system` }
+  if (targetSys.space.some(u => u.owner !== seat)) {
+    return { ok: false, error: `Wormhole Generator: ${systemId} contains enemy ships` }
+  }
+
+  // The system is valid. Move or place the wormhole:
+  // - If there's already a wormhole in another system, remove it.
+  // - Place the wormhole in the target system.
+  const systems = { ...state.systems }
+  let logText = `seat ${seat} places a wormhole in ${systemId}`
+  for (const [sid, sys] of Object.entries(systems)) {
+    if (sid !== systemId && (sys.wormhole === 'alpha' || sys.wormhole === 'beta' || sys.wormhole === 'delta')) {
+      systems[sid] = { ...sys, wormhole: null }
+      logText = `seat ${seat} moves a wormhole from ${sid} to ${systemId}`
+    }
+  }
+  systems[systemId] = { ...targetSys, wormhole: 'alpha' }  // Creuss use alpha wormholes
+  return { ok: true, value: { ...state, systems, log: [...state.log, { t: 'info', text: logText }] } }
 }

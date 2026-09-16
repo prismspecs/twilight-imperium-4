@@ -215,6 +215,9 @@ export interface StatusParams {
   // objectives.ts) are never scored automatically — a chosen one is paid for here, keyed by objective id.
   objectivePayments?: Record<string, { planets: string[]; tradeGoods: number }>
   mitosisPlanet?: string
+  // Creuss faction tech Wormhole Generator: place or move a wormhole token into this system. Mandatory
+  // after the tech is researched; the Creuss player must specify a system on every status-phase submit.
+  wormholeSystem?: string
 }
 
 /**

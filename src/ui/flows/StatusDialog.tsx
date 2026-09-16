@@ -65,6 +65,7 @@ export function StatusDialog() {
   const [plan, setPlan] = useState<Record<string, number>>({})
   const [chosenSpends, setChosenSpends] = useState<string[]>([])
   const [mitosisPlanet, setMitosisPlanet] = useState<string | null>(null)
+  const [wormholeSystem, setWormholeSystem] = useState<string | null>(null)
   if (!session) return null
   const state = session.state
   if (isAi(session.config, state.active)) return null
@@ -104,12 +105,14 @@ export function StatusDialog() {
         redistribute: redistribute.length ? redistribute : undefined,
         objectivePayments: Object.keys(spendPlan).length ? spendPlan : undefined,
         mitosisPlanet: player.faction === 'arborec' ? (selectedMitosisPlanet ?? undefined) : undefined,
+        wormholeSystem: player.faction === 'creuss' && player.techs.includes('wormhole_generator') ? (wormholeSystem ?? undefined) : undefined,
       },
     })
     setTokens(null)
     setPlan({})
     setChosenSpends([])
     setMitosisPlanet(null)
+    setWormholeSystem(null)
   }
 
   return (
@@ -181,6 +184,26 @@ export function StatusDialog() {
                 ))}
               </div>
             )}
+          </div>
+        ) : null}
+        {player.faction === 'creuss' && player.techs.includes('wormhole_generator') ? (
+          <div className="rowline" data-testid="status-wormhole">
+            <span className="lbl">Wormhole Generator</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="sub">Place/move a wormhole in a non-home system without enemy ships:</span>
+              {Object.values(state.systems).filter(sys => sys.home === null && !sys.space.some(u => u.owner !== seat)).map(sys => (
+                <button
+                  key={sys.id}
+                  type="button"
+                  className={`btn ${wormholeSystem === sys.id ? 'gold' : 'quiet'}`}
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  data-testid={`status-wormhole-${sys.id}`}
+                  onClick={() => setWormholeSystem(sys.id)}
+                >
+                  {wormholeSystem === sys.id ? '✓ ' : ''}{sys.name}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
         <TokenSheet current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />
