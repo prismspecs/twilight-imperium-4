@@ -29,3 +29,4 @@ data/asyncti4/
 .cache/
 scratch/
 coverage/
+.context-audit/

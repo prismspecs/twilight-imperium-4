@@ -1,34 +1,30 @@
 # Mecatol Online
 
-Full Twilight Imperium 4 (base game plus Codices), for 2-6 players (primarily 6). This is the complete base game of TI4 (all 17 factions, 8 strategy cards, 101 action cards, 50 agendas, 20 public objectives + secrets, 6 promissory notes, 51-tile galaxy, anomalies, wormholes) with Codices I–IV updates. It is not a 2-player duel variant; any remaining duel-only mechanics in the code (e.g. trade posts) are legacy and should be removed. Pure TypeScript rules engine in `src/engine/` and `src/data/`, React UI on top, Vitest tests next to the modules. The complete rules text is `docs/spec/lrr.md` (LRR v2.0 incl. Codices) and `docs/spec/lrr-components.md`.
+Full Twilight Imperium 4 (base game + Codices I–IV), 2–6 players (primarily 6). Pure TypeScript rules engine in `src/engine/` and `src/data/`, React UI on top, Vitest tests alongside modules. Authority specs: [docs/spec/lrr.md](docs/spec/lrr.md) and [docs/spec/game-rules.md](docs/spec/game-rules.md). Unwired backlog: [docs/spec/unwired.md](docs/spec/unwired.md).
 
-## Rules for every change
+## Rules for Every Change
 
-- Commit after every logical step, in small commits: the failing test, the implementation, each fix, each doc change gets its own commit. Never bundle several tasks into one commit.
-- Push every commit to `main` as soon as it is green. `main` is wired to Vercel, so a push is a deployment and the player sees the fix immediately. Do not sit on a stack of local commits.
-- Conventional commit messages (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`), English only.
-- Before a commit that touches `src/`: `npm test`, `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` must be clean.
-- Engine and data modules: strict TypeScript, no `any`, no non-null assertions, no React/DOM/Node imports, never mutate an input `GameState`, all randomness from the seed passed in, every dice roll logged.
-- The spec in `docs/spec/game-rules.md` is the binding authority; plans in `docs/superpowers/plans/` argue from it. Rulings taken during execution are recorded in the plan's `.ledger.md`.
-- Before wiring or fixing any card, ability, tech, unit or agenda, consult the spec FIRST — never from memory: use the `ti4-rules` skill (`.agents/skills/ti4-rules/`), whose `scripts/spec-section.sh "<name>"` prints the whole FAQ section for a component. Both Fleet Logistics and the Arborec production rules were once wired wrong from memory.
+- **Micro-commits**: Commit after every logical step (failing test, implementation, doc change). Never bundle tasks.
+- **Push immediately**: Push green commits directly to `main` (auto-deploys to Vercel). Conventional commit format (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`).
+- **Pre-commit checks**: Before touching `src/`, ensure `npm test`, `npx tsc -p tsconfig.app.json --noEmit`, and `npm run lint` are clean.
+- **Engine integrity**: Strict TypeScript, no `any`, no non-null assertions, no React/DOM/Node imports in engine. Never mutate input `GameState`. Deterministic PRNG from seed; log all dice rolls.
+- **Rules authority**: [docs/spec/game-rules.md](docs/spec/game-rules.md) is binding. Consult spec via `ti4-rules` skill (`.agents/skills/ti4-rules/scripts/spec-section.sh "<name>"`) before modifying cards/abilities/units.
 
-## Rules the interface must respect
+## Interface Rules
 
-- The chess clock runs for whoever has to decide something, in every phase, not only in the action phase. It stops only for the handoff screen and the end of the game.
-- A card's secondary offers the whole printed ability, never a convenient stub. Warfare's secondary is a full production at the home space dock, not a single infantry.
-- When something is not possible, the interface says why in words: the asteroid field that needs Antimass Deflectors, the fleet in the way, plain range. "Nothing can reach this system" on its own is a bug report waiting to happen.
-- The generated galaxy (3-6 players, the primary mode) uses the AsyncTI4 catalog tile art (`public/assets/tiles/NN_Name.png`), which prints the planet's name, resources and influence directly into the image — no separate nameplate overlay for it. The (legacy, to-be-removed) fixed 2-player map composes a plain background plus a rendered planet per planet plus its own nameplate. Either way, live game state (control, structures, ground forces, command tokens) is always drawn on top, never baked into art.
-- Units are shown as the models on the board, in the player's colour, everywhere they are named: the panels, the movement picker, the production picker, the technology list.
+- **Chess clock**: Runs for active decider in every phase (stops only for handoff and game end).
+- **Full abilities**: Card secondaries offer full abilities (e.g. Warfare = full production at home dock).
+- **Explicit blockers**: Explain impossible moves in words (asteroid field requiring Antimass, fleet in way, range).
+- **Galaxy rendering**: AsyncTI4 catalog tile art (`public/assets/tiles/NN_Name.png`) with baked stats. Live game state is drawn on top.
+- **Player units**: Rendered as colored models everywhere named (panels, pickers, tech lists).
 
-## Working defaults (per user, 2025-05: keep replies fast)
+## Working Defaults
 
-- Fast path by default: make the change, run only the targeted test file, commit and push. No full-suite runs, no monitor batches, no replays unless asked or unless the change touches core rules.
-- Long verifications (ai:monitor batches, full vitest, HCBJK3-style replays) run in the background and are reported when done, never blocking the reply.
-- Read narrowly: targeted grep and line ranges over full-file reads. Say "thorough" is not required to get the deep pass; the user asks when they want it.
+- **Fast path**: Run only the targeted test file, commit, and push. Long verification runs in background.
+- **Narrow reads**: Targeted grep and specific line ranges over full-file reads.
 
-## Diagnostics
+## Diagnostics & Troubleshooting
 
-- The dev server appends every `debugLogger` entry — AI move choices, rejected moves, crashes — to `debug.log` in the repo root (`GET /api/debug-log`, clear with `POST /api/debug-log/clear`). It survives page reloads, so it is the first place to look when a game stalls or an AI seat stops moving. Browser `error`/`unhandledrejection` events and ErrorBoundary catches land there too.
-- Saved games live in the browser's localStorage under `md:game:<CODE>` (index `md:games`); `src/ui/persist.ts` normalises old payloads on load. The `state` plus the full `history` of snapshots are in there, which is what a post-mortem needs.
-- A white screen with no error in `debug.log` is usually not the app: the dev server can read a file mid-write and cache the empty transform (the page loads, a module or the CSS is served empty). `touch` the affected file first — the watcher re-reads it cleanly; if that doesn't help, restart `npm run dev` (delete `node_modules/.vite` if it persists), then reload the tab.
-- Vite strips types without checking them: only `npx tsc -p tsconfig.app.json --noEmit` catches a missing import before it becomes a runtime `ReferenceError` in the browser. Never commit `src/` changes while it is red.
+- App logs append to `debug.log` in root (`GET /api/debug-log`, `POST /api/debug-log/clear`).
+- Saved games persist in `localStorage` under `md:game:<CODE>`.
+- Full troubleshooting guide (Vite cache, white screens, type checking): [docs/spec/diagnostics.md](docs/spec/diagnostics.md).
