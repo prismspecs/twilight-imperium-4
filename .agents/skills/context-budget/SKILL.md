@@ -1,17 +1,23 @@
 ---
 name: context-budget
 description: >-
-  Inspects, audits, and compacts AI agent context bloat across Pi, Claude Code,
-  OpenCode, and Antigravity. Measures exact token weights of system prompts,
-  tool schemas, and resident rules using local audits, the turn-0 logging proxy
-  (proxy.mjs), and token-meter.
+  Inspects, audits, and compacts AI agent context bloat across Pi Harness,
+  Claude Code, OpenCode, and Antigravity. Measures exact token weights of system
+  prompts, tool schemas, and resident rules using local audits, the turn-0
+  logging proxy (proxy.mjs), and token-meter.
 ---
 
 # Context Budget & Bloat Optimizer
 
-A cross-harness skill and toolkit to audit, visualize, and eliminate context bloat across **Pi Coding Agent**, **Claude Code**, **OpenCode**, and **Antigravity (agy)**.
+A cross-harness skill and toolkit to audit, visualize, and eliminate context bloat across the **Pi Harness**, **Claude Code**, **OpenCode**, and **Antigravity (agy)**.
 
 Excess context directly harms reasoning quality, slows down response latency, exhausts model attention windows, and wastes tokens. This skill provides automated tools and an actionable triage runbook to maintain a clean working set.
+
+---
+
+## Harness Understanding: The Role of Pi
+
+**Pi** (`@earendil-works/pi-coding-agent`) is an open-source, minimalist **agent harness**. Rather than functioning as a closed assistant, a harness provides the runtime execution loop, tool protocol dispatch, model orchestration, and tree-structured session history (branching, rewinding, and compaction). The tools, extensions, and resident rules plugged into the harness determine the active capabilities. Keeping a harness's resident context lean is vital because every globally mounted MCP or extension tool definition is transmitted on every interaction.
 
 ---
 
@@ -38,6 +44,80 @@ Always apply these four core rules when organizing agent configurations:
 
 ---
 
+## How to Add Project-Scoped MCPs
+
+When an MCP server (such as Blender, Docker, Database, or Browser Control) is removed from global configuration, wire it project-locally using the methods below:
+
+### 1. For the Pi Harness
+Place a `.pi/mcp.json` file inside the root of your project:
+
+```json
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    }
+  }
+}
+```
+
+When you launch `pi` inside that project directory, Pi automatically loads the project-scoped servers for that session only. You can also run `pi install <source> -l` (or `--local`) to install extensions into `.pi/settings.json`.
+
+### 2. For Antigravity (agy)
+Place a standard `.mcp.json` file in your repository root (or inside `.agents/mcp_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "blender": {
+      "command": "/home/grayson/.local/bin/blender-mcp",
+      "args": []
+    },
+    "browser-control": {
+      "command": "node",
+      "args": ["/path/to/browser-control-mcp/mcp-server/dist/server.js"],
+      "env": {
+        "EXTENSION_SECRET": "your-secret",
+        "EXTENSION_PORT": "8089"
+      }
+    }
+  }
+}
+```
+
+Antigravity walks up from the current working directory to the project root and activates those MCP servers specifically for that workspace.
+
+### 3. For Claude Code
+Claude Code supports project-scoped MCP registration directly via CLI or `.mcp.json`:
+
+```bash
+# Register project-locally via CLI (adds to .mcp.json in the current repo):
+claude mcp add --scope project blender -- uvx blender-mcp
+
+# Or for browser control:
+claude mcp add --scope project browser-control -- node /path/to/server.js
+```
+
+Or manually create `.mcp.json` in the project root.
+
+### 4. For OpenCode
+OpenCode recognizes project-local `.mcp.json` or project-level `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    }
+  }
+}
+```
+
+---
+
 ## Toolkit Capabilities & Commands
 
 The toolkit is accessible via the global `context-budget` CLI or direct Node scripts.
@@ -52,8 +132,8 @@ context-budget audit --json
 ```
 
 **What it checks:**
-- **Antigravity (`~/.gemini`)**: Global MCP servers (e.g. Blender), active skills count, global rules token size.
-- **Pi Coding Agent (`~/.pi`)**: Packages installed, global MCPs, compaction threshold settings.
+- **Antigravity (`~/.gemini`)**: Global MCP servers, active skills count, global rules token size.
+- **Pi Harness (`~/.pi`)**: Packages installed, global MCPs, compaction threshold settings.
 - **Claude Code (`~/.claude`)**: `autoMode.environment` token size (detects repo-specific leakage), active skills, disabled skill stubs.
 - **OpenCode (`~/.config/opencode`)**: Global instruction files and rule sizes.
 - **Current Project Workspace**: Token weights of resident rules (`CLAUDE.md`, `AGENTS.md`), local skills, and project-scoped MCP configs.
@@ -106,8 +186,8 @@ token-meter serve
 
 ---
 
-### 4. Pi Context Inspection & Compaction (`pi-context`)
-For the **Pi Coding Agent**, two extensions provide live context management:
+### 4. Pi Harness Context Inspection & Compaction (`pi-context`)
+For the **Pi Harness**, two extensions provide live context management:
 
 - **Interactive Visual Dashboard**:
   Type `/context` in any Pi interactive session to view a breakdown of:
@@ -129,32 +209,16 @@ For the **Pi Coding Agent**, two extensions provide live context management:
 ### Scenario A: Niche MCP Server Configured Globally
 **Problem:** Blender MCP is configured in `~/.gemini/config/mcp_config.json` or `~/.pi/agent/mcp.json`. Every non-Blender project pays 26 tool definitions in token overhead.
 **Solution:**
-1. Remove `blender` from `~/.gemini/config/mcp_config.json` and `~/.pi/agent/mcp.json`.
-2. In projects that actually require Blender, create a project-local `.mcp.json`:
-   ```json
-   {
-     "mcpServers": {
-       "blender": {
-         "command": "uvx",
-         "args": ["blender-mcp"]
-       }
-     }
-   }
-   ```
+1. Remove `blender` from global config files.
+2. In projects that actually require Blender, create a project-local `.mcp.json` or `.pi/mcp.json`.
 
 ### Scenario B: Bloated Resident Rules File
 **Problem:** `CLAUDE.md` or `AGENTS.md` is >1,500 tokens because it includes complete API documentation or test listings.
 **Solution:**
 1. Extract reference manuals into `docs/spec/` or `references/`.
-2. Keep only core constraints, conventions, and links in the root file:
-   ```markdown
-   # Core Guidelines
-   - Commit after every logical step.
-   - For complete rules spec, see [docs/spec/lrr.md](docs/spec/lrr.md).
-   - Use the `ti4-rules` skill to query specific component FAQ.
-   ```
+2. Keep only core constraints, conventions, and links in the root file.
 
 ### Scenario C: Global Claude `autoMode` Leakage
 **Problem:** `~/.claude/settings.json` has repository-specific paths in `autoMode.environment`.
 **Solution:**
-Edit `~/.claude/settings.json` and reset `autoMode.environment` to generic defaults, moving project-specific directories to that project's `.claude/CLAUDE.md`.
+Move project-specific instructions into that project's `CLAUDE.md` or `.claude/config` and keep global settings clean.

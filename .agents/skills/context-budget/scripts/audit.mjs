@@ -1,41 +1,17 @@
-#!/usr/bin/env node
-
-/**
- * Cross-Harness Context Auditor
- * Audits context footprint across Pi, Claude Code, OpenCode, and Antigravity.
- * Evaluates global settings and project workspaces against the Fast Triage Checklist.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { estimateTokens, formatBytes } from './token-utils.mjs';
 
 const HOME = os.homedir();
 const CWD = process.cwd();
-
-// --- Token Estimation Utility ---
-export function estimateTokens(text) {
-  if (!text) return 0;
-  // Standard tokenization heuristic for mixed code/markdown/JSON
-  // Matches ~3.7 to 4.0 chars/token on typical agent instructions
-  const length = typeof text === 'string' ? text.length : JSON.stringify(text).length;
-  return Math.max(1, Math.ceil(length / 3.85));
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
 
 function safeRead(filePath) {
   try {
     if (fs.existsSync(filePath)) {
       return fs.readFileSync(filePath, 'utf8');
     }
-  } catch {
-    // ignore read error
-  }
+  } catch {}
   return null;
 }
 
@@ -67,8 +43,6 @@ function getDirSize(dirPath) {
   } catch {}
   return total;
 }
-
-// --- Harness Audits ---
 
 export function auditAntigravity() {
   const globalDir = path.join(HOME, '.gemini', 'config');
@@ -123,7 +97,7 @@ export function auditPi() {
   const mcpServers = Object.keys(mcpConfig.mcpServers || {});
 
   return {
-    harness: 'Pi Coding Agent',
+    harness: 'Pi Harness',
     packages,
     mcpServers,
     compaction: settings.compaction || null,
@@ -240,7 +214,6 @@ export function auditProject(projectDir = CWD) {
     }
   }
 
-  // Local MCP configs
   const mcpFiles = ['.mcp.json', '.claude/mcp.json', '.pi/mcp.json', '.cursor/mcp.json'];
   const localMcp = [];
   for (const mf of mcpFiles) {
@@ -258,8 +231,6 @@ export function auditProject(projectDir = CWD) {
     localMcp,
   };
 }
-
-// --- Triage Recommendations Generator ---
 
 export function evaluateFindings(agy, pi, claude, opencode, project) {
   const findings = [];
@@ -322,7 +293,7 @@ export function evaluateFindings(agy, pi, claude, opencode, project) {
     findings.push({
       severity: 'MEDIUM',
       category: 'Pi Instrumentation',
-      title: `Pi Coding Agent lacks context inspection & compaction extension`,
+      title: `Pi Harness lacks context inspection & compaction extension`,
       description: `pi-context or pi-context-tools is not installed in ~/.pi/agent/settings.json.`,
       action: `Run 'pi install npm:pi-context' to enable /context dashboard and compaction tools.`,
     });
@@ -330,8 +301,6 @@ export function evaluateFindings(agy, pi, claude, opencode, project) {
 
   return findings;
 }
-
-// --- CLI Runner ---
 
 export function runAudit(options = {}) {
   const agy = auditAntigravity();
@@ -358,14 +327,13 @@ export function runAudit(options = {}) {
   console.log(bold('        CROSS-HARNESS CONTEXT BLOAT & BUDGET AUDIT            '));
   console.log(bold('═══════════════════════════════════════════════════════════════\n'));
 
-  // 1. Global Settings Summary
   console.log(bold(cyan('▶ 1. GLOBAL HARNESS FOOTPRINT')));
   console.log(
     `  • ${bold('Antigravity (agy)')}: ${agy.globalMcpServers.length} global MCP servers [${agy.globalMcpServers.join(', ') || 'none'}], ` +
       `${agy.skills.length} global skills, rules: ~${agy.rules.tokens} tok`
   );
   console.log(
-    `  • ${bold('Pi Coding Agent')}: ${pi.packages.length} packages, ${pi.mcpServers.length} global MCP servers [${pi.mcpServers.join(', ') || 'none'}], ` +
+    `  • ${bold('Pi Harness')}: ${pi.packages.length} packages, ${pi.mcpServers.length} global MCP servers [${pi.mcpServers.join(', ') || 'none'}], ` +
       `compaction reserve: ${pi.compaction?.reserveTokens || 'default'} tok`
   );
   console.log(
@@ -377,7 +345,6 @@ export function runAudit(options = {}) {
     `  • ${bold('OpenCode')}: ${opencode.instructions.length} instruction files, rules: ~${opencode.rules.tokens} tok`
   );
 
-  // 2. Project Workspace Summary
   console.log('\n' + bold(cyan(`▶ 2. PROJECT FOOTPRINT (${path.basename(project.projectDir)})`)));
   if (project.rules.length === 0) {
     console.log('  • No resident rule files found.');
@@ -407,7 +374,6 @@ export function runAudit(options = {}) {
     console.log('  • Project-Scoped MCP: None (all MCP servers currently run from global config)');
   }
 
-  // 3. Fast Triage Findings
   console.log('\n' + bold(cyan('▶ 3. FAST TRIAGE AUDIT FINDINGS')));
   if (findings.length === 0) {
     console.log(green('  ✔ No critical context bloat detected! Setup follows best practices.'));
@@ -429,9 +395,4 @@ export function runAudit(options = {}) {
   console.log(`  2. In Pi, run ${cyan('/context')} to visualize real-time token allocation.`);
   console.log(`  3. Run ${cyan('context-budget proxy --port 8080')} to capture turn-0 request payloads directly.`);
   console.log(bold('═══════════════════════════════════════════════════════════════\n'));
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
-  const jsonFlag = process.argv.includes('--json');
-  runAudit({ json: jsonFlag });
 }
