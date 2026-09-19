@@ -45,6 +45,8 @@ Strategic action: play the primary ability of an unused strategy card; each othe
 
 Component action: an action granted by a card or faction ability played by the player (e.g. a faction's component action).
 
+Transaction (LRR §Transactions, docs/spec/lrr.md lines 2755–2791): the active player may, at any point in their turn, propose a transaction to a neighbor — a player whose units or structures are in a system adjacent to, or the same as, a system containing their own (LRR 2741). A transaction is an exchange of commodities and trade goods (this v1 scope; promissory notes, relic fragments and Hacan action cards are not yet implementable — see NOT_FIXED), agreed before it is exchanged and resolved atomically (need not be even). The target may accept or reject. The engine models this as a two-move handshake (`proposeTransaction` → `acceptTransaction`/`rejectTransaction`) that mirrors the `pendingSecondary` window (the target seat becomes the actor). Proposing is free; only a *resolved* transaction consumes the budget, and there is at most one transaction per (turn, neighbor) pair (LRR 2761). A commodity received in a transaction converts to a trade good (LRR 663.5). v1 does not allow transactions during combat or while a secondary window is open, and does not yet implement the agenda-phase budget (LRR 2781–2787).
+
 ### 3.3 Status phase
 1. Score: each player may score each public objective they fulfil (once per objective per game) and 1 VP for controlling Mecatol Rex.
 2. Reveal the next facedown public objective (stage I before stage II, LRR 1789); if every public objective is already revealed the game ends immediately with the most-VP player the winner (LRR 2896.8).

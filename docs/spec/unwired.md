@@ -35,8 +35,11 @@ Known limitations of current wirings (rulings taken during execution, need desig
 ## Faction tech — all 17 factions populated in techs.ts
 All 17 factions have both of their faction technologies (34 total: 8 unit upgrades and 26 faction ability technologies) fully defined in `src/data/techs.ts`.
 
+## Transactions — engine core wired (commodities + trade goods only)
+Phase A of TI4 transactions is implemented in `src/engine/transactions.ts` (move types `proposeTransaction` / `acceptTransaction` / `rejectTransaction`, `tradesThisTurn` + `pendingProposal` on GameState, version 6). Two-sided handshake mirrors `pendingSecondary`; at most one transaction per (turn, neighbor) pair; received commodities convert to trade goods (LRR 663.5). Deferred (see docs/superpowers/plans/2026-09-19-trading-transactions.md): promissory notes, relic fragments, Hacan Guild Ships action-card trading, Mentak Pillage on transactions, and the agenda-phase per-agenda transaction budget (LRR 2781–2787). v1 disallows transactions during combat and while a secondary window is open; no UI nor AI trading yet (Phases C–D).
+
 ## Promissory notes — 0 files, 0 engine wiring
-Requires `src/data/promissory_notes.ts` + engine module. The old trade-post code was removed but its tests remain (see below).
+Requires `src/data/promissory_notes.ts` + engine module (a Phase B step). The old trade-post code was removed but its tests remain (see below).
 
 ## Test-suite debt (measured 2026-09-09: 270 failed / 449 passed at commit 048c117)
 The gate was dead for a long stretch; three classes of rot shipped while it was red:
