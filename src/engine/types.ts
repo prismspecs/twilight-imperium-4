@@ -98,7 +98,7 @@ export interface InvasionState {
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
   /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
-  version: 5
+  version: 6
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
@@ -118,6 +118,12 @@ export interface GameState {
   // R3.2: the strategy-card secondary window. The card holder played a primary; every other seat answers,
   // one at a time in turn order (even seats that have passed), before the holder finishes their turn.
   pendingSecondary: SecondaryWindow | null
+  // R8: transactions. `tradesThisTurn` is the normalized [lo,hi] seat pairs that already resolved a
+  // transaction during the CURRENT active player's turn (LRR 2761: at most one per neighbor per turn); it
+  // resets on every turn handoff (see actionPhase.passTurn). `pendingProposal` is the live offer, which
+  // the target seat must accept or reject before the turn resumes.
+  tradesThisTurn: Seat[][]
+  pendingProposal: PendingProposal | null
   // R9: the open reaction windows, innermost last. While the stack is not empty the only legal moves are an
   // answer to its last window: `playActionCard` for a card whose window matches, or `declineReaction`.
   pendingReactions: ReactionWindow[]
@@ -147,6 +153,11 @@ export type LogEntry = { t: 'move'; seat: Seat | null; move: Move; seed: number 
 
 export type Move =
   | { type: 'pickStrategyCard'; card: StrategyCardId }
+  // R8 transactions: the active player proposes a trade to a neighbor; the target accepts (atomic exchange)
+  // or rejects. Proposing is free; only a resolved transaction consumes the per-neighbor budget.
+  | { type: 'proposeTransaction'; to: Seat; give: Exchange; take: Exchange }
+  | { type: 'acceptTransaction' }
+  | { type: 'rejectTransaction' }
   | { type: 'startTactical'; systemId: string }
   | { type: 'moveShips'; moves: { unitId: number; from: string; carrying: number[] }[] }   // all into tactical.systemId
   | { type: 'endMovement' }
@@ -195,6 +206,21 @@ export type Move =
   // picks are legal (omit the fields). Prerequisites are validated sequentially and skip planets are
   // exhausted for their technology specialty (LRR "Technology Specialties" 12).
   | { type: 'artifactTechs'; techId?: string; techSkipPlanets?: string[]; secondTechId?: string; secondTechSkipPlanets?: string[] }
+// R8: what one side of a transaction gives or takes. v1 is commodities + trade goods; promissory notes,
+// relic fragments and action cards are deferred.
+export interface Exchange {
+  commodities?: number
+  tradeGoods?: number
+}
+
+// R8: the single outstanding transaction proposal, or null once resolved.
+export interface PendingProposal {
+  from: Seat
+  to: Seat
+  give: Exchange
+  take: Exchange
+}
+
 export interface StrategicParams {
   systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
   planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)

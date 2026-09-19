@@ -62,7 +62,10 @@ export function reviveInfantry(state: GameState, seat: Seat): GameState {
 export function passTurn(state: GameState): GameState {
   const next = nextActiveSeat(state, state.active)
   const active = next ?? state.active
-  return reviveInfantry({ ...state, active, turnDone: false }, active)
+  // R8: a fresh turn starts with a clean per-neighbor transaction budget (LRR 2761). The handoff is the only
+  // place a genuinely new turn begins; secondary and transaction windows swap `active` back and forth without
+  // touching this, so resetting here is exact.
+  return reviveInfantry({ ...state, active, turnDone: false, tradesThisTurn: [] }, active)
 }
 
 export function activatableSystems(state: GameState, seat: Seat): string[] {

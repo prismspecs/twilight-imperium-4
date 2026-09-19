@@ -48,7 +48,7 @@ function isLegacy(value: unknown): value is Legacy {
     && Array.isArray(p.history)
     // R9 added pendingReactions and effects, so a game saved before version 4 is not readable any more
     // and is dropped rather than crashed into. Versions 2-5 are still supported.
-    && typeof p.state === 'object' && p.state !== null && [2, 3, 4, 5].includes((p.state as { version: number }).version)
+    && typeof p.state === 'object' && p.state !== null && [2, 3, 4, 5, 6].includes((p.state as { version: number }).version)
 }
 
 function isSummary(value: unknown): value is GameSummary {
@@ -124,6 +124,10 @@ function normalise(state: GameState, seed: number): GameState {
     next = { ...next, players: next.players.map(p => ({ ...p, actionCards: Array.isArray(p.actionCards) ? p.actionCards : [] })) }
   }
   if (typeof raw.turnDone !== 'boolean') next = { ...next, turnDone: false }
+  // R8: trading added two fields in version 6. A game saved before it has no per-turn budget and no live
+  // proposal; both are restarted at null/empty, which is exactly "nothing transacted yet this turn".
+  if (typeof (raw as { tradesThisTurn?: unknown }).tradesThisTurn !== 'object') next = { ...next, tradesThisTurn: [] }
+  if ((raw as { pendingProposal?: unknown }).pendingProposal !== null && typeof (raw as { pendingProposal?: unknown }).pendingProposal !== 'object') next = { ...next, pendingProposal: null }
   if (!Array.isArray(raw.secretObjectiveDeck)) {
     next = { ...next, secretObjectiveDeck: [] }
   }
@@ -142,7 +146,7 @@ function normalise(state: GameState, seed: number): GameState {
       })),
     }
   }
-  return next.version === 5 ? next : { ...next, version: 5 }
+  return next.version === 6 ? next : { ...next, version: 6 }
 }
 
 function isPayload(value: unknown): value is Payload {

@@ -121,7 +121,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     return initialSecret ? { ...p, secretObjectives: [initialSecret] } : p
   })
   const state: GameState = {
-    version: 5, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
+    version: 6, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft,
     publicObjectives: [order[0], order[1]],
@@ -131,7 +131,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     actionCardDiscard: [],
     agendaDeck: shuffledAgendas(seed),
     players,
-    systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
+    systems, tactical: null, turnDone: false, pendingSecondary: null, tradesThisTurn: [], pendingProposal: null, statusSubmitted: [],
     pendingReactions: [], effects: [],
     nextUnitId: counter.nextUnitId, guardianRolls: 0, custodiansToken: true, agenda: null, winner: null,
     activeAgendas: [], lawOwners: {},
