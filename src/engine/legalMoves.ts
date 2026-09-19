@@ -3,7 +3,7 @@ import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { agendaMoves, artifactTechMoves } from './agendas'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { pendingReaction, reactionMoves } from './reactions'
-import { canInheritance, canProductionBiomes, inheritanceTechs, productionBiomesTargets } from './componentActions'
+import { canInheritance, canOrbitalDrop, canProductionBiomes, canStarForgeUnit, inheritanceTechs, productionBiomesTargets } from './componentActions'
 import { cheapestPayment, cheapestPlanets, hasOwnDock, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
@@ -384,6 +384,21 @@ export function legalMoves(state: GameState): Move[] {
     const plan = defaultTransitPlan(state, seat)
     if (plan.length > 0) out.push({ type: 'transitDiodes', moves: plan })
   }
+  // Muaat Star Forge: spend 1 strategy token to place 2 fighters or 1 destroyer from reinforcements in a
+  // system containing one of your war suns (lrr-factions.md, Star Forge). Each unit type is offered only
+  // when it can be completely resolved — LRR 683.3.
+  if (canStarForgeUnit(state, seat, 'fighter')) out.push({ type: 'starForge', unitType: 'fighter' })
+  if (canStarForgeUnit(state, seat, 'destroyer')) out.push({ type: 'starForge', unitType: 'destroyer' })
+  // Sol Orbital Drop: spend 1 strategy token to place 2 infantry on a controlled planet
+  if (state.players[seat].faction === 'sol') {
+    for (const sys of Object.values(state.systems)) {
+      for (const p of sys.planets) {
+        if (canOrbitalDrop(state, seat, p.id)) {
+          out.push({ type: 'orbitalDrop', planetId: p.id })
+        }
+      }
+    }
+  }
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
 }
@@ -426,6 +441,10 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'research' && candidate.techId === move.techId
     case 'productionBiomes':
       return candidate.type === 'productionBiomes' && candidate.target === move.target
+    case 'starForge':
+      return candidate.type === 'starForge' && candidate.unitType === move.unitType
+    case 'orbitalDrop':
+      return candidate.type === 'orbitalDrop' && candidate.planetId === move.planetId
     // R10: which planets pay for the vote is the voter's own choice, checked by castVote itself, the only
     // place that knows what is legal — same idiom as research/productionBiomes above
     case 'castVote':

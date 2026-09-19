@@ -181,6 +181,11 @@ export type Move =
   // Xxcha faction tech Transit Diodes: relocate up to 4 ground forces from systems holding the seat's
   // command token to planets the seat controls (lrr-components.md, Transit Diodes 1-4)
   | { type: 'transitDiodes'; moves: { infantryId: number; to: string }[] }
+  // Muaat faction tech Star Forge: spend 1 strategy token to produce 2 fighters or 1 destroyer in a system
+  // with a war sun (lrr-components.md, Star Forge)
+  | { type: 'starForge'; unitType: 'fighter' | 'destroyer' }
+  // Sol faction tech Orbital Drop: spend 1 strategy token to place 2 infantry on a controlled planet
+  | { type: 'orbitalDrop'; planetId: string }
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
   // R10: one seat's vote on the revealed agenda. `outcome` is 'For'/'Against', or the elected target's id
