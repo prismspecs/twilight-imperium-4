@@ -10,6 +10,7 @@ import { bombardablePlanets, groundCombatPending, landablePlanets } from './inva
 import { movableShips } from './movement'
 import { peaceAccordsTargets } from './strategicActions'
 import { canTransitDiodes, relocatableGroundForces } from './componentActions'
+import { transactionOffers } from './transactions'
 import { fulfils } from './objectives'
 import { researchable, researchableWithSkips, skipPlanetsFor, techSkipCandidates } from './research'
 import { FACTIONS } from '../data/factions'
@@ -343,6 +344,13 @@ export function legalMoves(state: GameState): Move[] {
   if (state.phase === 'agenda') return agendaMoves(state)
   if (state.phase !== 'action') return []
   const seat = state.active
+  // R8: an outstanding transaction proposal makes the TARGET seat the only actor (partnering the handoff in
+  // `proposeTransaction`, which set `active` to the target). Their only legal moves are accept or reject;
+  // the rest of the turn is frozen until they answer, exactly like a pendingSecondary window.
+  if (state.pendingProposal) {
+    if (state.pendingProposal.to === seat) return [{ type: 'acceptTransaction' }, { type: 'rejectTransaction' }]
+    return []
+  }
   // R3.2: the answer to a strategy card is not a turn, so it comes before the passed check
   const pending = state.pendingSecondary
   if (pending !== null) {
@@ -400,6 +408,9 @@ export function legalMoves(state: GameState): Move[] {
     }
   }
   if (canPass(state, seat)) out.push({ type: 'pass' })
+  // R8: transactions are a free offer the active player can extend to each neighbor not yet traded with
+  // this turn (LRR 2761). Offered next to the actions; proposing never spends the action.
+  out.push(...transactionOffers(state, seat))
   return out
 }
 
@@ -443,6 +454,13 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'productionBiomes' && candidate.target === move.target
     case 'starForge':
       return candidate.type === 'starForge' && candidate.unitType === move.unitType
+    case 'proposeTransaction':
+      // only `to` identifies the move; give/take are the player's own terms, checked by canProposeTransaction
+      return candidate.type === 'proposeTransaction' && candidate.to === move.to
+    case 'acceptTransaction':
+      return candidate.type === 'acceptTransaction'
+    case 'rejectTransaction':
+      return candidate.type === 'rejectTransaction'
     case 'orbitalDrop':
       return candidate.type === 'orbitalDrop' && candidate.planetId === move.planetId
     // R10: which planets pay for the vote is the voter's own choice, checked by castVote itself, the only

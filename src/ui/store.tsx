@@ -197,6 +197,7 @@ export function seatToAct(state: GameState): Seat {
   }
   const pending = pendingFor(state)
   if (pending) return pending.owner
+  if (state.pendingProposal) return state.pendingProposal.to
   if (state.pendingSecondary !== null && state.pendingSecondary.queue.length > 0) {
     return state.pendingSecondary.queue[0]
   }
@@ -231,6 +232,11 @@ export function shouldAiStep(config: GameConfig | undefined, state: GameState): 
   if (state.pendingSecondary !== null) {
     const queueSeat = state.pendingSecondary.queue[0]
     return queueSeat !== undefined && isAi(config, queueSeat)
+  }
+
+  // 2.5 Pending transaction proposal: only the target seat acts (accept/reject), and only it
+  if (state.pendingProposal) {
+    return isAi(config, state.pendingProposal.to)
   }
 
   // 3. Pending reaction window: only the seat at the head of its queue may answer it. This must be checked
