@@ -1,1 +1,7 @@
 Implement trading Phase B: promissory notes. See `.ralph/trading-phase-b.md` for the full checklist (B1 data module, B2 hand field + Exchange plumbing, B3 transfer on accept, B4 Support-for-the-Throne play-immediately +1 VP anchor effect, B5 setup seeding, B6 tests, B7 unwired.md gaps, B8 micro-commits + gate). Binding authority: LRR §Promissory Notes lines 1994–2015 & 2025; plan doc Phase B. Zero existing promissory-note wiring; model data after `src/data/actionCards.ts` and wiring after `src/engine/actionCards.ts`. Reuse Phase A's Exchange/pendingProposal/handshake. Record timing-window-dependent note effects (Ceasefire, Trade Agreement, Political Secret, faction notes) as gaps in unwired.md — never half-wire. Micro-commit + push after each green step; final gate: promissoryNotes.test.ts + transactions.test.ts pass, tsc clean (non-test src + my files), `npm run ai:stress` ends 'no failures'.
+## Progress log
+- 2026-09-21: **B1 done** — `src/data/promissory_notes.ts` (4 generic + 17 base-game faction notes, sourced from
+  the AsyncTI4 catalogue already trusted by `data/reference/factions.json`; texts verbatim). Committed `6f2d585`, pushed.
+  tsc clean (non-test src), lint clean (vendored warnings only), runtime smoke: 21 notes, generic ids + faction lookups correct.
+- **PAUSED at user request.** Remaining: B2 (hand field + Exchange.promissory), B3 (transfer on accept),
+  B4 (SftT +1 VP on receive), B5 (setup seeding), B6 (tests), B7 (unwired.md gaps), B8 (ai:stress gate).
